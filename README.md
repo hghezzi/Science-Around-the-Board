@@ -1,7 +1,7 @@
 # Science-Around-the-Board
 
 <p align="center">
-  <img src="./images/ScienceAroundTheBoardIMAGE.png" width="500" />
+  <img src="./images/ScienceAroundTheBoardIMAGE.png" width="1000" />
 </p>
 
 Welcome to Science Around the Board! This is a pedagogical game intended to incentivise learning of any scientific contect through fun and engaging dynamics. 
