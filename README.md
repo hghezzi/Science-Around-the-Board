@@ -1,5 +1,9 @@
 # Science-Around-the-Board
 
+<p align="center">
+  <img src="./images/ScienceAroundTheBoardIMAGE.png" width="500" />
+</p>
+
 Welcome to Science Around the Board! This is a pedagogical game intended to incentivise learning of any scientific contect through fun and engaging dynamics. 
 
 Players choose from a range of topics previously set up by their instructor and roll a dice around the board to conquer tiles by answering questions.
