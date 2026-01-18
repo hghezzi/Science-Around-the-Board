@@ -7,4 +7,4 @@ A pedagogical game to incentivise learning across all disciplines.
 </p>
 
 
-Play [HERE] (https://hghezzi.github.io/Science-Around-the-Board/)
+Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
