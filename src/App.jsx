@@ -290,6 +290,44 @@ export default function App() {
   const [postQ, setPostQ] = useState([]);
   const [confQ, setConfQ] = useState([]);
 
+  // --- NAVIGATION & EXIT SAFETY HOOK ---
+  // Prevents accidental swipes (Back/Forward) and accidental tab closures.
+  useEffect(() => {
+    // 1. The History Trap (Stops Trackpad Swipes)
+    const handlePopState = (event) => {
+      if (phase !== "SETUP" && phase !== "SUMMARY") {
+        // If they try to go back, force them to stay on the current page
+        window.history.pushState(null, document.title, window.location.href);
+      }
+    };
+
+    // 2. The Refresh/Close Trap (Stops Tab Closing)
+    const handleBeforeUnload = (e) => {
+      if (phase !== "SETUP" && phase !== "SUMMARY") {
+        e.preventDefault();
+        e.returnValue = "Game progress will be lost.";
+        return "Game progress will be lost.";
+      }
+    };
+
+    // Activate the traps when the game starts
+    if (phase !== "SETUP" && phase !== "SUMMARY") {
+      // Push a state immediately so "Back" has somewhere to go (that is still here)
+      window.history.pushState(null, document.title, window.location.href);
+      
+      window.addEventListener("popstate", handlePopState);
+      window.addEventListener("beforeunload", handleBeforeUnload);
+    }
+
+    // Cleanup when the component unmounts or phase changes
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [phase]);
+
+  // --- Handlers ---
+
   const handleLoadDefault = async () => {
     setLoadingError(null);
     try {
@@ -462,7 +500,7 @@ export default function App() {
              </Button>
         </Paper>
         
-        {/* Module Selection Modal - FIXED VISUALS */}
+        {/* Module Selection Modal */}
         <Modal open={moduleModalOpen} onClose={() => setModuleModalOpen(false)}>
           <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 300, bgcolor: 'background.paper', p: 4, borderRadius: 2 }}>
             <Typography variant="h6" gutterBottom>Select Module</Typography>
