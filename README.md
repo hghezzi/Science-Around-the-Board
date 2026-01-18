@@ -3,6 +3,6 @@
 A pedagogical game to incentivise learning across all disciplines. 
 
 <p align="center">
-  <img src="./images/ScienceAroundTheBoardIMAGE.png" width="500" />
+  <img src="./images/ScienceAroundTheBoardIMAGE.png" width="1000" />
 </p>
 
