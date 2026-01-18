@@ -290,18 +290,17 @@ export default function App() {
   const [postQ, setPostQ] = useState([]);
   const [confQ, setConfQ] = useState([]);
 
-  // --- NAVIGATION & EXIT SAFETY HOOK ---
-  // Prevents accidental swipes (Back/Forward) and accidental tab closures.
+  // --- NAVIGATION & EXIT SAFETY HOOK (UPDATED) ---
   useEffect(() => {
-    // 1. The History Trap (Stops Trackpad Swipes)
+    // 1. The History Trap (ALWAYS ON)
+    // Prevents swipe-back on ALL screens, including Setup.
     const handlePopState = (event) => {
-      if (phase !== "SETUP" && phase !== "SUMMARY") {
-        // If they try to go back, force them to stay on the current page
-        window.history.pushState(null, document.title, window.location.href);
-      }
+      // Immediately push a new state so the user stays "forward"
+      window.history.pushState(null, document.title, window.location.href);
     };
 
-    // 2. The Refresh/Close Trap (Stops Tab Closing)
+    // 2. The Refresh/Close Trap (CONDITIONAL)
+    // Only annoying warning if they are actually in a game/survey.
     const handleBeforeUnload = (e) => {
       if (phase !== "SETUP" && phase !== "SUMMARY") {
         e.preventDefault();
@@ -310,16 +309,11 @@ export default function App() {
       }
     };
 
-    // Activate the traps when the game starts
-    if (phase !== "SETUP" && phase !== "SUMMARY") {
-      // Push a state immediately so "Back" has somewhere to go (that is still here)
-      window.history.pushState(null, document.title, window.location.href);
-      
-      window.addEventListener("popstate", handlePopState);
-      window.addEventListener("beforeunload", handleBeforeUnload);
-    }
+    // Activate traps
+    window.history.pushState(null, document.title, window.location.href);
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // Cleanup when the component unmounts or phase changes
     return () => {
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -520,7 +514,6 @@ export default function App() {
             
             <Divider sx={{ my: 2 }} />
             
-            {/* The Green Confirm Button */}
             <Button 
               fullWidth 
               variant="contained" 
