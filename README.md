@@ -6,9 +6,11 @@ A pedagogical game to incentivise learning across all disciplines.
   <img src="./images/ScienceAroundTheBoardIMAGE.png" width="1000" />
 </p>
 
-
+## Game:
 Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
 
+## 🛠️ Instructor Tools:
+* **[Password Encryptor Tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html)** – Use this to create encrypted question files to share with your students.
 
 
 
