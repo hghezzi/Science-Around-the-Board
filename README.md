@@ -18,7 +18,7 @@ Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
 * A **computer** to run the game
 * **Internet connection** to access the game on github, although a stable connection is not required once you start a gaming session.
 * A **TSV question file** (e.g. questions.tsv in the public folder of this repo)
-** esfd
+  * efsdf
 
 
 ## License
