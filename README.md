@@ -18,7 +18,12 @@ Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
 * A **computer** to run the game
 * **Internet connection** to access the game on github, although a stable connection is not required once you start a gaming session.
 * A **TSV question file** (e.g. questions.tsv in the public folder of this repo)
-  * efsdf
+  * The game dynamically parses question files to find all tile informations, meaning that the input file should closely fit the structure described below.
+ 
+## Question file:
+While I designed 'Science Around the Board' with Bioinformatics in mind, it is structured so that users can play with absolutely **any** topics at any challenge level (yes, I have turned this into an evening board night with my fiancée to test her knowldge of RuPaul Drag Race). This is achieved through a dynamic parsing of the TSV question file loaded at the beginning of each session. For this reason, each file should closely match this structure:
+
+- 
 
 
 ## License
