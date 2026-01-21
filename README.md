@@ -39,6 +39,8 @@ While I designed 'Science Around the Board' with Bioinformatics in mind, it is s
 
 To ensure diversity in the questions asked to different players, I always design >10 questions for each subtheme.
 
+I also provided an example file (FORMAT_INSTRUCTIONS.txt) in this repo with the instructions I provided to Gemini Gems to create questions. I use Gems as it allows to edit the knowledge source and instructions, meaning I could directly use Canvas content, lesson notes, and more for questions generation.
+
 
 ## License
 This project is licensed under a **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.
