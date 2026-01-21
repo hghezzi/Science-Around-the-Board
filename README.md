@@ -9,10 +9,16 @@ A pedagogical game to incentivise learning across all disciplines.
 ## ⚽️ Game:
 Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
 
+*NOTE*: Science Around the Board is currently NOT supported on mobiles.
+
 ## 🛠️ Instructor Tools:
 * **[Password Encryptor Tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html)** – Use this to create encrypted question files to share with your students.
 
-## ﹖Instructions:
+## Requirements:
+* A computer to run the game
+* Internet connection to access the game on github, although a stable connection is not required once you start a gaming session.
+* A TSV question file (e.g. questions.tsv in the public folder of this repo)
+
 
 
 ## License
