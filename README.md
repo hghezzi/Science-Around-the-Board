@@ -23,19 +23,19 @@ Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
 ## Question file:
 While I designed 'Science Around the Board' with Bioinformatics in mind, it is structured so that users can play with absolutely **any** topics, challenge level, language, etc... (yes, I have turned this into an evening board night with my fiancée to test her knowldge of RuPaul's Drag Race). This is achieved through a dynamic parsing of the TSV question file loaded at the beginning of each session. For this reason, each file should closely match this structure:
 
-• **id**: A unique string (e.g., topic_01).
-• **question**: The question text (clear, concise).
-• **option1**: Possible answer number 1
-• **option2**: Possible answer number 2
-• **option3**: Possible answer number 3
-• **option4**: Possible answer number 4
-• **correctIndex**: A number (1, 2, 3, 4) based on which of the 4 options above is the correct answer.
-• **explanation**: A brief one sentence statement explaining the correct answer for the question
-• **bigTopic**: The main subject (e.g., 'Genomics'). Questions that can appear in multiple 'bigTopic' can be written in the same row as a comma-separated list (e.g. 'Genomics, Metagenomics, 16S')
-• **module**: The specific topic within the main subject (e.g., 'Week 2'). This is a subtopic of ‘bigTopic’.
-• **theme**: 4 different themes must be provided for each module, corresponding to each of the 4 sides of the board (e.g. Sample Prep). This is a subtopic of ‘module’, meaning that each 'module' should have 4 unique themes.
-• **subtheme**: 2 subthemes  must be provided for each ‘theme’ (e.g. 'Quality Control' and 'Sample Prep').
-• **type**: One of the following options: property, core, milestone, pre, post, confidence. Each option corresponds to a tile type in the game (property, core, milestone) or the pre-survey, post-survey, and confidence sliders. You must provide at least one question for each tile in the game.
+* **id**: A unique string (e.g., topic_01).
+* **question**: The question text (clear, concise).
+* **option1**: Possible answer number 1
+* **option2**: Possible answer number 2
+* **option3**: Possible answer number 3
+* **option4**: Possible answer number 4
+* **correctIndex**: A number (1, 2, 3, 4) based on which of the 4 options above is the correct answer.
+* **explanation**: A brief one sentence statement explaining the correct answer for the question
+* **bigTopic**: The main subject (e.g., 'Genomics'). Questions that can appear in multiple 'bigTopic' can be written in the same row as a comma-separated list (e.g. 'Genomics, Metagenomics, 16S')
+* **module**: The specific topic within the main subject (e.g., 'Week 2'). This is a subtopic of ‘bigTopic’.
+* **theme**: 4 different themes must be provided for each module, corresponding to each of the 4 sides of the board (e.g. Sample Prep). This is a subtopic of ‘module’, meaning that each 'module' should have 4 unique themes.
+* **subtheme**: 2 subthemes  must be provided for each ‘theme’ (e.g. 'Quality Control' and 'Sample Prep').
+* **type**: One of the following options: property, core, milestone, pre, post, confidence. Each option corresponds to a tile type in the game (property, core, milestone) or the pre-survey, post-survey, and confidence sliders. You must provide at least one question for each tile in the game.
 
 To ensure diversity in the questions asked to different players, I always design >10 questions for each subtheme.
 
