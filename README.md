@@ -36,6 +36,7 @@ While I designed 'Science Around the Board' with Bioinformatics in mind, it is s
 * **theme**: 4 different themes must be provided for each module, corresponding to each of the 4 sides of the board (e.g. Sample Prep). This is a subtopic of ‘module’, meaning that each 'module' should have 4 unique themes.
 * **subtheme**: 2 subthemes  must be provided for each ‘theme’ (e.g. 'Quality Control' and 'Sample Prep').
 * **type**: One of the following options: property, core, milestone, pre, post, confidence. Each option corresponds to a tile type in the game (property, core, milestone) or the pre-survey, post-survey, and confidence sliders. You must provide at least one question for each tile in the game.
+* **imageFile**: Name of image, including its extension, used in the question of this row. The same image can be used in multiple questions and must be uploaded at the beginning of the game.
 
 To ensure diversity in the questions asked to different players, I always design >10 questions for each subtheme.
 
