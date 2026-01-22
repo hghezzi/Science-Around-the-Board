@@ -58,11 +58,12 @@ export function rowToQuestion(row) {
   return {
     prompt: row.question || "",
     options,
-    // TSV is 1-based; internal is 0-based
     answer: idx !== null ? idx - 1 : null,
     explanation: row.explanation || "",
     theme: row.theme || "",
     subtheme: row.subtheme || "",
+    // FIX: Pass the image file through!
+    image: row.imageFile || null, 
   };
 }
 

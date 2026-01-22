@@ -1,25 +1,12 @@
 // src/App.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import CryptoJS from "crypto-js"; 
 import { buildBoardFromTsv } from "./gameData"; 
 import MicrobiopolyGame from "./MicrobiopolyGame";
 
 import {
-  Card,
-  Typography,
-  Container,
-  ToggleButton,
-  ToggleButtonGroup,
-  Button,
-  Box,
-  Slider,
-  RadioGroup,
-  Radio,
-  FormControlLabel,
-  Divider,
-  Modal,
-  Alert,
-  Paper,
+  Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
+  Box, Slider, RadioGroup, Radio, FormControlLabel, Divider, Modal, Alert, Paper,
 } from "@mui/material";
 
 /* -------------------------------------------------------------------------- */
@@ -64,6 +51,7 @@ function rowToSurveyQuestion(row) {
     prompt: row.question || "",
     options: opts,
     answer: idx && !isNaN(idx) ? idx - 1 : null,
+    image: row.imageFile || null, 
   };
 }
 
@@ -82,22 +70,6 @@ function filterSurveyRows(all, { bigTopic, module, type }) {
     }
     return true;
   });
-}
-
-function getSurveyQuestions(all, { bigTopic, module }) {
-  const getQ = (type) => {
-    const specific = filterSurveyRows(all, { bigTopic, module, type });
-    if (specific.length > 0) return specific;
-    return filterSurveyRows(all, { bigTopic, module: null, type });
-  };
-  const pre = getQ("pre");
-  const post = getQ("post");
-  const conf = getQ("confidence");
-  return {
-    preSurveyQuestions: pre.map(rowToSurveyQuestion),
-    postSurveyQuestions: post.map(rowToSurveyQuestion),
-    confidenceQuestions: conf.map((r, i) => ({ key: r.id || `conf_${i}`, label: r.question })),
-  };
 }
 
 function getModulesForTopic(all, bigTopic) {
@@ -124,14 +96,16 @@ function getAllTopics(all) {
   return Array.from(set);
 }
 
-// --- SURVEY VIEWS ---
+/* -------------------------------------------------------------------------- */
+/* SURVEY VIEWS                                                               */
+/* -------------------------------------------------------------------------- */
 
-function PreSurveyView({ playerCount, quizQuestions, confidenceQuestions, onComplete }) {
-  const Q = quizQuestions || [];
+function PreSurveyView({ playerCount, playerQuestionSets, confidenceQuestions, onComplete, resolveImage }) {
   const C = confidenceQuestions || [];
   const [currentPlayer, setCurrentPlayer] = useState(0);
+  const currentQuestions = playerQuestionSets[currentPlayer] || [];
   const [sliderValues, setSliderValues] = useState(Array.from({ length: playerCount }, () => { const obj = {}; C.forEach(c => obj[c.key]=5); return obj; }));
-  const [answers, setAnswers] = useState(Array.from({ length: playerCount }, () => Q.map(() => null)));
+  const [answers, setAnswers] = useState(playerQuestionSets.map(set => set.map(() => null)));
   const [lock, setLock] = useState(Array(playerCount).fill(false));
 
   const handleSliderChange = (key, val) => {
@@ -140,20 +114,27 @@ function PreSurveyView({ playerCount, quizQuestions, confidenceQuestions, onComp
   };
   const submitConfidence = () => setLock(prev => prev.map((x, i) => i === currentPlayer ? true : x));
   const setAns = (qi, opt) => setAnswers(prev => prev.map((P, i) => i === currentPlayer ? P.map((x, j) => j === qi ? opt : x) : P));
+  
   const submitPlayer = () => {
     if (currentPlayer < playerCount - 1) setCurrentPlayer(p => p + 1);
     else {
       const rows = [];
       for (let p = 0; p < playerCount; p++) {
         C.forEach(cfg => rows.push({ phase: "pre", section: "confidence", playerIndex: p, playerLabel: `Player ${p+1}`, questionPrompt: cfg.label, response: sliderValues[p][cfg.key] }));
-        Q.forEach((q, qi) => {
+        const pSet = playerQuestionSets[p];
+        pSet.forEach((q, qi) => {
           const sel = answers[p][qi];
-          rows.push({ phase: "pre", section: "quiz", playerIndex: p, playerLabel: `Player ${p+1}`, questionPrompt: q.prompt, selectedIndex: sel, selectedOption: sel!=null?q.options[sel]:"", correct: sel===q.answer });
+          rows.push({ 
+            phase: "pre", section: "quiz", playerIndex: p, playerLabel: `Player ${p+1}`, 
+            questionPrompt: q.prompt, selectedIndex: sel, 
+            selectedOption: sel!=null?q.options[sel]:"", correct: sel===q.answer 
+          });
         });
       }
       onComplete({ tidyRows: rows });
     }
   };
+  
   const currentSliders = sliderValues[currentPlayer];
   const currentAns = answers[currentPlayer];
   const locked = lock[currentPlayer];
@@ -172,13 +153,31 @@ function PreSurveyView({ playerCount, quizQuestions, confidenceQuestions, onComp
           </Box>
         ))}
         {!locked && <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitConfidence}>Continue to Questions</Button>}
+        
         {locked && (
           <>
             <Divider sx={{ my: 4 }} />
             <Typography variant="h5" sx={{ color: "primary.main", mb: 2 }}>Section 2 – Questions</Typography>
-            {Q.map((q, qi) => (
-              <Box key={qi} sx={{ mb: 4 }}>
-                <Typography variant="h6" gutterBottom>{q.prompt}</Typography>
+            {currentQuestions.map((q, qi) => (
+              <Box key={qi} sx={{ mb: 4, p: 2, border: '1px solid #eee', borderRadius: 2 }}>
+                {/* 1. NUMBERING */}
+                <Typography variant="overline" color="textSecondary">
+                  Question {qi + 1} of {currentQuestions.length}
+                </Typography>
+
+                <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>{q.prompt}</Typography>
+                
+                {/* 2. IMAGE MOVED BELOW TEXT */}
+                {q.image && (
+                  <Box sx={{ mb: 2, mt: 2, textAlign: 'center' }}>
+                    <img 
+                      src={resolveImage(q.image)} 
+                      alt="Question Diagram" 
+                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px' }}
+                    />
+                  </Box>
+                )}
+
                 <RadioGroup value={currentAns[qi]??-1} onChange={(e)=>setAns(qi, Number(e.target.value))}>
                   {q.options.map((o, oi) => <FormControlLabel key={oi} value={oi} control={<Radio />} label={<Typography variant="body1">{o}</Typography>} />)}
                 </RadioGroup>
@@ -192,33 +191,50 @@ function PreSurveyView({ playerCount, quizQuestions, confidenceQuestions, onComp
   );
 }
 
-function PostSurveyView({ playerCount, quizQuestions, confidenceQuestions, onComplete }) {
-  const Q = quizQuestions || [];
+function PostSurveyView({ playerCount, playerQuestionSets, confidenceQuestions, onComplete, resolveImage }) {
   const C = confidenceQuestions || [];
   const [currentPlayer, setCurrentPlayer] = useState(0);
+  const displayedQuestions = playerQuestionSets[currentPlayer] || [];
   const [sliderValues, setSliderValues] = useState(Array.from({ length: playerCount }, () => { const obj = {}; C.forEach(c => obj[c.key]=5); return obj; }));
-  const [answers, setAnswers] = useState(Array.from({ length: playerCount }, () => Q.map(() => null)));
+  const [answers, setAnswers] = useState(Array(playerCount).fill([]).map(() => []));
   const [lock, setLock] = useState(Array(playerCount).fill(false));
 
-  const handleSliderChange = (key, val) => { if(!lock[currentPlayer]) setSliderValues(prev => prev.map((p, i) => i === currentPlayer ? { ...p, [key]: val } : p)); };
+  const handleSliderChange = (key, val) => {
+    if(!lock[currentPlayer]) setSliderValues(prev => prev.map((p, i) => i === currentPlayer ? { ...p, [key]: val } : p));
+  };
   const submitConfidence = () => setLock(prev => prev.map((x, i) => i === currentPlayer ? true : x));
-  const setAns = (qi, opt) => setAnswers(prev => prev.map((P, i) => i === currentPlayer ? P.map((x, j) => j === qi ? opt : x) : P));
+  
+  const setAns = (qi, opt) => {
+    setAnswers(prev => {
+      const pAnswers = [...prev[currentPlayer]];
+      pAnswers[qi] = opt;
+      const newAll = [...prev];
+      newAll[currentPlayer] = pAnswers;
+      return newAll;
+    });
+  };
+
   const submitPlayer = () => {
     if (currentPlayer < playerCount - 1) setCurrentPlayer(p => p + 1);
     else {
       const rows = [];
       for (let p = 0; p < playerCount; p++) {
         C.forEach(cfg => rows.push({ phase: "post", section: "confidence", playerIndex: p, playerLabel: `Player ${p+1}`, questionPrompt: cfg.label, response: sliderValues[p][cfg.key] }));
-        Q.forEach((q, qi) => {
+        const pSet = playerQuestionSets[p];
+        pSet.forEach((q, qi) => {
           const sel = answers[p][qi];
-          rows.push({ phase: "post", section: "quiz", playerIndex: p, playerLabel: `Player ${p+1}`, questionPrompt: q.prompt, selectedIndex: sel, selectedOption: sel!=null?q.options[sel]:"" });
+          rows.push({ 
+            phase: "post", section: "quiz", playerIndex: p, playerLabel: `Player ${p+1}`, 
+            questionPrompt: q.prompt, selectedIndex: sel, selectedOption: sel!=null?q.options[sel]:"" 
+          });
         });
       }
       onComplete({ tidyRows: rows });
     }
   };
+
   const currentSliders = sliderValues[currentPlayer];
-  const currentAns = answers[currentPlayer];
+  const currentAns = answers[currentPlayer] || [];
   const locked = lock[currentPlayer];
 
   return (
@@ -235,12 +251,22 @@ function PostSurveyView({ playerCount, quizQuestions, confidenceQuestions, onCom
           </Box>
         ))}
         {!locked && <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitConfidence}>Continue to Questions</Button>}
+        
         {locked && (
           <>
             <Divider sx={{ my: 4 }} />
             <Typography variant="h5" sx={{ color: "primary.main", mb: 2 }}>Section 2 – Questions</Typography>
-            {Q.map((q, qi) => (
+            {displayedQuestions.map((q, qi) => (
               <Box key={qi} sx={{ mb: 4 }}>
+                {q.image && (
+                  <Box sx={{ mb: 2, textAlign: 'center' }}>
+                    <img 
+                      src={resolveImage(q.image)} 
+                      alt="Question Diagram" 
+                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px' }}
+                    />
+                  </Box>
+                )}
                 <Typography variant="h6" gutterBottom>{q.prompt}</Typography>
                 <RadioGroup value={currentAns[qi]??-1} onChange={(e)=>setAns(qi, Number(e.target.value))}>
                   {q.options.map((o, oi) => <FormControlLabel key={oi} value={oi} control={<Radio />} label={<Typography variant="body1">{o}</Typography>} />)}
@@ -267,9 +293,7 @@ function SummaryView({ onExport, onReturn }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* MAIN APP                                                                   */
-/* -------------------------------------------------------------------------- */
+// --- MAIN APP ---
 
 export default function App() {
   const [phase, setPhase] = useState("SETUP");
@@ -277,48 +301,39 @@ export default function App() {
   const [playerCount, setPlayerCount] = useState(2);
   const [allTsvRows, setAllTsvRows] = useState([]);
   const [loadingError, setLoadingError] = useState(null);
-  
   const [selectedModule, setSelectedModule] = useState(null);
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [modules, setModules] = useState([]);
-
-  // Data storage
   const [preRows, setPreRows] = useState([]);
   const [postRows, setPostRows] = useState([]);
   const [gameRows, setGameRows] = useState([]);
-  const [preQ, setPreQ] = useState([]);
-  const [postQ, setPostQ] = useState([]);
+  const [playerQuestionSets, setPlayerQuestionSets] = useState([]);
   const [confQ, setConfQ] = useState([]);
+  
+  // NEW STATES
+  const [filesConfirmed, setFilesConfirmed] = useState(false);
+  const [localImageMap, setLocalImageMap] = useState({});
 
-  // --- NAVIGATION & EXIT SAFETY HOOK (UPDATED) ---
   useEffect(() => {
-    // 1. The History Trap (ALWAYS ON)
-    // Prevents swipe-back on ALL screens, including Setup.
-    const handlePopState = (event) => {
-      // Immediately push a new state so the user stays "forward"
-      window.history.pushState(null, document.title, window.location.href);
-    };
-
-    // 2. The Refresh/Close Trap (CONDITIONAL)
-    // Only annoying warning if they are actually in a game/survey.
+    const handlePopState = (event) => window.history.pushState(null, document.title, window.location.href);
     const handleBeforeUnload = (e) => {
-      if (phase !== "SETUP" && phase !== "SUMMARY") {
-        e.preventDefault();
-        e.returnValue = "Game progress will be lost.";
-        return "Game progress will be lost.";
-      }
+      if (phase !== "SETUP" && phase !== "SUMMARY") { e.preventDefault(); e.returnValue = "Game progress will be lost."; return "Game progress will be lost."; }
     };
-
-    // Activate traps
     window.history.pushState(null, document.title, window.location.href);
     window.addEventListener("popstate", handlePopState);
     window.addEventListener("beforeunload", handleBeforeUnload);
-
     return () => {
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [phase]);
+
+  // Reset confirmation if file is cleared
+  useEffect(() => {
+    if (allTsvRows.length === 0) {
+      setFilesConfirmed(false);
+    }
+  }, [allTsvRows]);
 
   // --- Handlers ---
 
@@ -328,16 +343,13 @@ export default function App() {
       const rows = await fetchDefaultQuestions();
       if (rows.length > 0) setAllTsvRows(rows);
       else setLoadingError("Default file is empty.");
-    } catch (e) {
-      setLoadingError(e.message);
-    }
+    } catch (e) { setLoadingError(e.message); }
   };
 
   const handleFileUpload = (e) => {
     setLoadingError(null);
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       let text = evt.target.result;
@@ -349,25 +361,31 @@ export default function App() {
           const decrypted = bytes.toString(CryptoJS.enc.Utf8);
           if (!decrypted || !decrypted.includes("\t")) throw new Error();
           text = decrypted;
-        } catch (err) {
-          setLoadingError("Incorrect password or invalid file.");
-          return;
-        }
+        } catch (err) { setLoadingError("Incorrect password or invalid file."); return; }
       }
       try {
         const rows = parseTsv(text);
-        if (rows.length > 0) {
-          setAllTsvRows(rows);
-          setGameMode(null);
-          setSelectedModule(null);
-        } else {
-          setLoadingError("File contains no valid rows.");
-        }
-      } catch (err) {
-        setLoadingError("Could not parse TSV.");
-      }
+        if (rows.length > 0) { setAllTsvRows(rows); setGameMode(null); setSelectedModule(null); } 
+        else { setLoadingError("File contains no valid rows."); }
+      } catch (err) { setLoadingError("Could not parse TSV."); }
     };
     reader.readAsText(file);
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newMap = {};
+    files.forEach(file => {
+      newMap[file.name] = URL.createObjectURL(file);
+    });
+    setLocalImageMap(prev => ({ ...prev, ...newMap }));
+  };
+
+  const resolveImageSource = (imgName) => {
+    if (!imgName) return null;
+    if (localImageMap[imgName]) return localImageMap[imgName];
+    if (imgName.startsWith("http") || imgName.startsWith("data:")) return imgName;
+    return `./question_images/${imgName}`;
   };
 
   const selectTopic = (t) => {
@@ -379,10 +397,18 @@ export default function App() {
   };
 
   const confirmModule = () => {
-    const { preSurveyQuestions, postSurveyQuestions, confidenceQuestions } = getSurveyQuestions(allTsvRows, { bigTopic: gameMode, module: selectedModule });
-    setPreQ(preSurveyQuestions);
-    setPostQ(postSurveyQuestions);
-    setConfQ(confidenceQuestions);
+    const poolRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "survey" });
+    const poolQuestions = poolRows.map(rowToSurveyQuestion);
+    const newSets = [];
+    for (let i = 0; i < playerCount; i++) {
+      const shuffled = [...poolQuestions].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, 10);
+      newSets.push(selected);
+    }
+    setPlayerQuestionSets(newSets);
+    const confRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "confidence" });
+    const cQuestions = confRows.map((r, i) => ({ key: r.id || `conf_${i}`, label: r.question }));
+    setConfQ(cQuestions);
     setModuleModalOpen(false);
   };
 
@@ -402,138 +428,113 @@ export default function App() {
 
   // --- Render ---
 
-  // 1. Initial Screen (Load Data)
-  if (allTsvRows.length === 0) {
+  // REVISED LOGIC: Show Landing Page if NO Data OR Not Confirmed
+  if (allTsvRows.length === 0 || !filesConfirmed) {
+    const hasData = allTsvRows.length > 0;
+    
     return (
       <Container maxWidth="md" sx={{ textAlign: "center", mt: 8 }}>
-        <Typography variant="h2" sx={{ fontWeight: 'bold', color: '#2c3e50', mb: 2 }}>
-          Science Around the Board
-        </Typography>
-        <Typography variant="h5" sx={{ color: '#555', mb: 4 }}>
-          A Monopoly-style bioinformatics learning adventure.
-        </Typography>
+        <Typography variant="h2" sx={{ fontWeight: 'bold', color: '#2c3e50', mb: 2 }}>Science Around the Board</Typography>
+        <Typography variant="h5" sx={{ color: '#555', mb: 4 }}>A Monopoly-style bioinformatics learning adventure.</Typography>
 
         <Card sx={{ p: 6, boxShadow: 3, mx: "auto", maxWidth: 600 }}>
           <Typography variant="h6" gutterBottom>Load Question Data</Typography>
-          <Typography color="textSecondary" sx={{ mb: 3 }}>
-            Select a question source to begin the session.
-          </Typography>
+          
+          {!hasData ? (
+             // --- STATE 1: NO DATA LOADED ---
+             <>
+                <Typography color="textSecondary" sx={{ mb: 3 }}>Select a question source to begin the session.</Typography>
+                <Button variant="contained" fullWidth size="large" onClick={handleLoadDefault} sx={{ mb: 2 }}>Load Demo Game</Button>
+                <Divider sx={{ my: 2 }}>OR</Divider>
+                <Button variant="outlined" component="label" fullWidth size="large">
+                    Upload Custom Questions (TSV)
+                    <input type="file" hidden accept=".tsv,.txt,.lock" onChange={handleFileUpload} />
+                </Button>
+             </>
+          ) : (
+             // --- STATE 2: DATA LOADED (CONFIRMATION STEP) ---
+             <>
+                <Alert severity="success" sx={{ mb: 3, textAlign: 'left' }}>
+                    <Typography variant="body1"><strong>Success!</strong> Loaded {allTsvRows.length} questions.</Typography>
+                </Alert>
 
-          <Button variant="contained" fullWidth size="large" onClick={handleLoadDefault} sx={{ mb: 2 }}>
-            Load Default Game
-          </Button>
-          <Divider sx={{ my: 2 }}>OR</Divider>
-          <Button variant="outlined" component="label" fullWidth size="large">
-            Upload Custom Questions
-            <input type="file" hidden accept=".tsv,.txt,.lock" onChange={handleFileUpload} />
-          </Button>
+                <Button variant="outlined" component="label" fullWidth size="large" color="secondary" sx={{ mb: 2 }}>
+                    Optional: Upload Images
+                    <input type="file" hidden multiple accept="image/*" onChange={handleImageUpload} />
+                </Button>
+                
+                {Object.keys(localImageMap).length > 0 && (
+                  <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'green' }}>
+                      {Object.keys(localImageMap).length} images ready.
+                  </Typography>
+                )}
+
+                <Divider sx={{ my: 3 }} />
+
+                <Button 
+                    variant="contained" 
+                    fullWidth 
+                    size="large" 
+                    color="success" 
+                    sx={{ mb: 2, fontWeight: 'bold', py: 1.5 }}
+                    onClick={() => setFilesConfirmed(true)} // <--- MOVES TO NEXT SCREEN
+                >
+                    Continue to Game Setup
+                </Button>
+
+                <Button size="small" color="error" onClick={() => setAllTsvRows([])}>
+                    Reset / Upload Different File
+                </Button>
+             </>
+          )}
 
           {loadingError && <Alert severity="error" sx={{ mt: 2 }}>{loadingError}</Alert>}
         </Card>
-
-        <Typography variant="caption" sx={{ mt: 4, display: 'block', color: '#888' }}>
-          Designed by Hans Ghezzi
-        </Typography>
+        <Typography variant="caption" sx={{ mt: 4, display: 'block', color: '#888' }}>Designed by Hans Ghezzi</Typography>
       </Container>
     );
   }
 
-  // 2. Main Menu
+  // --- STANDARD GAME FLOW ---
+
   if (phase === "SETUP") {
     const topics = getAllTopics(allTsvRows);
     return (
       <Container maxWidth="md" sx={{ textAlign: "center", mt: 6 }}>
         <Typography variant="h3" gutterBottom sx={{ fontWeight: "bold" }}>Game Setup</Typography>
-        
-        {/* Player Selection */}
         <Card sx={{ p: 3, mb: 4, mx: "auto", maxWidth: 600 }}>
           <Typography variant="h6">Players</Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>Select number of research teams</Typography>
           <ToggleButtonGroup value={playerCount} exclusive onChange={(_, v) => v && setPlayerCount(v)} fullWidth color="primary">
             {[1,2,3,4].map(n => <ToggleButton key={n} value={n}>{n} Player{n>1?'s':''}</ToggleButton>)}
           </ToggleButtonGroup>
         </Card>
-
-        {/* Topic Selection Cards */}
         <Typography variant="h6" gutterBottom>Select Topic</Typography>
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center', mb: 5 }}>
           {topics.map(t => (
-            <Card 
-              key={t} 
-              sx={{ 
-                p: 4, 
-                width: 220, 
-                cursor: 'pointer', 
-                border: gameMode === t ? '3px solid #1976d2' : '1px solid #ddd',
-                boxShadow: gameMode === t ? 4 : 1,
-                transform: gameMode === t ? 'scale(1.05)' : 'scale(1)',
-                transition: 'all 0.2s ease-in-out'
-              }} 
-              onClick={() => selectTopic(t)}
-            >
+            <Card key={t} sx={{ p: 4, width: 220, cursor: 'pointer', border: gameMode === t ? '3px solid #1976d2' : '1px solid #ddd', boxShadow: gameMode === t ? 4 : 1, transform: gameMode === t ? 'scale(1.05)' : 'scale(1)', transition: 'all 0.2s' }} onClick={() => selectTopic(t)}>
               <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>{t}</Typography>
             </Card>
           ))}
         </Box>
-
-        {/* Action Bar */}
         <Paper elevation={3} sx={{ p: 2, position: 'fixed', bottom: 0, left: 0, right: 0, bgcolor: '#f5f5f5', display: 'flex', justifyContent: 'center', gap: 2, zIndex: 100 }}>
-             <Button 
-                variant="contained" 
-                color="success" 
-                size="large" 
-                disabled={!gameMode} 
-                onClick={() => setPhase("PRE_SURVEY")}
-                sx={{ px: 6, py: 1.5, fontSize: '1.2rem' }}
-             >
-               Start Game
-             </Button>
-             
-             <Button size="small" color="inherit" onClick={() => setAllTsvRows([])}>
-               Change File
-             </Button>
+             <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={() => setPhase("PRE_SURVEY")} sx={{ px: 6, py: 1.5, fontSize: '1.2rem' }}>Start Game</Button>
+             <Button size="small" color="inherit" onClick={() => setAllTsvRows([])}>Change File</Button>
         </Paper>
-        
-        {/* Module Selection Modal */}
         <Modal open={moduleModalOpen} onClose={() => setModuleModalOpen(false)}>
           <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 300, bgcolor: 'background.paper', p: 4, borderRadius: 2 }}>
             <Typography variant="h6" gutterBottom>Select Module</Typography>
-            {modules.length > 0 ? (
-               modules.map(m => (
-                 <Button 
-                   key={m} 
-                   fullWidth 
-                   variant={selectedModule === m ? 'contained' : 'outlined'} 
-                   onClick={() => setSelectedModule(m)} 
-                   sx={{ mb: 1 }}
-                 >
-                   {m}
-                 </Button>
-               ))
-            ) : <Typography>No specific modules found. Continuing with default questions.</Typography>}
-            
+            {modules.length > 0 ? modules.map(m => <Button key={m} fullWidth variant={selectedModule === m ? 'contained' : 'outlined'} onClick={() => setSelectedModule(m)} sx={{ mb: 1 }}>{m}</Button>) : <Typography>No specific modules found.</Typography>}
             <Divider sx={{ my: 2 }} />
-            
-            <Button 
-              fullWidth 
-              variant="contained" 
-              color="success"
-              sx={{ mt: 1, py: 1.5, fontWeight: 'bold' }} 
-              onClick={confirmModule}
-            >
-              Confirm Selection
-            </Button>
+            <Button fullWidth variant="contained" color="success" sx={{ mt: 1, py: 1.5 }} onClick={confirmModule}>Confirm Selection</Button>
           </Box>
         </Modal>
-
         <Box sx={{ height: 100 }} />
       </Container>
     );
   }
 
-  // 3. Phases
-  if (phase === "PRE_SURVEY") return <PreSurveyView playerCount={playerCount} quizQuestions={preQ} confidenceQuestions={confQ} onComplete={d => { setPreRows(d.tidyRows); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <MicrobiopolyGame boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} tsvRows={allTsvRows} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
-  if (phase === "POST_SURVEY") return <PostSurveyView playerCount={playerCount} quizQuestions={postQ} confidenceQuestions={confQ} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
+  if (phase === "PRE_SURVEY") return <PreSurveyView playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setPhase("GAME"); }} />;
+  if (phase === "GAME") return <MicrobiopolyGame boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} tsvRows={allTsvRows} imageMap={localImageMap} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
+  if (phase === "POST_SURVEY") return <PostSurveyView playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
   return <SummaryView onExport={handleExport} onReturn={() => { setPhase("SETUP"); setGameMode(null); setAllTsvRows([]); }} />;
 }

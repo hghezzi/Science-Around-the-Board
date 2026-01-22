@@ -187,6 +187,7 @@ export default function MicrobiopolyGame({
   startingPlayerIndex = 0,
   onExit,
   onEndGame,
+  imageMap = {}, // <--- ADD THIS
 }) {
   const generatePlayers = (count) => {
     const colors = ['#e57373', '#64b5f6', '#81c784', '#ffb74d'];
@@ -210,6 +211,13 @@ export default function MicrobiopolyGame({
 
   const [board, setBoard] = useState(boardData);
   const [players, setPlayers] = useState(generatePlayers(playerCount));
+  // Helper to look up image source (Local vs URL vs Default)
+  const getImgSrc = (imgName) => {
+    if (!imgName) return null;
+    if (imageMap[imgName]) return imageMap[imgName]; // Check upload map first
+    if (imgName.startsWith("http") || imgName.startsWith("data:")) return imgName;
+    return `./question_images/${imgName}`; // Fallback
+  };
   const [turn, setTurn] = useState(startingPlayerIndex || 0);
   const turnRef = useRef(startingPlayerIndex || 0);
 
@@ -488,13 +496,16 @@ export default function MicrobiopolyGame({
     while (pool.length < 10) pool = [...pool, ...tile.quiz];
     pool.sort(() => Math.random() - 0.5);
 
-    const qCount = mode === 'MILESTONE_CHALLENGE' ? 5 : 10;
-    const target = mode === 'MILESTONE_CHALLENGE' ? 5 : 9;
+    // NEW LOGIC: Milestones now have 6 questions. 
+    // Target is 5 (Allows < 2 errors, i.e., 0 or 1 mistake).
+    const isMilestone = mode === 'MILESTONE_ACQUIRE' || mode === 'MILESTONE_CHALLENGE';
+    const qCount = isMilestone ? 6 : 10;
+    const target = isMilestone ? 5 : 9;
 
     setQuizState({
       active: true, mode, qIndex: 0, score: 0, questions: pool.slice(0, qCount), tile,
       wrongAnswers: 0, waiting: false, selected: null, isCorrect: null,
-      targetScore: target, mistakes: 0, maxMistakes: 2,
+      targetScore: target, mistakes: 0, maxMistakes: 2, // maxMistakes 2 means you fail on the 2nd error
     });
     setModalStage('QUIZ_START');
     setModalOpen(true);
@@ -505,32 +516,51 @@ export default function MicrobiopolyGame({
     const currentQ = quizState.questions[quizState.qIndex];
     const isCorrect = idx === currentQ.answer;
 
-    setQuizState((prev) => ({ ...prev, waiting: true, selected: idx, isCorrect }));
+    // Calculate score updates immediately
+    let newScore = quizState.score;
+    let newMistakes = quizState.mistakes;
+    if (isCorrect) newScore++;
+    else newMistakes++;
 
-    setTimeout(() => {
-      const maxQs = quizState.questions.length;
-      if (isCorrect) {
-        const newScore = quizState.score + 1;
-        if (quizState.qIndex < maxQs - 1) {
-          setQuizState((prev) => ({ ...prev, score: newScore, qIndex: prev.qIndex + 1, waiting: false, selected: null, isCorrect: null }));
+    // Set waiting to true to show Explanation + Next Button
+    setQuizState((prev) => ({ 
+      ...prev, 
+      waiting: true, 
+      selected: idx, 
+      isCorrect, 
+      score: newScore, 
+      mistakes: newMistakes 
+    }));
+  };
+
+  // 2. Handle moving to next question (Called by Next Button)
+  const handleNextQuestion = () => {
+    const maxQs = quizState.questions.length;
+    const isGrant = quizState.mode === 'GRANT';
+
+    // Check for failure (unless it's a Grant exam which finishes regardless)
+    if (!isGrant && quizState.mistakes >= quizState.maxMistakes) {
+         finishQuiz(false, quizState.score, quizState.mistakes);
+         return;
+    }
+
+    if (quizState.qIndex < maxQs - 1) {
+        // Advance to next question
+        setQuizState((prev) => ({
+            ...prev,
+            qIndex: prev.qIndex + 1,
+            waiting: false,
+            selected: null,
+            isCorrect: null
+        }));
+    } else {
+        // Finish Quiz
+        if (isGrant) {
+            handleGrantResult(quizState.score >= quizState.targetScore);
         } else {
-            if (quizState.mode === 'GRANT') handleGrantResult(newScore >= quizState.targetScore);
-            else finishQuiz(true, newScore, quizState.mistakes);
+            finishQuiz(quizState.score >= quizState.targetScore, quizState.score, quizState.mistakes);
         }
-      } else {
-        if (quizState.mode === 'GRANT') {
-            if (quizState.qIndex < maxQs - 1) setQuizState((prev) => ({ ...prev, qIndex: prev.qIndex + 1, waiting: false, selected: null, isCorrect: null }));
-            else handleGrantResult(quizState.score >= quizState.targetScore);
-        } else {
-            const newMistakes = quizState.mistakes + 1;
-            if (newMistakes >= quizState.maxMistakes) finishQuiz(false, quizState.score, newMistakes);
-            else {
-                if (quizState.qIndex < maxQs - 1) setQuizState((prev) => ({ ...prev, mistakes: newMistakes, qIndex: prev.qIndex + 1, waiting: false, selected: null, isCorrect: null }));
-                else finishQuiz(quizState.score >= quizState.targetScore, quizState.score, newMistakes);
-            }
-        }
-      }
-    }, 500);
+    }
   };
 
   const finishQuiz = (passed, score, mistakes) => {
@@ -538,7 +568,8 @@ export default function MicrobiopolyGame({
     const mode = quizState.mode;
 
     if (mode === 'MILESTONE_ACQUIRE') {
-      if (passed && score >= 9) {
+      // CHANGED: Score needs to be >= 5 (since total is 6)
+      if (passed && score >= 5) {
         handleTransaction(turnRef.current, -tile.price, { action: 'MILESTONE_ACQUIRE', tileId: tile.id, tileName: tile.name });
         const newBoard = board.map((t) => t.id === tile.id ? { ...t, owner: turnRef.current } : t);
         setBoard(newBoard);
@@ -551,7 +582,8 @@ export default function MicrobiopolyGame({
       }
     } else if (mode === 'MILESTONE_CHALLENGE') {
       const baseRent = tile.baseRent || 0;
-      if (passed && score === 5 && mistakes === 0) {
+      // CHANGED: Score >= 5 (Allows 1 mistake)
+      if (passed && score >= 5) {
         const halfRent = Math.floor(baseRent / 2);
         handleTransaction(turnRef.current, -halfRent, { action: 'MILESTONE_CHALLENGE_SUCCESS', tileId: tile.id, tileName: tile.name, rentPaid: halfRent, correct: true });
         if (tile.owner !== 99 && tile.owner != null) handleTransaction(tile.owner, halfRent, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
@@ -1022,7 +1054,7 @@ export default function MicrobiopolyGame({
           {activeCard?.type === 'MILESTONE' && modalStage === 'MILESTONE_INTRO' && (
             <>
               <Typography variant="h4" color="primary">{activeCard.data.name}</Typography>
-              <Typography variant="body1" paragraph>Acquire Milestone? 9/10 correct required.</Typography>
+              <Typography variant="body1" paragraph>Acquire Milestone? 5/6 correct required.</Typography>
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                 <Button fullWidth variant="contained" onClick={() => startQuiz(activeCard.data, 'MILESTONE_ACQUIRE')}>START EXAM</Button>
                 <Button fullWidth variant="outlined" onClick={() => { setModalOpen(false); passTurn(); }}>DECLINE</Button>
@@ -1049,12 +1081,43 @@ export default function MicrobiopolyGame({
           {modalStage === 'QUIZ_START' && quizState.active && quizState.mode !== 'GRANT' && (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                {/* NUMBERING */}
                 <Typography variant="overline">Question {quizState.qIndex + 1} of {quizState.questions.length}</Typography>
                 <Button size="small" color="error" onClick={() => finishQuiz(false, quizState.score, quizState.mistakes)}>QUIT</Button>
               </Box>
               <LinearProgress variant="determinate" value={(quizState.qIndex / quizState.questions.length) * 100} sx={{ mb: 3 }} />
+              
               <Typography variant="h6" gutterBottom>{quizState.questions[quizState.qIndex].prompt}</Typography>
+
+              {/* IMAGE FIX: Check for .image OR .imageFile + Moved Below Text */}
+              {(quizState.questions[quizState.qIndex].image || quizState.questions[quizState.qIndex].imageFile) && (
+                <Box sx={{ textAlign: 'center', mb: 2, mt: 2 }}>
+                  <img 
+                    src={getImgSrc(quizState.questions[quizState.qIndex].image || quizState.questions[quizState.qIndex].imageFile)} 
+                    alt="Quiz Diagram" 
+                    style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: 4 }} 
+                  />
+                </Box>
+              )}
+
               {renderOptions(quizState.questions[quizState.qIndex].options, handleQuizAnswer, true)}
+
+              {/* NEW: EXPLANATION + NEXT BUTTON */}
+              {quizState.waiting && (
+                 <Box sx={{ mt: 3, p: 2, bgcolor: '#f9f9f9', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
+                    <Typography variant="subtitle2" fontWeight="bold" color={quizState.isCorrect ? "success.main" : "error.main"}>
+                        {quizState.isCorrect ? "Correct!" : "Incorrect"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        {quizState.questions[quizState.qIndex].explanation || "No explanation provided."}
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button variant="contained" onClick={handleNextQuestion}>
+                            {quizState.qIndex < quizState.questions.length - 1 ? "NEXT QUESTION" : "FINISH EXAM"}
+                        </Button>
+                    </Box>
+                 </Box>
+              )}
             </>
           )}
 
@@ -1080,7 +1143,20 @@ export default function MicrobiopolyGame({
               </Box>
               <Collapse in={showManual}><Alert severity="info" sx={{ mb: 3 }}><Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{activeCard.data.manual}</Typography></Alert></Collapse>
               <Divider sx={{ my: 2 }} />
+              
               <Typography variant="body1" sx={{ mb: 3, fontWeight: 'bold' }}>{activeCard.q.prompt}</Typography>
+
+              {/* IMAGE FIX & MOVED BELOW TEXT */}
+              {(activeCard.q.image || activeCard.q.imageFile) && (
+                <Box sx={{ textAlign: 'center', mb: 2 }}>
+                  <img 
+                    src={getImgSrc(activeCard.q.image || activeCard.q.imageFile)}
+                    alt="Data Validation" 
+                    style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: 4 }} 
+                  />
+                </Box>
+              )}
+
               {renderOptions(activeCard.q.options, handleAnswer)}
             </>
           )}
@@ -1142,7 +1218,20 @@ export default function MicrobiopolyGame({
               </Box>
               <Collapse in={showManual}><Alert severity="info" sx={{ mb: 3 }}><Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{activeCard.data.manual}</Typography></Alert></Collapse>
               <Divider sx={{ my: 2 }} />
+              
               <Typography variant="body1" sx={{ fontStyle: 'italic', mb: 2 }}>{activeCard.q.prompt}</Typography>
+
+              {/* IMAGE FIX & MOVED BELOW TEXT */}
+              {(activeCard.q.image || activeCard.q.imageFile) && (
+                <Box sx={{ textAlign: 'center', mb: 2 }}>
+                  <img 
+                    src={getImgSrc(activeCard.q.image || activeCard.q.imageFile)} 
+                    alt="Rent Defense" 
+                    style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: 4 }} 
+                  />
+                </Box>
+              )}
+
               {renderOptions(activeCard.q.options, handleRentChallengeAnswer)}
             </>
           )}
