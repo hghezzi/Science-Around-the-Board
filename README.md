@@ -21,7 +21,7 @@ Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
   * The game dynamically parses question files to find all tile informations, meaning that the input file should closely fit the structure described below.
  
 ## Question file:
-While I designed 'Science Around the Board' with Bioinformatics in mind, it is structured so that users can play with absolutely **any** topics, challenge level, language, etc... (yes, I have turned this into an evening board night with my fiancée to test her knowldge of RuPaul's Drag Race). This is achieved through a dynamic parsing of the TSV question file loaded at the beginning of each session. For this reason, each file should closely match this structure:
+While I designed 'Science Around the Board' with Bioinformatics in mind, it is structured so that users can play with absolutely **any** topic, challenge level, language, etc... (yes, I have turned this into an evening board night with my fiancée to test her knowldge of RuPaul's Drag Race). This is achieved through a dynamic parsing of the TSV question file loaded at the beginning of each session. For this reason, each file should closely match this structure:
 
 * **id**: A unique string (e.g., topic_01).
 * **question**: The question text (clear, concise).
