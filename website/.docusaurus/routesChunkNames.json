@@ -1,0 +1,74 @@
+{
+  "/Science-Around-the-Board/docs/__docusaurus/debug-7a6": {
+    "__comp": "__comp---theme-debug-config-23-a-2ff",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+    }
+  },
+  "/Science-Around-the-Board/docs/__docusaurus/debug/config-b2e": {
+    "__comp": "__comp---theme-debug-config-23-a-2ff",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+    }
+  },
+  "/Science-Around-the-Board/docs/__docusaurus/debug/content-365": {
+    "__comp": "__comp---theme-debug-contentba-8-ce7",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+    },
+    "__props": "__props---science-around-the-board-docs-docusaurus-debug-contentab-7-7d3"
+  },
+  "/Science-Around-the-Board/docs/__docusaurus/debug/globalData-e05": {
+    "__comp": "__comp---theme-debug-global-dataede-0fa",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+    }
+  },
+  "/Science-Around-the-Board/docs/__docusaurus/debug/metadata-14c": {
+    "__comp": "__comp---theme-debug-site-metadata-68-e-3d4",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+    }
+  },
+  "/Science-Around-the-Board/docs/__docusaurus/debug/registry-e1c": {
+    "__comp": "__comp---theme-debug-registry-679-501",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+    }
+  },
+  "/Science-Around-the-Board/docs/__docusaurus/debug/routes-488": {
+    "__comp": "__comp---theme-debug-routes-946-699",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+    }
+  },
+  "/Science-Around-the-Board/docs/-d27": {
+    "__comp": "__comp---theme-docs-root-5-e-9-0b6",
+    "__context": {
+      "plugin": "plugin---science-around-the-board-docs-aba-dac"
+    }
+  },
+  "/Science-Around-the-Board/docs/-334": {
+    "__comp": "__comp---theme-doc-version-roota-7-b-5de",
+    "__props": "__props---science-around-the-board-docs-1-e-7-4a0"
+  },
+  "/Science-Around-the-Board/docs/-21f": {
+    "__comp": "__comp---theme-doc-roota-94-67a"
+  },
+  "/Science-Around-the-Board/docs/instructor/pedagogy-b00": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---science-around-the-board-docs-instructor-pedagogyf-2-d-830"
+  },
+  "/Science-Around-the-Board/docs/instructor/technical-guide-c2e": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---science-around-the-board-docs-instructor-technical-guide-95-c-a0e"
+  },
+  "/Science-Around-the-Board/docs/student-guide-6ac": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---science-around-the-board-docs-student-guidec-29-513"
+  },
+  "/Science-Around-the-Board/docs/-213": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---science-around-the-board-docs-0-e-3-476"
+  }
+}

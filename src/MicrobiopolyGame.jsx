@@ -442,10 +442,22 @@ export default function MicrobiopolyGame({
   };
 
   const handleBuyChaosToken = () => {
+    // 1. NEW CHECK: Ensure all 4 milestones are owned (by anyone)
+    const milestones = board.filter(t => t.type === 'milestone');
+    const allCaptured = milestones.every(t => t.owner !== null);
+
+    if (!allCaptured) {
+        alert("Chaos Tokens are locked! They only become available after ALL 4 Milestones have been captured.");
+        return;
+    }
+
+    // 2. Existing Money Check
     if (currentPlayer.money < 500) {
         alert("Insufficient funds to buy a Chaos Token ($500).");
         return;
     }
+
+    // 3. Process Transaction
     handleTransaction(currentPlayer.id, -500, { action: 'BUY_CHAOS', notes: 'Purchased token' });
     setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, chaosTokens: p.chaosTokens + 1 } : p));
     addLog(`${currentPlayer.name} bought a Chaos Token.`);

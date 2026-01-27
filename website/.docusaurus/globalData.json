@@ -1,0 +1,48 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/Science-Around-the-Board/docs/",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/Science-Around-the-Board/docs/",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "instructor/pedagogy",
+              "path": "/Science-Around-the-Board/docs/instructor/pedagogy",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "instructor/technical-guide",
+              "path": "/Science-Around-the-Board/docs/instructor/technical-guide",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/Science-Around-the-Board/docs/",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "student-guide",
+              "path": "/Science-Around-the-Board/docs/student-guide",
+              "sidebar": "tutorialSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "tutorialSidebar": {
+              "link": {
+                "path": "/Science-Around-the-Board/docs/",
+                "label": "intro"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}
