@@ -1,15 +1,13 @@
 # Science Around the Board
 
-A pedagogical game to incentivise learning across all disciplines. 
+A customizable, open-source board game engine for education.
 
 <p align="center">
   <img src="./images/ScienceAroundTheBoardIMAGE.png" width="1000" />
 </p>
 
-## ⚽️ Game:
-Play [HERE](https://hghezzi.github.io/Science-Around-the-Board/)
-
-*NOTE*: Science Around the Board is currently NOT supported on mobiles.
+🎮 **[Play the Game](https://hghezzi.github.io/Science-Around-the-Board/)**
+📚 **[Read the Documentation](https://hghezzi.github.io/Science-Around-the-Board/website/docs/)**
 
 ## 🛠️ Instructor Tools:
 * **[Password Encryptor Tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html)** – Use this to create encrypted question files to share with your students.
