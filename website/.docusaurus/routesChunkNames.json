@@ -1,73 +1,73 @@
 {
-  "/Science-Around-the-Board/docs/__docusaurus/debug-7a6": {
+  "/Science-Around-the-Board/docs/__docusaurus/debug-3f0": {
     "__comp": "__comp---theme-debug-config-23-a-2ff",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debug-3-c-2-68d"
     }
   },
-  "/Science-Around-the-Board/docs/__docusaurus/debug/config-b2e": {
+  "/Science-Around-the-Board/docs/__docusaurus/debug/config-16a": {
     "__comp": "__comp---theme-debug-config-23-a-2ff",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debug-3-c-2-68d"
     }
   },
-  "/Science-Around-the-Board/docs/__docusaurus/debug/content-365": {
+  "/Science-Around-the-Board/docs/__docusaurus/debug/content-443": {
     "__comp": "__comp---theme-debug-contentba-8-ce7",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debug-3-c-2-68d"
     },
-    "__props": "__props---science-around-the-board-docs-docusaurus-debug-contentab-7-7d3"
+    "allContent": "allContent---science-around-the-board-docs-docusaurus-debug-content-246-750"
   },
-  "/Science-Around-the-Board/docs/__docusaurus/debug/globalData-e05": {
+  "/Science-Around-the-Board/docs/__docusaurus/debug/globalData-afd": {
     "__comp": "__comp---theme-debug-global-dataede-0fa",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debug-3-c-2-68d"
     }
   },
-  "/Science-Around-the-Board/docs/__docusaurus/debug/metadata-14c": {
+  "/Science-Around-the-Board/docs/__docusaurus/debug/metadata-c09": {
     "__comp": "__comp---theme-debug-site-metadata-68-e-3d4",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debug-3-c-2-68d"
     }
   },
-  "/Science-Around-the-Board/docs/__docusaurus/debug/registry-e1c": {
+  "/Science-Around-the-Board/docs/__docusaurus/debug/registry-755": {
     "__comp": "__comp---theme-debug-registry-679-501",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debug-3-c-2-68d"
     }
   },
-  "/Science-Around-the-Board/docs/__docusaurus/debug/routes-488": {
+  "/Science-Around-the-Board/docs/__docusaurus/debug/routes-222": {
     "__comp": "__comp---theme-debug-routes-946-699",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-docusaurus-debugb-38-9d3"
+      "plugin": "plugin---science-around-the-board-docs-docusaurus-debug-3-c-2-68d"
     }
   },
-  "/Science-Around-the-Board/docs/-d27": {
+  "/Science-Around-the-Board/docs/-479": {
     "__comp": "__comp---theme-docs-root-5-e-9-0b6",
     "__context": {
-      "plugin": "plugin---science-around-the-board-docs-aba-dac"
+      "plugin": "plugin---science-around-the-board-docs-b-84-9dd"
     }
   },
-  "/Science-Around-the-Board/docs/-334": {
+  "/Science-Around-the-Board/docs/-974": {
     "__comp": "__comp---theme-doc-version-roota-7-b-5de",
-    "__props": "__props---science-around-the-board-docs-1-e-7-4a0"
+    "version": "version---science-around-the-board-docs-935-b1d"
   },
-  "/Science-Around-the-Board/docs/-21f": {
+  "/Science-Around-the-Board/docs/-033": {
     "__comp": "__comp---theme-doc-roota-94-67a"
   },
-  "/Science-Around-the-Board/docs/instructor/pedagogy-b00": {
+  "/Science-Around-the-Board/docs/instructor/pedagogy-9f1": {
     "__comp": "__comp---theme-doc-item-178-a40",
     "content": "content---science-around-the-board-docs-instructor-pedagogyf-2-d-830"
   },
-  "/Science-Around-the-Board/docs/instructor/technical-guide-c2e": {
+  "/Science-Around-the-Board/docs/instructor/technical-guide-660": {
     "__comp": "__comp---theme-doc-item-178-a40",
     "content": "content---science-around-the-board-docs-instructor-technical-guide-95-c-a0e"
   },
-  "/Science-Around-the-Board/docs/student-guide-6ac": {
+  "/Science-Around-the-Board/docs/student-guide-d44": {
     "__comp": "__comp---theme-doc-item-178-a40",
     "content": "content---science-around-the-board-docs-student-guidec-29-513"
   },
-  "/Science-Around-the-Board/docs/-213": {
+  "/Science-Around-the-Board/docs/-4f2": {
     "__comp": "__comp---theme-doc-item-178-a40",
     "content": "content---science-around-the-board-docs-0-e-3-476"
   }

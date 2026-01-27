@@ -11,10 +11,7 @@
       "direction": "ltr",
       "htmlLang": "en",
       "calendar": "gregory",
-      "path": "en",
-      "translate": false,
-      "url": "https://hghezzi.github.io",
-      "baseUrl": "/Science-Around-the-Board/docs/"
+      "path": "en"
     }
   }
 }

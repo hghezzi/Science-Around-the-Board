@@ -81,7 +81,7 @@ To prevent "cheating" (students reading the TSV answer key), you can encrypt the
 
 1.  Open your final `.tsv` file in a text editor (Notepad).
 2.  Select All -> Copy.
-3.  Go to the [Password Encryptor Tool]](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html).
+3.  Go to the [Password Encryptor Tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html).
 4.  Paste the text. Enter a password (e.g., `DNA2026`). Click Encrypt.
 5.  Copy the ciphertext (the random characters).
 6.  Save this as a new file: `game_secure.lock`.
