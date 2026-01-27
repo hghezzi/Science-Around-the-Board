@@ -187,7 +187,8 @@ export default function MicrobiopolyGame({
   startingPlayerIndex = 0,
   onExit,
   onEndGame,
-  imageMap = {}, // <--- ADD THIS
+  imageMap = {},
+  tsvRows = [],
 }) {
   const generatePlayers = (count) => {
     const colors = ['#e57373', '#64b5f6', '#81c784', '#ffb74d'];
@@ -660,7 +661,14 @@ export default function MicrobiopolyGame({
         let amount = 0;
         let fact = null;
         if (tile.type === 'chance') {
-          const mishapPool = LAB_MISHAPS || [];
+          // 1. Look for 'mishap' rows in the TSV
+          const tsvMishaps = tsvRows
+            .filter(r => (r.type || '').trim().toLowerCase() === 'mishap')
+            .map(r => ({ msg: r.question, fact: r.explanation }));
+
+          // 2. Use TSV mishaps if found; otherwise fallback to defaults
+          const mishapPool = tsvMishaps.length > 0 ? tsvMishaps : (LAB_MISHAPS || []);
+          
           const randomMishap = mishapPool.length > 0 ? mishapPool[Math.floor(Math.random() * mishapPool.length)] : { msg: 'Equipment Malfunction (-$100)', fact: null };
           const isPositive = randomMishap.msg.includes('+');
           amount = isPositive ? 50 : -100;
