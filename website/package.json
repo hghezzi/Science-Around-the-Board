@@ -7,7 +7,7 @@
     "start": "docusaurus start",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
-    "deploy": "docusaurus deploy",
+    "deploy": "vite build && cd website && npm install && npm run build && cd .. && mkdir -p dist/docs && cp -R website/build/* dist/docs/ && gh-pages -d dist",
     "clear": "docusaurus clear",
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",

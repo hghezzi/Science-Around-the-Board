@@ -1,0 +1,187 @@
+{
+  "entrypoints": [
+    "main"
+  ],
+  "origins": {
+    "237": [
+      237
+    ],
+    "17896441": [
+      869,
+      401
+    ],
+    "main": [
+      354,
+      869,
+      792
+    ],
+    "runtime~main": [
+      792,
+      869,
+      354
+    ],
+    "0e384e19": [
+      976
+    ],
+    "5e95c892": [
+      647
+    ],
+    "935f2afb": [
+      581
+    ],
+    "95c96e12": [
+      471
+    ],
+    "a7bd4aaa": [
+      98
+    ],
+    "a94703ab": [
+      869,
+      48
+    ],
+    "b84714c6": [
+      866
+    ],
+    "c290ad13": [
+      540
+    ],
+    "f2d0d075": [
+      687
+    ],
+    "styles": [
+      48,
+      354,
+      401,
+      792,
+      869
+    ]
+  },
+  "assets": {
+    "48": {
+      "js": [
+        {
+          "file": "assets/js/a94703ab.7dfe74d4.js",
+          "hash": "bef8b3f691622868",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/a94703ab.7dfe74d4.js"
+        }
+      ]
+    },
+    "98": {
+      "js": [
+        {
+          "file": "assets/js/a7bd4aaa.4d794025.js",
+          "hash": "f225c2fca4ef2317",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/a7bd4aaa.4d794025.js"
+        }
+      ]
+    },
+    "237": {
+      "js": [
+        {
+          "file": "assets/js/237.dae2aa70.js",
+          "hash": "2ff400e07f649027",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/237.dae2aa70.js"
+        }
+      ]
+    },
+    "354": {
+      "js": [
+        {
+          "file": "assets/js/runtime~main.273e9226.js",
+          "hash": "c1654a73863d9dad",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/runtime~main.273e9226.js"
+        }
+      ]
+    },
+    "401": {
+      "js": [
+        {
+          "file": "assets/js/17896441.e1ac6787.js",
+          "hash": "d91f40901ab213bb",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/17896441.e1ac6787.js"
+        }
+      ]
+    },
+    "471": {
+      "js": [
+        {
+          "file": "assets/js/95c96e12.7ac94203.js",
+          "hash": "70277dfe4b7b61c2",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/95c96e12.7ac94203.js"
+        }
+      ]
+    },
+    "540": {
+      "js": [
+        {
+          "file": "assets/js/c290ad13.9f776c3c.js",
+          "hash": "998ca63dfb502c73",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/c290ad13.9f776c3c.js"
+        }
+      ]
+    },
+    "581": {
+      "js": [
+        {
+          "file": "assets/js/935f2afb.87693bf1.js",
+          "hash": "cbfc31a964135320",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/935f2afb.87693bf1.js"
+        }
+      ]
+    },
+    "647": {
+      "js": [
+        {
+          "file": "assets/js/5e95c892.04b6b494.js",
+          "hash": "a7e7431e8118566b",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/5e95c892.04b6b494.js"
+        }
+      ]
+    },
+    "687": {
+      "js": [
+        {
+          "file": "assets/js/f2d0d075.c43d0dcb.js",
+          "hash": "b5eb01a5a9cdffb2",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/f2d0d075.c43d0dcb.js"
+        }
+      ]
+    },
+    "792": {
+      "js": [
+        {
+          "file": "assets/js/main.428ef38e.js",
+          "hash": "264ff848b9dbfecd",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/main.428ef38e.js"
+        }
+      ]
+    },
+    "866": {
+      "js": [
+        {
+          "file": "assets/js/b84714c6.deab4af5.js",
+          "hash": "97bea2b4285fff52",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/b84714c6.deab4af5.js"
+        }
+      ]
+    },
+    "869": {
+      "css": [
+        {
+          "file": "assets/css/styles.a201eeca.css",
+          "hash": "5583ae6b2523d1fa",
+          "publicPath": "/Science-Around-the-Board/docs/assets/css/styles.a201eeca.css"
+        }
+      ]
+    },
+    "976": {
+      "js": [
+        {
+          "file": "assets/js/0e384e19.0a5e44c6.js",
+          "hash": "c4ff364c8780555f",
+          "publicPath": "/Science-Around-the-Board/docs/assets/js/0e384e19.0a5e44c6.js"
+        }
+      ]
+    }
+  }
+}

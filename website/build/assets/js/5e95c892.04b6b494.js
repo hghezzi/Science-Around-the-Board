@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkmicrobiopoly_docs=globalThis.webpackChunkmicrobiopoly_docs||[]).push([[647],{7121(o,s,e){e.r(s),e.d(s,{default:()=>d});e(6540);var r=e(4164),c=e(7559),a=e(1003),i=e(2831),l=e(781),u=e(4848);function d(o){return(0,u.jsx)(a.e3,{className:(0,r.A)(c.G.wrapper.docsPages),children:(0,u.jsx)(l.A,{children:(0,i.v)(o.route.routes)})})}}}]);
