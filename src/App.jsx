@@ -13,7 +13,7 @@ import {
 /* TSV PARSING LOGIC                                                          */
 /* -------------------------------------------------------------------------- */
 
-async function fetchDefaultQuestions(url = "./questions.tsv") {
+async function fetchDefaultQuestions(url = "./SAB_questions_Jan22_Filtered.tsv") {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Could not load default questions (${res.status})`);
   const text = await res.text();
