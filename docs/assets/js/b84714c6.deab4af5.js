@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunkmicrobiopoly_docs=globalThis.webpackChunkmicrobiopoly_docs||[]).push([[866],{1966(o){o.exports=JSON.parse('{"name":"docusaurus-plugin-content-docs","id":"default"}')}}]);
