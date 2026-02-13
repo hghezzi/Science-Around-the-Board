@@ -15,9 +15,8 @@ A customizable, open-source board game engine for education.
 ## Requirements:
 * A **computer** to run the game
 * **Internet connection** to access the game on github, although a stable connection is not required once you start a gaming session.
-* A **TSV question file** (e.g. 'questions.tsv' in the 'public' folder of this repo)
-  * The game dynamically parses question files to find all tile informations, meaning that the input file should closely fit the structure described below.
-
+* A **TSV question file** (or simply start with the demo option to test the gameplay!)
+  
 ## License
 This project is licensed under a **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.
 
