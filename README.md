@@ -7,7 +7,7 @@ A customizable, open-source board game engine for education.
 </p>
 
 🎮 **[Play the Game](https://hghezzi.github.io/Science-Around-the-Board/)**
-📚 **[Read the Documentation](https://hghezzi.github.io/Science-Around-the-Board/docs/)**
+📚 **[Read the Instructor Manual](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Manual.pdf)**
 
 ## 🛠️ Instructor Tools:
 * **[Password Encryptor Tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html)** – Use this to create encrypted question files to share with your students.
