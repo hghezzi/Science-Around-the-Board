@@ -230,11 +230,44 @@ async function filesScenario() {
   await context.close();
 }
 
+// A shared link (?deck=demo), then a refresh mid-game and "Resume".
+async function resumeScenario() {
+  console.log("▶ link + resume");
+  const { context, page } = await newPage();
+  await openDemo(page, `${BASE}?deck=demo`);
+  await setupGame(page, 2);
+  await doSurvey(page, 2, "resume pre");
+  await page.getByText("Game log").waitFor();
+  await playTurns(page, "resume", 3);
+  const turn = page.getByText(/^Turn \d+$/);
+  const before = await turn.textContent();
+  const worth = page.getByText(/^Net worth -?\$\d+$/); // team panel only (tile cards also show prices)
+  const worthBefore = await worth.allTextContents();
+  await page.reload();
+  await page.getByRole("button", { name: /^Resume$/ }).click();
+  await page.getByText("Game log").waitFor();
+  const after = await turn.textContent();
+  if (before !== after) fail(`resume: came back at "${after}", expected "${before}"`);
+  const worthAfter = await worth.allTextContents();
+  if (!worthBefore.length || worthBefore.join() !== worthAfter.join()) fail(`resume: net worth changed from ${worthBefore} to ${worthAfter}`);
+  if (!(await page.getByText("Game resumed.").count())) fail("resume: the log doesn't say the game was resumed");
+  // Finish the game: the CSV must still hold the pre-game surveys answered before the refresh.
+  await playTurns(page, "resume after", 2);
+  await finishGame(page, 2, "resume");
+  checkCsv(await downloadCsv(page), 2, "resume");
+  // Back to the main menu forgets the saved game.
+  await page.getByRole("button", { name: /Back to main menu/ }).click();
+  await page.reload();
+  if (await page.getByRole("button", { name: /^Resume$/ }).count()) fail("resume: the save wasn't cleared after the main menu");
+  await context.close();
+}
+
 const SCENARIOS = {
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),
   results: resultsScenario,
   files: filesScenario,
+  resume: resumeScenario,
 };
 const selected = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
 for (const name of selected) {

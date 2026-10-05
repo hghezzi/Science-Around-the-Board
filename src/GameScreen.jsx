@@ -65,6 +65,8 @@ export default function GameScreen({
   sessionMinutes = 0,
   bigTopic = '',
   module = '',
+  resume = null, // autosaved game to continue (see App.jsx / autosave.js)
+  onSnapshot,
 }) {
   const generatePlayers = (count) => {
     const colors = TEAM_COLORS;
@@ -85,23 +87,29 @@ export default function GameScreen({
     return p;
   };
 
-  const [board, setBoard] = useState(boardData);
-  const [players, setPlayers] = useState(generatePlayers(playerCount));
+  // A resumed game keeps the freshly built board (its tiles share question arrays)
+  // and restores only what changes during play: each tile's owner and level.
+  const [board, setBoard] = useState(() => (resume?.tiles
+    ? boardData.map((t, i) => ({ ...t, owner: resume.tiles[i]?.[0] ?? null, level: resume.tiles[i]?.[1] ?? 0 }))
+    : boardData));
+  const [players, setPlayers] = useState(() => resume?.players ?? generatePlayers(playerCount));
   const getImgSrc = (imgName) => resolveImage(imgName, imageMap, imageBase);
-  const [turn, setTurn] = useState(startingPlayerIndex || 0);
-  const turnRef = useRef(startingPlayerIndex || 0);
+  const [turn, setTurn] = useState(resume?.turn ?? (startingPlayerIndex || 0));
+  const turnRef = useRef(resume?.turn ?? (startingPlayerIndex || 0));
+  // True from the roll until the turn is passed: never autosave a half-finished turn.
+  const turnInProgressRef = useRef(false);
   // Latest players for event handlers. Side effects must not run inside state
   // updaters: React runs those twice in development (it doubled payouts).
   const playersRef = useRef(players);
   useEffect(() => { playersRef.current = players; }, [players]);
 
-  const [totalTurns, setTotalTurns] = useState(0);
+  const [totalTurns, setTotalTurns] = useState(resume?.totalTurns ?? 0);
   const [isMoving, setIsMoving] = useState(false);
-  const [dice, setDice] = useState([1, 1]);
+  const [dice, setDice] = useState(resume?.dice ?? [1, 1]);
   const [rollId, setRollId] = useState(0);
-  const [logs, setLogs] = useState(() => [
-    playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.',
-  ]);
+  const [logs, setLogs] = useState(() => (resume
+    ? ['Game resumed.', ...(resume.logs || [])].slice(0, 10)
+    : [playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.']));
 
   // Modal + flow state
   const [modalOpen, setModalOpen] = useState(false);
@@ -130,10 +138,10 @@ export default function GameScreen({
   const [hoverTile, setHoverTile] = useState(null);
   const [, setChaosMode] = useState(null);
   const [chaosTargetTile, setChaosTargetTile] = useState(null);
-  const [logRows, setLogRows] = useState([]);
+  const [logRows, setLogRows] = useState(resume?.logRows ?? []);
 
   // Optional session timer: when it runs out, the game ends on net worth.
-  const [endsAt] = useState(() => (sessionMinutes > 0 ? Date.now() + sessionMinutes * 60000 : null));
+  const [endsAt] = useState(() => (resume ? resume.endsAt ?? null : (sessionMinutes > 0 ? Date.now() + sessionMinutes * 60000 : null)));
   const [now, setNow] = useState(() => Date.now());
   const standingsShownRef = useRef(false);
   useEffect(() => {
@@ -604,6 +612,7 @@ export default function GameScreen({
     const d2 = Math.floor(Math.random() * 6) + 1;
     setDice([d1, d2]);
     setRollId((n) => n + 1);
+    turnInProgressRef.current = true;
     setIsMoving(true);
 
     const startPos = players[turn].position;
@@ -646,9 +655,16 @@ export default function GameScreen({
   };
 
   const passTurn = () => {
+    turnInProgressRef.current = false;
     setModalOpen(false);
     setTurn((prev) => nextActivePlayer(players, prev));
   };
+
+  // Autosave between turns only: a refresh in the middle of a turn returns to its start.
+  useEffect(() => {
+    if (!onSnapshot || isMoving || modalOpen || manageOpen || turnInProgressRef.current) return;
+    onSnapshot({ tiles: board.map((t) => [t.owner ?? null, t.level || 0]), players, turn, totalTurns, logs, logRows, dice, endsAt });
+  }, [board, players, turn, totalTurns, logRows, isMoving, modalOpen, manageOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRentChallengeAnswer = (response) => {
     const tile = activeCard.data;

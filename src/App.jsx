@@ -8,6 +8,7 @@ import { validateQuestionRows } from "./tsvValidator";
 import { checkAnswer } from "./questionFormats";
 import { buildSurveySets, buildConfidenceQuestions } from "./surveys";
 import { readConfig } from "./config";
+import { saveSnapshot, loadSnapshot, clearSnapshot } from "./autosave";
 import { toCsv, resultsFilename, summarizeTeams, teamInfoRows, makeSessionId, buildPayload, sendResults, buildMailto, downloadText } from "./results";
 import { bestPreSurveyPlayer } from "./gameRules";
 import { resolveImage } from "./images";
@@ -197,9 +198,10 @@ function ValidationReport({ validation, imageMap, imageBase = "" }) {
   );
 }
 
-function SummaryView({ playerCount, config, topic, module, preRows, postRows, gameRows, onReturn }) {
+function SummaryView({ playerCount, config, topic, module, preRows, postRows, gameRows, sessionId: savedSessionId, onReturn }) {
   const [members, setMembers] = useState(() => Array(playerCount).fill(""));
-  const [sessionId] = useState(() => makeSessionId());
+  const [fallbackId] = useState(() => makeSessionId());
+  const sessionId = savedSessionId || fallbackId; // one id per game, so a re-sent result can be spotted
   const [sendState, setSendState] = useState({ status: "idle", message: "" });
   const summary = summarizeTeams({ preRows, postRows, gameRows, playerCount, members });
   const namesMissing = config.askNames && members.some((m) => !m.trim());
@@ -323,6 +325,9 @@ function ShareLinkBuilder() {
 
 // --- MAIN APP ---
 
+// Phases that are autosaved and can be resumed after a refresh.
+const RESUMABLE_PHASES = ["PRE_SURVEY", "GAME", "POST_SURVEY", "SUMMARY"];
+
 export default function App() {
   const [phase, setPhase] = useState("SETUP");
   const [gameMode, setGameMode] = useState(null);
@@ -346,12 +351,31 @@ export default function App() {
   const [imagesBase, setImagesBase] = useState(""); // image folder link (?images=)
   const [pendingCipher, setPendingCipher] = useState(null); // encrypted file waiting for its password
   const [passwordError, setPasswordError] = useState("");
+  // Autosave: a saved session offered on the start page, the game's latest state and the state to resume from.
+  const [resumeOffer, setResumeOffer] = useState(() => {
+    const saved = loadSnapshot();
+    return saved && RESUMABLE_PHASES.includes(saved.phase) ? saved : null;
+  });
+  const [gameSnapshot, setGameSnapshot] = useState(null);
+  const [resumeGame, setResumeGame] = useState(null);
+  const [sessionId, setSessionId] = useState("");
 
   const validation = useMemo(
     () => (allTsvRows.length ? validateQuestionRows(allTsvRows) : null),
     [allTsvRows]
   );
   const config = useMemo(() => readConfig(allTsvRows), [allTsvRows]);
+
+  // Save the session in this browser so an accidental refresh doesn't lose it.
+  useEffect(() => {
+    if (!RESUMABLE_PHASES.includes(phase)) return;
+    saveSnapshot({
+      phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
+      playerQuestionSets, confQ, preRows, postRows, gameRows, game: gameSnapshot,
+      hadImages: Object.keys(localImageMap).length > 0,
+    });
+  }, [phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
+      playerQuestionSets, confQ, preRows, postRows, gameRows, gameSnapshot, localImageMap]);
 
   useEffect(() => {
     const handlePopState = () => window.history.pushState(null, document.title, window.location.href);
@@ -423,17 +447,36 @@ export default function App() {
         : "Couldn't load the question file from this link. Check that it's public (for Google Sheets: Publish to web as TSV) and that you're online.");
     }
   };
+  const forgetSavedGame = () => {
+    clearSnapshot(); setGameSnapshot(null); setResumeGame(null);
+  };
   // Back to the start page with no file (also drops ?deck= from the address bar).
   const resetFile = () => {
+    forgetSavedGame();
     setAllTsvRows([]); setImagesBase("");
     window.history.replaceState(null, "", window.location.pathname);
+  };
+  const resumeSaved = () => {
+    const saved = resumeOffer;
+    setAllTsvRows(saved.allTsvRows); setImagesBase(saved.imagesBase || "");
+    setGameMode(saved.gameMode); setSelectedModule(saved.selectedModule); setPlayerCount(saved.playerCount);
+    setSessionMinutes(saved.sessionMinutes); setStartPlayer(saved.startPlayer); setSessionId(saved.sessionId || "");
+    setPlayerQuestionSets(saved.playerQuestionSets); setConfQ(saved.confQ);
+    setPreRows(saved.preRows); setPostRows(saved.postRows); setGameRows(saved.gameRows);
+    setResumeGame(saved.game || null); setGameSnapshot(saved.game || null);
+    setFilesConfirmed(true); setPhase(saved.phase); setResumeOffer(null);
+  };
+  const discardSaved = () => {
+    clearSnapshot(); setResumeOffer(null);
+    const { deck } = readDeckParams(window.location.search);
+    if (deck) loadFromLink(deck);
   };
 
   // Shareable links: ?deck=<question file link or shortcut>&images=<image folder link>
   useEffect(() => {
     const { deck, images } = readDeckParams(window.location.search);
     if (images) setImagesBase(normalizeImagesBase(images));
-    if (deck) loadFromLink(deck);
+    if (deck && !resumeOffer) loadFromLink(deck); // a saved game is offered first
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFileUpload = (e) => {
@@ -472,6 +515,8 @@ export default function App() {
   // Survey sets are built here (not when the module is confirmed) so they always
   // match the final team count.
   const startGame = () => {
+    forgetSavedGame(); // a new game replaces any saved one
+    setSessionId(makeSessionId());
     setPlayerQuestionSets(buildSurveySets(allTsvRows, { topic: gameMode, module: selectedModule, playerCount }));
     setConfQ(buildConfidenceQuestions(allTsvRows, { topic: gameMode, module: selectedModule }));
     setPhase("PRE_SURVEY");
@@ -506,6 +551,24 @@ export default function App() {
             Turn any course into a board-game review session: roll, answer, invest and outwit the other teams.
           </Typography>
 
+          {resumeOffer && !hasData && (
+            <Alert
+              severity="info"
+              sx={{ mb: 2, textAlign: "left" }}
+              action={
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button variant="contained" size="small" onClick={resumeSaved}>Resume</Button>
+                  <Button size="small" color="inherit" onClick={discardSaved}>Start over</Button>
+                </Box>
+              }
+            >
+              <strong>Resume your game?</strong>{" "}
+              Saved at {new Date(resumeOffer.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
+              {[resumeOffer.gameMode, resumeOffer.selectedModule].filter(Boolean).join(" / ")} · {resumeOffer.playerCount === 1 ? "solo" : `${resumeOffer.playerCount} teams`} ·{" "}
+              {{ PRE_SURVEY: "pre-game survey", GAME: `turn ${resumeOffer.game?.totalTurns ?? 0}`, POST_SURVEY: "post-game survey", SUMMARY: "results screen" }[resumeOffer.phase]}.
+              {resumeOffer.hadImages && " Uploaded images aren't saved; upload them again if your questions use them."}
+            </Alert>
+          )}
           {!hasData ? (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, textAlign: "left" }}>
               {choice("🧬", "Play the demo", "16S rRNA sequencing & QIIME 2 (the original course).", { onClick: () => loadFromLink("demo") })}
@@ -644,7 +707,7 @@ export default function App() {
   }
 
   if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
+  if (phase === "GAME") return <GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); setPhase("SETUP"); setGameMode(null); }} />;
   if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
-  return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} onReturn={() => { setPhase("SETUP"); setGameMode(null); resetFile(); }} />;
+  return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} sessionId={sessionId} onReturn={() => { setPhase("SETUP"); setGameMode(null); resetFile(); }} />;
 }
