@@ -8,7 +8,7 @@ Contents: 1. How the file becomes a board · 2. Columns · 3. Row types · 4. An
 - Within a game, the **first 4 distinct `theme` values** (in file order, counting only `property` and `milestone` rows) become the 4 board sides. Extra themes are ignored. With fewer than 4, the board is broken.
 - In each theme, the **first 2 distinct `subtheme` values** among its `property` rows become two colour groups of 3 tiles each. Group 1 tiles cost $100 and group 2 tiles cost $160. Each tile draws a random question from its subtheme's pool.
 - Each side's corner is a **milestone**: a 6-question exam (5 correct to capture) drawn from that theme's `milestone` rows.
-- Each side has one **core** tile, with questions drawn from all `core` rows, and one **Lab Mishap** tile, a random `mishap` row.
+- Each side has one **core** tile, with questions drawn from all `core` rows, and one **Chance** tile, which draws a random `mishap` row (a "chance card").
 - `survey` rows form the pre- and post-game knowledge check: 10 random questions per player, and the same set again after the game. `confidence` rows become 0–10 sliders, shown before and after.
 - **Order matters**: put the rows for theme 1 first, then theme 2, and so on. Within each theme, list subtheme 1 before subtheme 2.
 
@@ -38,7 +38,7 @@ The header row must be exactly these names; they are case-sensitive. Column orde
 - `property`: needs `theme` and `subtheme`. A recall or understanding question.
 - `milestone`: needs `theme`. A synthesis or application question.
 - `core`: the cross-cutting skill. `theme` is free text (e.g. `Core`), and `subtheme` names the tile (e.g. `UNIX`).
-- `mishap`: `question` = event text with an explicit amount, e.g. `Freezer failure! Samples thawed. (-$100)` or `Grant renewal approved! (+$150)`. The game charges or pays exactly that amount. `explanation` = fun fact. No options are needed.
+- `mishap`: `question` = event text with an explicit amount, e.g. `Freezer failure! Samples thawed. (-$100)` or `Scholarship awarded! (+$150)`. The game charges or pays exactly that amount. `explanation` = fun fact. No options are needed. Theme the text to the subject; the game's own wording is neutral.
 - `survey`: knowledge-check question in any format. `theme` and `subtheme` are optional (handy for your own analysis).
 - `confidence`: `question` = a statement such as "I am confident I can explain …". No options are needed.
 

@@ -34,4 +34,4 @@ Traditional review sessions (like multiple-choice quizzes) are often passive. **
 
 1.  **Customize:** Download the question template and fill it with your course content.
 2.  **Launch:** Open the web app and upload your file.
-3.  **Play:** Students join as "Research Teams" (or any group identity you prefer) and compete to master the material.
+3.  **Play:** Students play in teams (Red, Blue, Green and Orange) and compete to master the material.

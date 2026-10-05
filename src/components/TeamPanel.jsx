@@ -38,7 +38,7 @@ export default function TeamPanel({ players, board, turn, moneyFloats }) {
                   {TEAM_SYMBOLS[p.id]}
                 </Box>
                 <Typography sx={{ fontWeight: 800, flex: 1, textDecoration: p.eliminated ? "line-through" : "none" }}>
-                  {p.name} {p.rescueUsed && !p.eliminated && <span title="Emergency Grant used">🛟</span>}
+                  {p.name} {p.rescueUsed && !p.eliminated && <span title="Rescue used">🛟</span>}
                 </Typography>
                 <Typography sx={{ fontWeight: 800, color: p.money < 0 ? "error.main" : "text.primary" }}>
                   {p.eliminated ? "OUT" : `$${p.money}`}

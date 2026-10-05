@@ -46,9 +46,9 @@ Shown immediately after every answer, this is where the learning happens.
 - 3 statements, one per major LO cluster: "I am confident I can [verb] [skill]."
 - Use concrete verbs (explain, choose, interpret, troubleshoot), not "understand".
 
-## Mishaps
+## Chance cards (`mishap` rows)
 
-- Short, vivid, discipline-flavoured events with explicit amounts: `(-$100)`, `(+$150)`.
+- Short, vivid events themed to the subject (or general study life), with explicit amounts: `(-$100)`, `(+$150)`.
 - Use the `explanation` for a genuine fun fact or practical lesson tied to the course (a classic lab mistake, a historical anecdote, a best practice).
 - Roughly 2/3 penalties and 1/3 rewards, mostly $50–$200.
 

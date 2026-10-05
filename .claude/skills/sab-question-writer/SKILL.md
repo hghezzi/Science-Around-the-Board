@@ -32,7 +32,7 @@ Ask conversationally, a few questions at a time, and reuse anything already said
 - **Formats**: multiple choice is the default. Offer multi-select, numeric, ordering and short-text (explained in `references/format.md`). Suggest which fit the topic, for example numeric for calculations or ordering for workflows and pathways.
 - **Names**: the `bigTopic` and `module` labels students will pick from the menu (e.g. `Microbiology` / `16S Sequencing`).
 - **Images**: whether they want figures (plots, diagrams, gels) and whether they have their own.
-- **Tone of mishaps**: discipline-flavoured "lab mishaps" or random events. These can be fun.
+- **Tone of chance cards** (`mishap` rows): events themed to the subject (e.g. lab accidents for a science course, archive floods for history) or general study-life events. These can be fun. The game itself uses neutral wording, so the theme comes only from this text.
 
 If the instructor says "just make something about X", fill sensible defaults: an upper-year undergrad audience, a 60-minute session, mostly MCQ with a few other formats, and no images. State these defaults in one line and proceed. Asking ten questions when they wanted speed is worse than a good default.
 
@@ -66,7 +66,7 @@ Guidelines that matter most (the full list is in `references/question-design.md`
 - **Distractors**: every wrong option should be a real misconception or a common error, not a joke. When a student picks it, it should reveal a specific gap.
 - **Explanations**: say why the right answer is right *and* address the most tempting distractor. Students read this immediately after answering, right or wrong. One to three sentences.
 - **Balance**: spread correct answers across positions 1–4. (The game shuffles options, but balance keeps the source file honest and reviewable.) Vary question stems.
-- **Mishaps**: event text with an explicit amount such as `(-$100)` or `(+$150)`; the game pays exactly that amount. Put a related fun fact or practical lesson in `explanation`. Aim for roughly 2/3 penalties, 1/3 rewards, in the range $50–$200.
+- **Chance cards (`mishap` rows)**: event text with an explicit amount such as `(-$100)` or `(+$150)`; the game pays exactly that amount. Put a related fun fact or practical lesson in `explanation`. Aim for roughly 2/3 penalties, 1/3 rewards, in the range $50–$200.
 - **IDs**: stable and readable, e.g. `prop_t1s1_01`, `mile_t2_03`, `surv_04`, `core_02`, `mis_01`, `conf_01`. They are how the instructor traces exported data back to questions.
 
 Write in batches by theme, and re-read each batch for accuracy and for answers that a test-wise student could guess without knowing the material.
@@ -86,7 +86,7 @@ python scripts/build_tsv.py questions.json questions.tsv
 python scripts/validate_tsv.py questions.tsv --images images/
 ```
 
-`build_tsv.py` writes the columns in the right order, strips tabs and newlines from cells, and normalises formats. `validate_tsv.py` mirrors the game's own upload checker: it checks themes and subthemes per board, milestone and survey counts, `correctIndex` validity, numeric, multi and text answers, mishap amounts, duplicate IDs and missing images. It also reports answer-position balance. Fix every **ERROR**, and fix **WARNING**s unless there is a reason not to. Rerun until it is clean.
+`build_tsv.py` writes the columns in the right order, strips tabs and newlines from cells, and normalises formats. `validate_tsv.py` mirrors the game's own upload checker: it checks themes and subthemes per board, milestone and survey counts, `correctIndex` validity, numeric, multi and text answers, chance-card amounts, duplicate IDs and missing images. It also reports answer-position balance. Fix every **ERROR**, and fix **WARNING**s unless there is a reason not to. Rerun until it is clean.
 
 When working inside the SAB repository, you can also run `npm run validate-tsv -- questions.tsv`, which uses the game's real validator.
 

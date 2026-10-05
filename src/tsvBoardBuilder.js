@@ -83,7 +83,7 @@ export function buildBoardQuestionSet(
     console.warn("[tsvBoardBuilder] No matching rows found! Returning empty board.");
     // gameData.js will fall back to a very boring board
     return {
-      CoreTech: { name: "Core Facility", questions: [] },
+      CoreTech: { name: "Core Skills", questions: [] },
       Side1: null,
       Side2: null,
       Side3: null,
@@ -174,7 +174,7 @@ export function buildBoardQuestionSet(
   const coreName =
     (coreRows[0]?.subtheme || "").trim() ||
     (coreRows[0]?.theme || "").trim() ||
-    "Core Facility";
+    "Core Skills";
 
   const CoreTech = { name: coreName, questions: coreQuestions };
 

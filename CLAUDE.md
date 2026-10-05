@@ -45,7 +45,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - Rent defense: right pays 50%.
   - Milestone exam: 6 questions, 5 to pass, failing on the 2nd mistake; a pass earns a chaos token.
   - Chaos steal at 50% of price, using the target tile's own questions.
-  - Liquidation, then **one** Emergency Grant (2 of 3 to pass). Failing it, or a second bankruptcy, eliminates the team and returns its tiles to the bank.
+  - Liquidation, then **one** Rescue Quiz (2 of 3 to pass; CSV action `EMERGENCY_GRANT`). Failing it, or a second bankruptcy, eliminates the team and returns its tiles to the bank.
   - **The game ends** with last team standing (`WIN`), or with the `STANDINGS` modal ranking by net worth. Standings open from END GAME, from the optional `sessionMinutes` timer, or after a win. `handleEndGame` appends `GAME_RESULT` rows.
   - `logAnswer` writes one CSV row per answered question.
 - `src/questionFormats.js` (pure):
@@ -79,7 +79,8 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/images.js` (pure): `resolveImage(name, uploaded)`. Order: uploaded file, then http/data URL, then `./questionImages/<name>` (hosted in `public/questionImages`).
 - `src/tsvValidator.js` (pure): instructor-facing checks that mirror what the engine needs. Shared by the UI, CLI and tests. **Update it, and its Python mirror in the skill, whenever engine assumptions change.**
 - `src/consent.js` and `src/ConsentBanner.jsx`: Google Analytics (`G-B2Z5WS4KQR`) loads only after opt-in. The banner appears on the start page only. `public/privacy.html` is the privacy notice.
-- `src/questionBank.js`: legacy. Only `LAB_MISHAPS` (fallback mishaps) is used.
+- `src/labels.js`: all player-facing game terms (Chance, Buy, Upgrades, Rescue Quiz…), kept subject-neutral.
+- `src/questionBank.js`: `DEFAULT_CHANCE_CARDS`, the neutral fallback chance cards used when a file has no `mishap` rows.
 - `public/encryptor.html`: standalone tool that encrypts a TSV into a `.lock` file.
 - `public/SAB_questions_Jan22_Filtered.tsv`: demo file (`16S`/`QIIME2`, including rows in every format).
 - `public/examples/intro_statistics.tsv`: a non-biology example, generated with the skill.
@@ -98,7 +99,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - The parser is a simple tab split: quoted cells may not contain tabs or newlines.
 
 ## Known gaps / ideas. Confirm with the user before changing gameplay.
-1. Some lab-flavoured wording remains ("Lab Mishap", "Lab manager", "Data Validation", "Funding Crisis"). Instructor-configurable labels and theming are planned.
+1. Instructor-configurable labels (e.g. renaming Chance cards or the currency from the TSV) are planned. `src/labels.js` is the hook.
 2. There is no autosave (a refresh loses everything). The board needs at least about 600 px of width, and phone layouts are not a target.
 3. `type=post` rows are ignored. Pre and post surveys use the same items; parallel forms are an idea.
 4. Question selection is random with repeats. Preferring unseen questions and re-asking missed ones later is an idea.
@@ -112,3 +113,4 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - Teams use the live site for classes, so flag any change that alters gameplay, scoring or the CSV format.
 - **Keep the Instructor Guide current.** Every user-facing change updates `guide/instructor-guide.md` and adds a "What's new" entry, then runs `npm run guide` and commits the regenerated outputs.
 - After UI changes, run `npm run a11y` and check both light and dark mode.
+- **Keep in-game wording subject-neutral.** SAB is used for any field. Player-facing game terms live in `src/labels.js` and must not use lab or science vocabulary; any theming comes from the instructor's question file. CSV codes such as `LAB_MISHAP` and `EMERGENCY_GRANT` are kept for data continuity.
