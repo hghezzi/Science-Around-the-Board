@@ -1,13 +1,11 @@
 // src/MicrobiopolyGame.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Button,
   Modal,
   Box,
   Typography,
   Card,
-  Grid,
   Chip,
   LinearProgress,
   Collapse,
@@ -21,15 +19,16 @@ import {
 import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
 import { resolveImage } from './images';
 import QuestionInput from './QuestionInput';
+import Board from './components/Board';
+import Dice from './components/Dice';
+import TeamPanel from './components/TeamPanel';
+import { celebrate } from './components/confetti';
+import { TEAM_COLORS, TEAM_NAMES, TEAM_SYMBOLS } from './theme';
 
+// Status colours as theme CSS variables (light/dark aware).
 const THEME = {
-  bg: '#f0f2f5',
-  boardBg: '#ffffff',
-  text: '#2c3e50',
-  accent: '#2196f3',
-  danger: '#e91e63',
-  success: '#4caf50',
-  gridLine: '#e0e0e0',
+  danger: 'var(--mui-palette-error-main)',
+  success: 'var(--mui-palette-success-main)',
 };
 
 const modalStyle = {
@@ -45,7 +44,8 @@ const modalStyle = {
   p: 4,
   borderRadius: 3,
   outline: 'none',
-  borderTop: `6px solid ${THEME.accent}`,
+  borderTop: '6px solid var(--mui-palette-primary-main)',
+  color: 'text.primary',
 };
 
 // ------------------------------------------------------------------
@@ -76,26 +76,6 @@ function downloadCSV(rows, filename = 'microbiopoly_log.csv') {
   URL.revokeObjectURL(url);
 }
 
-const DiceBox = ({ num }) => (
-  <div
-    style={{
-      width: 50,
-      height: 50,
-      border: `2px solid ${THEME.text}`,
-      borderRadius: 8,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      fontSize: 24,
-      fontWeight: 'bold',
-      background: '#fff',
-      color: THEME.text,
-    }}
-  >
-    {num}
-  </div>
-);
-
 // ------------------------------------------------------------------
 //  MAIN COMPONENT
 // ------------------------------------------------------------------
@@ -109,10 +89,12 @@ export default function MicrobiopolyGame({
   imageMap = {},
   tsvRows = [],
   sessionMinutes = 0,
+  bigTopic = '',
+  module = '',
 }) {
   const generatePlayers = (count) => {
-    const colors = ['#e57373', '#64b5f6', '#81c784', '#ffb74d'];
-    const names = ['Red Team', 'Blue Team', 'Green Team', 'Orange Team'];
+    const colors = TEAM_COLORS;
+    const names = TEAM_NAMES;
     let p = [];
     for (let i = 0; i < count; i++) {
       p.push({
@@ -140,6 +122,7 @@ export default function MicrobiopolyGame({
   const [totalTurns, setTotalTurns] = useState(0);
   const [isMoving, setIsMoving] = useState(false);
   const [dice, setDice] = useState([1, 1]);
+  const [rollId, setRollId] = useState(0);
   const [logs, setLogs] = useState(() => [
     playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.',
   ]);
@@ -440,19 +423,6 @@ export default function MicrobiopolyGame({
   // ------------------------------------------------------------------
   //  GAME LOGIC
   // ------------------------------------------------------------------
-  const getTileStyle = (index) => {
-    const style = {
-      gridColumn: 'auto', gridRow: 'auto', border: '1px solid #bbb', position: 'relative',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: 'white',
-      justifyContent: 'flex-start', minWidth: '85px', minHeight: '85px', fontSize: '10px',
-    };
-    if (index >= 0 && index <= 9) { style.gridRow = 10; style.gridColumn = 10 - index; }
-    else if (index >= 9 && index <= 18) { style.gridColumn = 1; style.gridRow = 10 - (index - 9); }
-    else if (index >= 18 && index <= 27) { style.gridRow = 1; style.gridColumn = 1 + (index - 18); }
-    else if (index >= 27 && index <= 35) { style.gridColumn = 10; style.gridRow = 1 + (index - 27); }
-    return style;
-  };
-
   const toggleManual = () => {
     if (manualUnlocked) setShowManual((prev) => !prev);
     else {
@@ -675,6 +645,7 @@ export default function MicrobiopolyGame({
     const d1 = Math.floor(Math.random() * 6) + 1;
     const d2 = Math.floor(Math.random() * 6) + 1;
     setDice([d1, d2]);
+    setRollId((n) => n + 1);
     setIsMoving(true);
 
     const startPos = players[turn].position;
@@ -853,6 +824,11 @@ export default function MicrobiopolyGame({
     }
   });
 
+  useEffect(() => {
+    if (modalOpen && modalStage === 'WIN') celebrate();
+    if (modalOpen && modalStage === 'STANDINGS' && players.length > 1) celebrate();
+  }, [modalOpen, modalStage]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleEndGame = (reason = 'ended') => {
     const standings = rankPlayers(players, board);
     const resultRows = standings.map((r) => ({
@@ -891,133 +867,102 @@ export default function MicrobiopolyGame({
     </>
   );
 
+  const title = module || bigTopic || 'Science Around the Board';
+  const rollLabel = timeUp ? "Time's up" : isMoving ? 'Moving…' : (currentPlayer.money < 0 ? 'In debt' : `Roll — ${currentPlayer.name}`);
+
   return (
-    <div style={{ backgroundColor: THEME.bg, minHeight: '100vh', width: '100vw', padding: '20px', fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '1400px', margin: '0 auto 20px auto', alignItems: 'center' }}>
-        <Typography variant="h4" sx={{ color: THEME.text, fontWeight: 'bold' }}>THE SEQUENCING RUN <Chip label={`TURN ${totalTurns}`} size="small" sx={{ ml: 2, bgcolor: THEME.accent, color: '#fff' }} />
+    <Box sx={{ bgcolor: 'background.default', color: 'text.primary', minHeight: '100vh', px: { xs: 1, md: 3 }, py: 2 }}>
+      <Box component="header" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center', maxWidth: 1500, mx: 'auto', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>🎲 Science Around the Board</Typography>
+          <Chip label={`Turn ${totalTurns}`} size="small" color="primary" />
           {endsAt && (
             <Chip
-              label={timeUp ? "TIME'S UP" : `⏱ ${formatClock(timeLeftMs)}`}
+              label={timeUp ? "Time's up" : `⏱ ${formatClock(timeLeftMs)}`}
               size="small"
               color={timeUp ? 'error' : timeLeftMs <= 5 * 60000 ? 'warning' : 'default'}
-              sx={{ ml: 1, fontWeight: 'bold' }}
               aria-label="Time remaining"
             />
-          )}</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="outlined" color="warning" onClick={() => openStandings(false, 'ended')}>END GAME</Button>
-          <Button variant="outlined" color="secondary" onClick={handleExportCSV}>Export CSV</Button>
-          <Button color="error" variant="outlined" onClick={onExit}>EXIT SESSION</Button>
-        </Box>
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 40, alignItems: 'flex-start', transform: 'scale(0.85)', transformOrigin: 'top center' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 85px)', gridTemplateRows: 'repeat(10, 85px)', gap: '4px', padding: '20px', background: 'white', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', position: 'relative' }}>
-          <div style={{ gridColumn: '2 / span 8', gridRow: '2 / span 8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.1, zIndex: 1, pointerEvents: 'none' }}>
-            <Typography variant="h1" sx={{ fontWeight: 'bold', fontSize: '8rem' }}>HGPvS</Typography>
-            <Typography variant="caption" sx={{ fontSize: '1rem', marginTop: '10px', opacity: 1, fontWeight: 'bold' }}>© 2025 Hans Ghezzi – Science Around the Board</Typography>
-          </div>
-          {board.map((tile, index) => {
-            const isRival = tile.owner === 99;
-            const ownerColor = isRival ? '#000' : tile.owner != null ? players[tile.owner]?.color : null;
-            const isCorner = tile.type === 'milestone';
-            const onMouseEnter = () => handleTileHover(tile);
-            const onMouseLeave = () => clearHover();
-            if (isCorner) return (
-                <div key={tile.id} style={{ ...getTileStyle(index), border: `3px solid ${tile.owner != null ? ownerColor : '#1a237e'}`, backgroundColor: ownerColor ? `${ownerColor}22` : '#f5f5f5', justifyContent: 'center' }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-                  <div style={{ fontSize: '20px' }}>🏆</div>
-                  <div style={{ textAlign: 'center', fontWeight: 'bold', color: '#1a237e', fontSize: '11px', lineHeight: 1.2 }}>{tile.name}</div>
-                  {tile.sub && <div style={{ fontSize: '10px', fontWeight: 'bold', color: THEME.danger, marginTop: 2 }}>{tile.sub}</div>}
-                  {tile.price > 0 && !tile.sub && <div style={{ fontSize: '10px', marginTop: 2 }}>${tile.price}</div>}
-                  <div style={{ display: 'flex', gap: 1, position: 'absolute', bottom: 4 }}>
-                    {players.map((p) => p.position === index && !p.eliminated && <motion.div key={p.id} layoutId={`p-${p.id}`} transition={{ duration: 0.2, ease: 'linear' }} style={{ width: 14, height: 14, borderRadius: '50%', background: p.color, border: '2px solid white', zIndex: 10 }} />)}
-                  </div>
-                </div>
-              );
-            return (
-              <div key={tile.id} style={{ ...getTileStyle(index), border: ownerColor ? `3px solid ${ownerColor}` : '1px solid #ccc' }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-                {tile.type === 'property' && <div style={{ width: '100%', height: '20%', background: tile.color, borderBottom: '1px solid #eee' }} />}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '4px' }}>
-                  <div style={{ textAlign: 'center', fontWeight: 'bold', color: isRival ? '#000' : '#444', fontSize: '10px', lineHeight: 1.1, overflow: 'hidden' }}>{tile.name} {isRival && '(RIVAL)'}</div>
-                  {tile.sub && <div style={{ fontSize: '8px', color: '#999' }}>{tile.sub}</div>}
-                  <div style={{ fontSize: '11px', marginTop: 'auto', fontWeight: 'bold' }}>
-                    {tile.level > 0 ? '⭐'.repeat(tile.level) : ''}
-                    {tile.price > 0 && !tile.valDisplay && <span style={{ color: '#777' }}>${tile.price}</span>}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 1, marginBottom: 2, position: 'absolute', bottom: -6, zIndex: 10 }}>
-                  {players.map((p) => p.position === index && !p.eliminated && <motion.div key={p.id} layoutId={`p-${p.id}`} transition={{ duration: 0.2, ease: 'linear' }} style={{ width: 14, height: 14, borderRadius: '50%', background: p.color, border: '2px solid white', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }} />)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ width: 340 }}>
-          <Card sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-            <Typography variant="subtitle2" color="textSecondary" gutterBottom>RESEARCH GROUPS</Typography>
-            {players.map((p, i) => (
-              <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, p: 1, borderRadius: 1, bgcolor: turn === i ? `${p.color}22` : 'transparent', borderLeft: `4px solid ${p.color}`, position: 'relative' }}>
-                <span style={{ fontWeight: turn === i ? 'bold' : 'normal', textDecoration: p.eliminated ? 'line-through' : 'none', opacity: p.eliminated ? 0.5 : 1 }}>
-                  {p.name} {p.rescueUsed && !p.eliminated && <span title="Emergency Grant used">🛟</span>}
-                </span>
-                <span style={{ color: p.money < 0 ? 'red' : 'inherit' }}>{p.eliminated ? 'OUT' : `$${p.money}`}</span>
-                <AnimatePresence>
-                  {moneyFloats[p.id]?.visible && (
-                    <motion.span key={moneyFloats[p.id].id} initial={{ opacity: 0, y: 10, scale: 0.5 }} animate={{ opacity: 1, y: -20, scale: 1.2 }} exit={{ opacity: 0 }}
-                      style={{ position: 'absolute', right: 10, top: 0, color: moneyFloats[p.id].amount > 0 ? THEME.success : THEME.danger, fontWeight: 'bold', fontSize: '1.2rem', textShadow: '0 1px 2px white' }}>
-                      {moneyFloats[p.id].amount > 0 ? '+' : ''}{moneyFloats[p.id].amount}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </Box>
-            ))}
-            <Typography variant="caption">Chaos Tokens (current): <strong>{currentPlayer?.chaosTokens ?? 0}</strong></Typography>
-          </Card>
-
-          <Card sx={{ p: 3, mb: 2, borderRadius: 2, textAlign: 'center' }}>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 20 }}>
-              <DiceBox num={dice[0]} />
-              <DiceBox num={dice[1]} />
-            </div>
-            <Button variant="contained" size="large" fullWidth onClick={handleRoll} disabled={isMoving || timeUp || currentPlayer.money < 0} sx={{ bgcolor: currentPlayer?.color || '#555', color: '#fff', mb: 1 }}>
-              {timeUp ? "TIME'S UP" : isMoving ? 'PROCESSING...' : (currentPlayer.money < 0 ? 'IN DEBT' : 'ROLL')}
-            </Button>
-            <Grid container spacing={1}>
-              <Grid item xs={6}><Button variant="outlined" fullWidth onClick={openLabManager}>LAB MANAGER</Button></Grid>
-              <Grid item xs={6}><Button variant="outlined" fullWidth color="warning" onClick={openChaosSelect}>USE CHAOS</Button></Grid>
-            </Grid>
-          </Card>
-
-          {hoverTile && (
-            <Card sx={{ p: 2, mb: 2, borderRadius: 2, bgcolor: '#f5f5f5', border: '1px solid #e0e0e0' }}>
-              <Typography variant="subtitle2" gutterBottom>Tile Info</Typography>
-              <Typography variant="body2"><strong>{hoverTile.name}</strong> {hoverTile.sub ? `(${hoverTile.sub})` : ''}</Typography>
-              <Typography variant="caption" display="block">Type: {hoverTile.type}</Typography>
-              {hoverTile.owner != null && <Typography variant="caption" display="block">Owner: {hoverTile.owner === 99 ? 'Rival Lab' : players[hoverTile.owner]?.name}</Typography>}
-              {(hoverTile.type === 'property' || hoverTile.type === 'sequencing_core') && (
-                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  Base rent: ${hoverTile.baseRent} — Mult: {hoverTile.multiplier.toFixed(2)} — Rent: <strong>${hoverTile.rent}</strong>
-                </Typography>
-              )}
-            </Card>
           )}
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="contained" color="warning" onClick={() => openStandings(false, 'ended')}>End game</Button>
+          <Button variant="outlined" onClick={handleExportCSV}>Export CSV</Button>
+          <Button variant="text" color="error" onClick={onExit}>Exit session</Button>
+        </Box>
+      </Box>
 
-          <Card sx={{ p: 2, height: 200, overflowY: 'auto', borderRadius: 2, bgcolor: '#fafafa', boxShadow: 'none', border: '1px solid #eee' }}>
-            <ul style={{ listStyle: 'none', padding: 0, fontSize: '0.75rem', color: '#555' }}>{logs.map((l, i) => <li key={i} style={{ marginBottom: 4, borderBottom: '1px solid #eee' }}>{l}</li>)}</ul>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start', gap: 3, maxWidth: 1500, mx: 'auto' }}>
+        <Box sx={{ flex: '1 1 640px', display: 'flex', justifyContent: 'center', maxWidth: 1000 }}>
+          <Board board={board} players={players} onTileHover={handleTileHover} onTileLeave={clearHover}>
+            <Typography component="h2" sx={{ fontFamily: '"Fredoka", sans-serif', fontWeight: 600, fontSize: '3.2cqw', lineHeight: 1.1, textAlign: 'center' }}>{title}</Typography>
+            {module && bigTopic && <Typography sx={{ fontSize: '1.5cqw', color: 'text.secondary', fontWeight: 700, mt: '-0.8cqw' }}>{bigTopic}</Typography>}
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 0.75, borderRadius: 99, bgcolor: 'background.paper', boxShadow: 1 }}>
+              <Box aria-hidden sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: currentPlayer.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, textShadow: '0 0 2px rgba(0,0,0,.7)' }}>{TEAM_SYMBOLS[currentPlayer.id]}</Box>
+              <Typography sx={{ fontWeight: 800 }}>{currentPlayer.name}'s turn</Typography>
+            </Box>
+
+            <Dice values={dice} rollId={rollId} />
+
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleRoll}
+              disabled={isMoving || timeUp || currentPlayer.money < 0}
+              sx={{ bgcolor: currentPlayer.color, color: '#fff', px: 5, py: 1.25, fontSize: '1.1rem', boxShadow: 3, '&:hover': { bgcolor: currentPlayer.color, filter: 'brightness(0.92)' }, textShadow: '0 1px 2px rgba(0,0,0,.35)' }}
+            >
+              {rollLabel}
+            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="outlined" onClick={openLabManager}>🧪 Lab manager</Button>
+              <Button variant="outlined" color="warning" onClick={openChaosSelect}>⚡ Use chaos ({currentPlayer.chaosTokens})</Button>
+            </Box>
+
+            <Box sx={{ minHeight: '7cqw', width: '80%', maxWidth: 420 }}>
+              {hoverTile ? (
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.paper', borderLeft: `6px solid ${hoverTile.color}`, boxShadow: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 800 }}>{hoverTile.type === 'property' ? `${hoverTile.sub} · ${hoverTile.name}` : hoverTile.name}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {{ property: 'Property', milestone: 'Milestone (6-question exam)', sequencing_core: 'Core facility', chance: 'Lab mishap (random event)' }[hoverTile.type] || hoverTile.type}
+                    {hoverTile.owner != null && ` · Owner: ${hoverTile.owner === 99 ? 'Rival Lab' : players[hoverTile.owner]?.name}`}
+                  </Typography>
+                  {(hoverTile.type === 'property' || hoverTile.type === 'sequencing_core') && (
+                    <Typography variant="caption" sx={{ display: 'block' }}>
+                      Rent now: <strong>${hoverTile.rent}</strong> (base ${hoverTile.baseRent} × {hoverTile.multiplier.toFixed(1)})
+                    </Typography>
+                  )}
+                </Box>
+              ) : (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>Hover or tab to a tile for details.</Typography>
+              )}
+            </Box>
+            <Typography sx={{ fontSize: 'max(11px, 1.1cqw)', color: 'text.secondary' }}>© Hans Ghezzi · Science Around the Board</Typography>
+          </Board>
+        </Box>
+
+        <Box sx={{ flex: '0 1 340px', minWidth: 280, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TeamPanel players={players} board={board} turn={turn} moneyFloats={moneyFloats} />
+          <Card sx={{ p: 2 }}>
+            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800 }}>Game log</Typography>
+            <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, maxHeight: 220, overflowY: 'auto', fontSize: '0.8rem', color: 'text.secondary' }}>
+              {logs.map((l, i) => (
+                <Box component="li" key={i} sx={{ py: 0.5, borderBottom: '1px solid', borderColor: 'divider', color: i === 0 ? 'text.primary' : undefined, fontWeight: i === 0 ? 700 : 400 }}>{l}</Box>
+              ))}
+            </Box>
           </Card>
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       <Modal open={modalOpen} disableEscapeKeyDown>
-        <Box sx={modalStyle}>
+        <Box sx={{ ...modalStyle, ...(activeCard?.data?.color ? { borderTopColor: activeCard.data.color } : {}) }}>
           {activeCard?.type === 'LIQUIDATION' && modalStage === 'LIQUIDATION' && (
             <>
                 <Typography variant="h4" color="error" gutterBottom>Funding Crisis</Typography>
                 <Typography variant="body1" paragraph>
                     You are in debt (<strong>${activeCard.debt}</strong>). You must liquidate assets to continue.
                 </Typography>
-                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', padding: '10px', marginBottom: '20px' }}>
+                <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, mb: 2.5 }}>
                     {activeCard.assets.map(t => {
                         const isDowngrade = t.level > 0;
                         const sellValue = Math.floor((isDowngrade ? (t.houseCost||t.price) : t.price) * 0.5);
@@ -1025,10 +970,10 @@ export default function MicrobiopolyGame({
                         const actionLabel = isDowngrade ? `DOWNGRADE GROUP (Lvl ${t.level}->${t.level-1})` : "SELL DEED";
                         
                         return (
-                            <Box key={t.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, p: 1, border: '1px solid #ddd' }}>
+                            <Box key={t.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
                                 <div>
                                     <strong>{t.name}</strong> ({t.sub})
-                                    <div style={{ fontSize: '0.8rem', color: '#666' }}>Lvl {t.level}</div>
+                                    <Typography variant="caption" color="text.secondary">Lvl {t.level}</Typography>
                                 </div>
                                 <Button variant="contained" color="error" size="small" onClick={() => handleSellAsset(t)}>
                                     {actionLabel} (+${sellValue} per tile)
@@ -1036,7 +981,7 @@ export default function MicrobiopolyGame({
                             </Box>
                         )
                     })}
-                </div>
+                </Box>
             </>
           )}
 
@@ -1067,7 +1012,7 @@ export default function MicrobiopolyGame({
                 reveal: quizState.waiting ? { ...quizState.result, response: quizState.selected } : null,
               })}
               {quizState.waiting && (
-                <Box sx={{ mt: 3, p: 2, bgcolor: '#f9f9f9', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
                   <Typography variant="subtitle2" fontWeight="bold" color={quizState.isCorrect ? 'success.main' : 'error.main'}>
                     {quizState.isCorrect ? 'Correct!' : 'Incorrect'}
                   </Typography>
@@ -1129,7 +1074,7 @@ export default function MicrobiopolyGame({
                     🏆 {tied.length > 1 ? `Tie: ${tied.map((t) => t.name).join(' & ')}` : `${leader.name} wins`} with a net worth of ${leader.netWorth}.
                   </Alert>
                 )}
-                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 2, '& td, & th': { p: 1, borderBottom: '1px solid #eee', textAlign: 'right' }, '& td:nth-of-type(2), & th:nth-of-type(2)': { textAlign: 'left' } }}>
+                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 2, '& td, & th': { p: 1, borderBottom: '1px solid', borderColor: 'divider', textAlign: 'right' }, '& td:nth-of-type(2), & th:nth-of-type(2)': { textAlign: 'left' } }}>
                   <thead><tr><th>#</th><th>Team</th><th>Cash</th><th>Property</th><th>Net worth</th></tr></thead>
                   <tbody>
                     {standings.map((r) => (
@@ -1195,7 +1140,7 @@ export default function MicrobiopolyGame({
 
               {/* NEW: EXPLANATION + NEXT BUTTON */}
               {quizState.waiting && (
-                 <Box sx={{ mt: 3, p: 2, bgcolor: '#f9f9f9', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
+                 <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
                     <Typography variant="subtitle2" fontWeight="bold" color={quizState.isCorrect ? "success.main" : "error.main"}>
                         {quizState.isCorrect ? "Correct!" : "Incorrect"}
                     </Typography>
@@ -1241,8 +1186,12 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'QUESTION' && modalStage === 'DECISION' && (
             <>
-              <Typography variant="h5" color="success.main">Correct</Typography>
-              <Typography sx={{ mt: 1, mb: 2, fontStyle: 'italic', color: '#555' }}>{feedback}</Typography>
+              <Typography variant="h5" color="success.main">✅ Correct!</Typography>
+              {feedback && (
+                <Box sx={{ mt: 1.5, mb: 2, p: 2, borderRadius: 2, bgcolor: 'action.hover', borderLeft: '4px solid', borderColor: 'success.main' }}>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{feedback}</Typography>
+                </Box>
+              )}
               <Divider />
               <Typography sx={{ my: 2 }}>Publish (Buy) for ${activeCard.data.price}?</Typography>
               <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
@@ -1271,8 +1220,24 @@ export default function MicrobiopolyGame({
 
           {modalStage === 'FEEDBACK_INCORRECT' && activeCard?.type !== 'MISHAP' && activeCard?.type !== 'WIN' && (
             <>
-              <Typography variant="h5" color={feedback?.startsWith('Correct') ? 'success.main' : 'error'}>{feedback?.startsWith('Correct') ? 'Success!' : 'Notice'}</Typography>
-              <Typography variant="body1" sx={{ mt: 2 }}>{feedback}</Typography>
+              {(() => {
+                const good = /^(Correct|Impressive|Chaos success)/.test(feedback || '');
+                const bad = /^(Incorrect|Chaos failed|Quiz Failed)/.test(feedback || '');
+                const [headline, ...rest] = (feedback || '').split('\n\n');
+                return (
+                  <>
+                    <Typography variant="h5" color={good ? 'success.main' : bad ? 'error.main' : 'text.primary'}>
+                      {good ? '✅ Correct!' : bad ? '❌ Not quite' : 'Notice'}
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 2, fontWeight: 700 }}>{headline}</Typography>
+                    {rest.length > 0 && (
+                      <Box sx={{ mt: 2, p: 2, borderRadius: 2, bgcolor: 'action.hover', borderLeft: '4px solid', borderColor: good ? 'success.main' : bad ? 'error.main' : 'divider' }}>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{rest.join('\n\n')}</Typography>
+                      </Box>
+                    )}
+                  </>
+                );
+              })()}
               <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>
             </>
           )}
@@ -1291,8 +1256,8 @@ export default function MicrobiopolyGame({
                 <Typography variant="h6" sx={{ color: THEME.danger }}>Rent Due: ${activeCard.rent}</Typography>
                 {activeCard.data.manual && <Button size="small" variant="outlined" onClick={toggleManual}>{manualUnlocked ? showManual ? 'HIDE MANUAL' : 'SHOW MANUAL' : 'MANUAL ($50)'}</Button>}
               </Box>
-              <Box sx={{ bgcolor: '#e3f2fd', p: 2, borderRadius: 2, mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ color: THEME.accent, fontWeight: 'bold' }}>{activeCard.payerName} (You) must answer!</Typography>
+              <Box sx={{ bgcolor: 'info.light', p: 2, borderRadius: 2, mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: 'info.main', fontWeight: 'bold' }}>{activeCard.payerName} (You) must answer!</Typography>
               </Box>
               <Collapse in={showManual}><Alert severity="info" sx={{ mb: 3 }}><Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{activeCard.data.manual}</Typography></Alert></Collapse>
               <Divider sx={{ my: 2 }} />
@@ -1351,6 +1316,6 @@ export default function MicrobiopolyGame({
           <Button fullWidth onClick={() => setManageOpen(false)} sx={{ mt: 2 }}>CLOSE</Button>
         </Box>
       </Modal>
-    </div>
+    </Box>
   );
 }

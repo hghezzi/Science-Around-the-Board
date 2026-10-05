@@ -7,7 +7,7 @@ A customizable, open-source board game engine for education.
 </p>
 
 🎮 **[Play the Game](https://hghezzi.github.io/Science-Around-the-Board/)**
-📚 **[Read the Instructor Manual](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf)**
+📚 **Instructor Guide:** [web](https://hghezzi.github.io/Science-Around-the-Board/guide/) · [PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf). It is rebuilt from [`guide/instructor-guide.md`](guide/instructor-guide.md) whenever the game changes. The March 2026 edition is [archived here](public/archive/SAB_Instructor_Guide_2026-03.pdf).
 
 Student teams roll dice around a 36-tile board and answer **your** questions to buy, defend and upgrade tiles, capture milestone exams and steal rival properties. A pre- and post-game survey measures learning, and every answer is exported to a CSV for grading and analysis. Everything is driven by one spreadsheet (TSV) file, so it works for any subject. Try the built-in 16S/QIIME2 demo, or the Intro Statistics example.
 
@@ -31,7 +31,7 @@ One row per question. The columns are `id, question, option1–option4, correctI
 * **Time's up / End Game.** The highest net worth (cash + property value) wins. Set an optional session timer on the setup screen.
 
 ## Requirements
-* A **computer** with a modern browser. Nothing to install.
+* A **computer** with a modern browser. Nothing to install. Light and dark mode are both supported.
 * An **internet connection** to open the game. Once a session starts, a stable connection is not required.
 * A **TSV question file**, or start with one of the built-in examples.
 
@@ -39,7 +39,10 @@ One row per question. The columns are `id, question, option1–option4, correctI
 The game runs entirely in the browser: question files, answers, surveys and exported CSVs never leave the players' computer. Anonymous usage analytics (Google Analytics) load **only if a visitor opts in**. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
 
 ## For developers
-React + Vite single-page app with no backend. `npm install`, then `npm run dev`. Before pushing, run `npm test`, `npm run lint` and `npm run build`; CI runs the same checks. Deploy with `npm run deploy` (GitHub Pages). See [CLAUDE.md](CLAUDE.md) for an architecture overview.
+React + Vite single-page app with no backend. `npm install`, then `npm run dev`. Before pushing, run `npm test`, `npm run lint` and `npm run build`; CI runs the same checks.
+* `npm run a11y`: accessibility checks (axe-core) on the main screens in light and dark mode, against `npm run preview`.
+* `npm run guide`: rebuilds the Instructor Guide (fresh screenshots, web page and PDF). It needs Playwright's Chromium.
+* `npm run deploy`: deploys to GitHub Pages. See [CLAUDE.md](CLAUDE.md) for an architecture overview.
 
 ## License
 This project is licensed under a **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.

@@ -17,7 +17,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - Mishaps hold practical pitfalls and fun facts.
   - The `explanation` column is the main teaching moment.
 - **Sources of truth for the instructor docs:**
-  - `public/SAB_Instructor_Guide.pdf` (most complete; Google-Docs-authored, not in the repo as source).
+  - `guide/instructor-guide.md`: the living Instructor Guide, built on Hans's March 2026 edition (archived at `public/archive/`). It builds to `public/guide/` and `public/SAB_Instructor_Guide.pdf`.
   - `website/docs/*.md` (Docusaurus, not currently deployed).
   - `README.md`.
   - These docs disagree with each other and with the code in places (see "Known gaps").
@@ -30,6 +30,8 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `npm run build`: production build to `dist/`.
 - `npm run validate-tsv -- file.tsv`: check a question file. Exits 1 on errors.
 - `npm run package-skill`: zip the question-writer skill to `public/downloads/` (also runs automatically before `build`; the output is gitignored).
+- `npm run guide`: rebuilds the Instructor Guide. It runs `vite build`, then `scripts/guide-screenshots.mjs` (Playwright screenshots into `guide/images/`), then `scripts/build-guide.mjs` (writes `public/guide/index.html` and `public/SAB_Instructor_Guide.pdf`). The outputs are committed.
+- `npm run a11y`: axe-core checks on the main screens in light and dark mode. It needs `npm run preview` running on port 4173.
 - `npm run deploy`: builds and pushes `dist/` to the `gh-pages` branch. This is a manual deploy (Vite `base` is `/Science-Around-the-Board/`), so only run it when asked.
 - CI (`.github/workflows/ci.yml`) runs lint and tests, validates both example TSVs with the JS and Python validators, and builds.
 
@@ -51,6 +53,15 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `normalizeQuestion` turns a TSV row into a question; `prepareQuestion` shuffles the options and remaps answers.
   - `checkAnswer` returns `{correct, responseText, correctText}`.
   - `parseMishapAmount` reads the amount from mishap text.
+- `src/theme.js`:
+  - MUI theme with light/dark `colorSchemes`, selected by the media query, so it follows the device setting. Exposed as CSS variables, e.g. `var(--mui-palette-board-felt)`; `v()` builds that string.
+  - Custom `palette.board.*` colours.
+  - `TEAM_COLORS`, `TEAM_SYMBOLS` and `TEAM_NAMES`.
+  - Bundled Fredoka (headings) and Nunito (body) fonts.
+  - **Never hard-code text or background colours in components; use theme tokens.** The old Vite template CSS caused white-on-white text in dark mode.
+- `src/components/`:
+  - `Board.jsx`: responsive 10×10 grid sized with container-query units. The centre holds the title, turn banner, dice and actions.
+  - `Dice.jsx`, `TeamPanel.jsx`, and `confetti.js` (`celebrate()`, which respects reduced motion).
 - `src/QuestionInput.jsx`: renders any format, in game mode (`onSubmit`, `reveal`) or survey mode (`survey`, `onChange`). `QuestionImage` hides images that fail to load.
 - `src/tsvParser.js` (pure): `parseTsv`, `parseTsvHeaders`, `parseList` (comma lists), `getAllTopics`, `getModulesForTopic`.
 - `src/tsvBoardBuilder.js` (pure):
@@ -87,15 +98,17 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - The parser is a simple tab split: quoted cells may not contain tabs or newlines.
 
 ## Known gaps / ideas. Confirm with the user before changing gameplay.
-1. The UI has hard-coded domain wording: "THE SEQUENCING RUN", the "HGPvS" watermark, "Research Groups", "Lab Mishap". Instructor-configurable theming is planned.
-2. There is no autosave (a refresh loses everything), the board is not responsive (a fixed grid at scale 0.85), and accessibility is basic.
+1. Some lab-flavoured wording remains ("Lab Mishap", "Lab manager", "Data Validation", "Funding Crisis"). Instructor-configurable labels and theming are planned.
+2. There is no autosave (a refresh loses everything). The board needs at least about 600 px of width, and phone layouts are not a target.
 3. `type=post` rows are ignored. Pre and post surveys use the same items; parallel forms are an idea.
 4. Question selection is random with repeats. Preferring unseen questions and re-asking missed ones later is an idea.
 5. Instructor analytics dashboard (aggregating class CSVs locally): an idea.
 6. Getting files to students: loading a question file from a shareable URL would remove upload friction.
-7. The Instructor Guide PDF is authored outside the repo and needs manual updates to match the docs (victory rules, formats, grant, consent).
+7. `website/` (Docusaurus) is not deployed and partly duplicates the guide. The living guide in `guide/` is the source of truth.
 
 ## Conventions
 - Develop on the session's assigned branch. Don't push to `main` or deploy unless asked.
 - Keep the pure logic (parser, builder, rules, validator) free of React so it stays testable. Add tests in `tests/` for rule changes.
 - Teams use the live site for classes, so flag any change that alters gameplay, scoring or the CSV format.
+- **Keep the Instructor Guide current.** Every user-facing change updates `guide/instructor-guide.md` and adds a "What's new" entry, then runs `npm run guide` and commits the regenerated outputs.
+- After UI changes, run `npm run a11y` and check both light and dark mode.
