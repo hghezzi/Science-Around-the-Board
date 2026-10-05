@@ -60,18 +60,23 @@
 </blockquote>
 <nav class="toc" aria-label="Contents"><p class="toc-title">Contents</p><ol><li><a href="#whats-new">What’s new</a></li><li><a href="#introduction">Introduction</a></li><li><a href="#definitions">Definitions</a></li><li><a href="#why-use-science-around-the-board">Why use ‘Science Around the Board’?</a></li><li><a href="#important-links">Important links</a></li><li><a href="#how-to-use-science-around-the-board">How to use ‘Science Around the Board’</a></li><li><a href="#game-mechanics">Game mechanics</a></li><li><a href="#endgame-dynamics">Endgame dynamics</a></li><li><a href="#designing-a-session-based-on-science-around-the-board">Designing a session based on ‘Science Around the Board’</a></li><li><a href="#common-challenges">Common challenges</a></li><li><a href="#privacy-and-student-data">Privacy and student data</a></li><li><a href="#conclusion">Conclusion</a></li></ol></nav>
 <h2 id="whats-new">What’s new</h2>
+<p><strong>October 2026 (update)</strong></p>
+<ul>
+<li><strong>Subject-neutral wording.</strong> Everything the game says itself now fits any field: Chance tiles instead of &quot;Lab Mishaps&quot;, <strong>Buy</strong> instead of &quot;Publish&quot;, <strong>Upgrades</strong> instead of &quot;Lab manager&quot;, a <strong>Rescue Quiz</strong> instead of an &quot;Emergency Grant&quot;, and so on. Your own themes, questions and chance-card text are shown exactly as you write them, so a science course can still have lab-themed events.</li>
+<li>If your file has no <code>mishap</code> rows, the built-in chance cards are now general study-life events with learning tips.</li>
+</ul>
 <p><strong>October 2026</strong></p>
 <ul>
 <li><strong>Works in dark mode.</strong> Questions used to be invisible when a browser was set to dark mode. The game now follows each device’s light or dark setting, and both are readable.</li>
 <li><strong>A new look:</strong> a redesigned board with coloured theme bands, animated dice, team symbols (●▲■◆) so teams are not told apart by colour alone, and clearer answer feedback.</li>
 <li><strong>New ways to win:</strong> last team standing, or the highest net worth when time runs out. An optional session timer is set on the setup screen.</li>
-<li><strong>Bankruptcy has consequences:</strong> each team gets one Emergency Grant. Fail it, or go bankrupt again, and the team is eliminated.</li>
+<li><strong>Bankruptcy has consequences:</strong> each team gets one Rescue Quiz. Fail it, or go bankrupt again, and the team is eliminated.</li>
 <li><strong>New question formats:</strong> select-all-that-apply, numeric (with tolerance), ordering and short answer, alongside multiple choice and true/false.</li>
 <li><strong>Answer options are shuffled</strong> every time a question appears, and wrong answers now show the correct one.</li>
 <li><strong>File checker:</strong> when a question file is loaded, the game lists any problems before you start.</li>
 <li><strong>Images are optional</strong> and missing ones are simply hidden.</li>
-<li><strong>Chaos challenges and grant reviews use your own questions</strong> (previously they used built-in bioinformatics questions).</li>
-<li><strong>Mishaps pay or cost the amount written on the card</strong>, for example <em>(-$100)</em>.</li>
+<li><strong>Chaos challenges and rescue quizzes use your own questions</strong> (previously they used built-in bioinformatics questions).</li>
+<li><strong>Chance cards (<code>mishap</code> rows) pay or cost the amount written on the card</strong>, for example <em>(-$100)</em>.</li>
 <li><strong>Richer CSV export:</strong> one row per answered question, with the response, the correct answer and the final standings.</li>
 <li><strong>Question-writer for Claude:</strong> a skill that interviews you and writes a complete, validated question file.</li>
 <li><strong>A second example game:</strong> Intro Statistics, to show the engine outside biology.</li>
@@ -160,7 +165,7 @@
 <tr>
 <td align="left"><code>question</code></td>
 <td align="left">Yes</td>
-<td align="left">The text prompt (for mishaps, the event text)</td>
+<td align="left">The text prompt (for <code>mishap</code> rows, the chance-card text)</td>
 <td align="left">What is the start codon?</td>
 </tr>
 <tr>
@@ -252,8 +257,8 @@
 <li><strong>type:</strong> the most important control column. It dictates when and how a row is used in the game:<ul>
 <li><strong>property:</strong> standard questions used when a team tries to buy or defend a regular tile.</li>
 <li><strong>milestone:</strong> harder, comprehensive questions used for the corner exams. Students must answer 5 out of 6 correctly to capture a milestone, so provide at least 6, and ideally 8–10, per theme.</li>
-<li><strong>core:</strong> questions for the four utility tiles (e.g. the Sequencing Core), shared across the board.</li>
-<li><strong>mishap:</strong> random &quot;chance&quot; events. Write the event text in the <code>question</code> column, including the amount, e.g. <em>&quot;Someone left the freezer open! (-$100)&quot;</em> or <em>&quot;Grant renewal approved! (+$150)&quot;</em>. The game charges or pays exactly that amount. Put a fun fact or practical lesson in the <code>explanation</code> column.</li>
+<li><strong>core:</strong> questions for the four utility tiles (the first <code>core</code> row’s subtheme names them, e.g. “UNIX” or “Statistics”), shared across the board.</li>
+<li><strong>mishap:</strong> the Chance cards, random events drawn when a team lands on a Chance tile. Write the event text in the <code>question</code> column, including the amount, e.g. <em>&quot;Someone left the freezer open! (-$100)&quot;</em> or <em>&quot;Scholarship awarded! (+$150)&quot;</em>. The game charges or pays exactly that amount. Put a fun fact or practical lesson in the <code>explanation</code> column. Theme them to your subject: a history course might use <em>&quot;Archive flooded! (-$100)&quot;</em>. Without <code>mishap</code> rows, the game uses general built-in cards.</li>
 <li><strong>survey / confidence:</strong> these rows bypass the board and form the pre-game and post-game assessments. Ten <code>survey</code> questions are drawn at random for each student, and the same ones are asked again after the game. <code>confidence</code> rows appear as 0–10 sliders and are the same for all students.</li>
 </ul>
 </li>
@@ -329,7 +334,7 @@
 <p>When a file is loaded, the game checks it and lists any problems before the session starts:</p>
 <ul>
 <li><strong>Red items</strong> will break the game or make a question impossible to answer correctly. Examples: fewer than 4 themes, a <code>correctIndex</code> that doesn’t point to an option, or a theme with no milestone questions.</li>
-<li><strong>Yellow notes</strong> are suggestions. Examples: too few survey questions, mishaps without an amount, or ignored rows.</li>
+<li><strong>Yellow notes</strong> are suggestions. Examples: too few survey questions, chance cards without an amount, or ignored rows.</li>
 </ul>
 <p>Load your file yourself before class and fix the red items.</p>
 <p><figure><img src="images/01-landing.png" alt="The start page" loading="lazy"><figcaption>The start page</figcaption></figure></p>
@@ -369,7 +374,7 @@
 <p>Each team’s turn follows a fast-paced loop:</p>
 <ol>
 <li><strong>Roll:</strong> the active team rolls the dice in the centre of the board.</li>
-<li><strong>Move:</strong> their pawn advances around the board automatically. Passing START pays a $200 grant renewal.</li>
+<li><strong>Move:</strong> their pawn advances around the board automatically. Passing START pays $200.</li>
 <li><strong>Encounter:</strong> the team interacts with the tile they land on.</li>
 </ol>
 <p><figure><img src="images/06-board.png" alt="The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth" loading="lazy"><figcaption>The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth</figcaption></figure></p>
@@ -387,23 +392,23 @@
 </ul>
 </li>
 <li><strong>Milestones (corner exams):</strong> capturing a corner requires more than money; it requires mastery. Teams pay an entrance fee and must answer 5 out of 6 questions on that side’s theme. Capturing a milestone earns a Chaos Token. Landing on a rival’s milestone offers an expert challenge to halve the fee.</li>
-<li><strong>Core facilities:</strong> utility tiles with questions from your <code>core</code> rows.</li>
-<li><strong>Lab mishaps (chance):</strong> random events from your file that pay or cost the amount written on the card (e.g. &quot;Grant renewal approved! +$200&quot; or &quot;Contamination! -$100&quot;), with a fun fact.</li>
+<li><strong>Core tiles:</strong> utility tiles with questions from your <code>core</code> rows.</li>
+<li><strong>Chance tiles:</strong> draw a random card from your <code>mishap</code> rows that pays or costs the amount written on it (e.g. &quot;Scholarship awarded! +$200&quot; or &quot;Contamination! -$100&quot;), with a fun fact.</li>
 </ul>
 <p><figure><img src="images/07-question.png" alt="A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder" loading="lazy"><figcaption>A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder</figcaption></figure></p>
 <p><figure><img src="images/08-feedback.png" alt="Feedback after an answer, with the correct answer and your explanation" loading="lazy"><figcaption>Feedback after an answer, with the correct answer and your explanation</figcaption></figure></p>
 <h3 id="advanced-mechanics-lab-management-and-chaos">Advanced mechanics: lab management and chaos</h3>
 <p>To keep engagement high in the later stages of the session, the engine includes two advanced mechanics:</p>
 <ul>
-<li><strong>Upgrading infrastructure:</strong> if a team owns all the tiles in a subtheme (e.g. all the &quot;Primer Selection&quot; tiles), they can use the <strong>Lab manager</strong> to upgrade those tiles evenly, up to four stars. This drastically increases the rent charged to rivals who land there.</li>
+<li><strong>Upgrades:</strong> if a team owns all the tiles in a subtheme (e.g. all the &quot;Primer Selection&quot; tiles), they can use the <strong>Upgrades</strong> button to upgrade those tiles evenly, up to four stars. This drastically increases the rent charged to rivals who land there.</li>
 <li><strong>Chaos tokens:</strong> capturing a milestone awards a Chaos Token. A token can be spent on a Chaos Challenge against a rival’s property: answer a question from that property’s own subtheme correctly to steal it for half its price, or pay a small fine. Once all four milestones have been captured, Chaos Tokens can be bought for $500.</li>
 </ul>
-<h3 id="bankruptcy-and-the-emergency-grant">Bankruptcy and the Emergency Grant</h3>
+<h3 id="bankruptcy-and-the-rescue-quiz">Bankruptcy and the Rescue Quiz</h3>
 <p>If a team’s balance goes negative:</p>
 <ol>
 <li><strong>Liquidation:</strong> the team must sell properties or downgrade upgrades until it is back above zero.</li>
-<li><strong>Emergency Grant (once per game):</strong> if selling everything still can’t cover the debt, the team takes a 3-question grant review. With 2 or more correct answers, the debt is cleared and the team receives $500 to keep playing.</li>
-<li><strong>Elimination:</strong> a team that fails the grant review, or goes bankrupt a second time, is eliminated, and its properties return to the bank.</li>
+<li><strong>Rescue Quiz (once per game):</strong> if selling everything still can’t cover the debt, the team takes a 3-question Rescue Quiz. With 2 or more correct answers, the debt is cleared and the team receives $500 to keep playing.</li>
+<li><strong>Elimination:</strong> a team that fails the Rescue Quiz, or goes bankrupt a second time, is eliminated, and its properties return to the bank.</li>
 </ol>
 <h2 id="endgame-dynamics">Endgame dynamics</h2>
 <p>The game ends when only one team is left standing, when the session timer runs out (the timer turns orange in the last 5 minutes), or when a team clicks <strong>End game</strong>. A <strong>Final Standings</strong> screen ranks the teams by net worth and names the winner.</p>
@@ -451,7 +456,7 @@
 <ul>
 <li><strong>Foundational knowledge (properties):</strong> use standard property tiles to test basic recall and terminology. If an LO is &quot;Define the function of 16S rRNA&quot;, it belongs on a property tile.</li>
 <li><strong>Synthesis and application (milestones):</strong> the four corner milestones represent mastery. Reserve your highest-order thinking questions for these exams. If an LO is &quot;Analyze a pipeline output to troubleshoot denoising errors&quot;, that scenario is better suited to a milestone quiz. Ordering questions (put the steps of a workflow in order) work especially well here.</li>
-<li><strong>Practical realities (mishaps):</strong> use Lab Mishaps to teach practical realities or common pitfalls that do not fit neatly into a question format (e.g. &quot;You forgot to balance the centrifuge! (-$100)&quot;).</li>
+<li><strong>Practical realities (chance cards):</strong> use your <code>mishap</code> rows to teach practical realities or common pitfalls that do not fit neatly into a question format (e.g. &quot;You forgot to balance the centrifuge! (-$100)&quot;).</li>
 </ul>
 <p>Science Around the Board was originally designed for review-style sessions, so it is naturally better suited to “recall”, “understand” or “apply” learning objectives than to “create” levels.</p>
 <h3 id="crafting-the-question-file">Crafting the question file</h3>
