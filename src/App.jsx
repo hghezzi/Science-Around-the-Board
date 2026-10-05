@@ -9,6 +9,7 @@ import { normalizeQuestion, prepareQuestion, checkAnswer } from "./questionForma
 import { bestPreSurveyPlayer } from "./gameRules";
 import { resolveImage } from "./images";
 import QuestionInput from "./QuestionInput";
+import { resetConsent } from "./consent";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
@@ -402,7 +403,11 @@ export default function App() {
 
           {loadingError && <Alert severity="error" sx={{ mt: 2 }}>{loadingError}</Alert>}
         </Card>
-        <Typography variant="caption" sx={{ mt: 4, display: 'block', color: '#888' }}>Designed by Hans Ghezzi</Typography>
+        <Typography variant="caption" sx={{ mt: 4, display: 'block', color: '#888' }}>
+          Designed by Hans Ghezzi ·{" "}
+          <a href="./privacy.html" target="_blank" rel="noopener" style={{ color: '#888' }}>Privacy</a> ·{" "}
+          <a href="#" onClick={(e) => { e.preventDefault(); resetConsent(); }} style={{ color: '#888' }}>Analytics settings</a>
+        </Typography>
       </Container>
     );
   }
