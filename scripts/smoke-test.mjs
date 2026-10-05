@@ -143,6 +143,8 @@ function checkCsv(rows, teams, label) {
   }
   const results = rows.filter((r) => r.eventType === "GAME_RESULT").length;
   if (results !== teams) fail(`${label}: CSV has ${results} GAME_RESULT rows (expected ${teams})`);
+  const info = rows.filter((r) => r.eventType === "TEAM_INFO").length;
+  if (info !== teams) fail(`${label}: CSV has ${info} TEAM_INFO rows (expected ${teams})`);
 }
 
 async function teamScenario(teams, colorScheme = "light") {
@@ -159,9 +161,50 @@ async function teamScenario(teams, colorScheme = "light") {
   await context.close();
 }
 
+// The question file gets results config rows; the Google Apps Script endpoint is mocked.
+async function resultsScenario() {
+  console.log("▶ results (mock Google Sheet)");
+  const { context, page } = await newPage();
+  const cfg = (id, value) => [id, value, ...Array(10).fill(""), "config", "", "", "", ""].join("\t");
+  await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+    const response = await route.fetch();
+    const text = (await response.text()).replace(/\s+$/, "");
+    const extra = [cfg("results_url", "https://script.google.com/macros/s/TEST/exec"), cfg("instructor_email", "instructor@example.edu"), cfg("course", "Smoke Test 101")];
+    await route.fulfill({ response, body: `${text}\r\n${extra.join("\r\n")}\r\n` });
+  });
+  let posted = null;
+  await page.route("https://script.google.com/**", async (route) => {
+    posted = JSON.parse(route.request().postData() || "null");
+    await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: '{"ok":true}' });
+  });
+  await openDemo(page);
+  if (!(await page.getByText(/Results will be sent to your instructor/).count())) fail("results: start page doesn't mention sending results");
+  await setupGame(page, 1);
+  await doSurvey(page, 1, "results pre");
+  await page.getByText("Game log").waitFor();
+  await finishGame(page, 1, "results");
+  const send = page.getByRole("button", { name: /Send results to instructor/ });
+  if (await send.isEnabled()) fail("results: Send should be disabled until names are typed");
+  await page.getByLabel(/names or student IDs/).first().fill("Test Student");
+  await send.click();
+  await page.getByText(/^Sent!/).waitFor({ timeout: 10000 });
+  if (!posted) fail("results: nothing was posted");
+  else {
+    if (posted.app !== "science-around-the-board" || posted.course !== "Smoke Test 101") fail("results: payload is missing the app or course");
+    if (posted.summary?.[0]?.members !== "Test Student") fail("results: summary is missing the student name");
+    if (!(posted.rows?.length > 10)) fail("results: payload has too few rows");
+  }
+  const email = page.getByRole("link", { name: /Email results to instructor/ });
+  const href = (await email.count()) ? await email.getAttribute("href") : "";
+  if (!href.startsWith("mailto:instructor@example.edu?subject=")) fail(`results: Email link is wrong ("${href.slice(0, 60)}")`);
+  else if (!decodeURIComponent(href).includes("Test Student")) fail("results: email draft doesn't name the team members");
+  await context.close();
+}
+
 const SCENARIOS = {
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),
+  results: resultsScenario,
 };
 const selected = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
 for (const name of selected) {

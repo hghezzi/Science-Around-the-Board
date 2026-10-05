@@ -1042,7 +1042,7 @@ export default function GameScreen({
                     ))}
                   </tbody>
                 </Box>
-                <Alert severity="info" sx={{ mb: 2 }}>Next: the post-game survey. Then export your CSV from the summary screen.</Alert>
+                <Alert severity="info" sx={{ mb: 2 }}>Next: the post-game survey. Then send or download your results on the final screen.</Alert>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   {!activeCard.forced && <Button fullWidth variant="outlined" onClick={() => setModalOpen(false)}>BACK TO GAME</Button>}
                   <Button fullWidth variant="contained" color="success" onClick={() => handleEndGame(activeCard.reason)}>CONTINUE TO POST-SURVEY</Button>

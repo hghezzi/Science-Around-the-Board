@@ -7,6 +7,8 @@ import { parseTsv, getAllTopics, getModulesForTopic } from "./tsvParser";
 import { validateQuestionRows } from "./tsvValidator";
 import { checkAnswer } from "./questionFormats";
 import { buildSurveySets, buildConfidenceQuestions } from "./surveys";
+import { readConfig } from "./config";
+import { toCsv, resultsFilename, summarizeTeams, teamInfoRows, makeSessionId, buildPayload, sendResults, buildMailto, downloadText } from "./results";
 import { bestPreSurveyPlayer } from "./gameRules";
 import { resolveImage } from "./images";
 import QuestionInput from "./QuestionInput";
@@ -17,7 +19,7 @@ import { teamDisplayName } from "./labels";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
-  Box, Slider, Divider, Modal, Alert, Paper,
+  Box, Slider, Divider, Modal, Alert, Paper, TextField,
 } from "@mui/material";
 
 /* -------------------------------------------------------------------------- */
@@ -204,18 +206,87 @@ function ValidationReport({ validation, imageMap, imageBase = "" }) {
   );
 }
 
-function SummaryView({ onExport, onReturn }) {
+function SummaryView({ playerCount, config, topic, module, preRows, postRows, gameRows, onReturn }) {
+  const [members, setMembers] = useState(() => Array(playerCount).fill(""));
+  const [sessionId] = useState(() => makeSessionId());
+  const [sendState, setSendState] = useState({ status: "idle", message: "" });
+  const summary = summarizeTeams({ preRows, postRows, gameRows, playerCount, members });
+  const namesMissing = config.askNames && members.some((m) => !m.trim());
+  const filename = resultsFilename(topic, module);
+  const allRows = () => [...teamInfoRows(summary, sessionId), ...preRows, ...gameRows, ...postRows];
+  const download = () => downloadText(filename, toCsv(allRows()));
+  const send = async () => {
+    setSendState({ status: "sending", message: "" });
+    const result = await sendResults(config.resultsUrl, buildPayload({ sessionId, config, topic, module, summary, rows: allRows() }));
+    setSendState(result.status === "sent" ? { status: "sent", message: "" } : { status: "error", message: result.message });
+  };
+  // A real mailto: link (most reliable way to open the email app); clicking it also downloads the file to attach.
+  const mailtoHref = config.instructorEmail
+    ? buildMailto({ to: config.instructorEmail, course: config.course, topic, module, summary, filename })
+    : "";
+  const hasDelivery = Boolean(config.resultsUrl || config.instructorEmail);
+  let sheetHost = "";
+  try { sheetHost = config.resultsUrl ? new URL(config.resultsUrl).hostname : ""; } catch { /* filtered by readConfig */ }
+
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 8 }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 6 }}>
       <Container maxWidth="sm">
-        <Card sx={{ p: 4, textAlign: "center" }}>
-          <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1 }}>🏁</Box>
-          <Typography variant="h4" component="h1" sx={{ mt: 1 }}>Session complete</Typography>
-          <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
-            Download your results and submit the file as your instructor asked. Closing this tab first will lose the data.
+        <Card sx={{ p: { xs: 3, md: 4 } }}>
+          <Box sx={{ textAlign: "center" }}>
+            <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1 }}>🏁</Box>
+            <Typography variant="h4" component="h1" sx={{ mt: 1 }}>Session complete</Typography>
+          </Box>
+          <Box component="table" sx={{ width: "100%", borderCollapse: "collapse", my: 3, "& td, & th": { p: 1, borderBottom: "1px solid", borderColor: "divider", textAlign: "left" } }}>
+            <thead><tr><th>Team</th><th>Survey before</th><th>Survey after</th></tr></thead>
+            <tbody>
+              {summary.map((t) => (
+                <tr key={t.playerIndex}>
+                  <td>{TEAM_SYMBOLS[t.playerIndex]} {t.team}</td>
+                  <td>{t.preScore}/{t.surveyQuestions}</td>
+                  <td><strong>{t.postScore}/{t.surveyQuestions}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          </Box>
+          <Typography variant="h6" component="h2">Who played?</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            {config.askNames ? "Required by your instructor:" : "Optional:"} type the names or student IDs of everyone on each team.
           </Typography>
-          <Button variant="contained" size="large" fullWidth sx={{ py: 1.5, fontSize: "1.1rem" }} onClick={onExport}>⬇ Export CSV</Button>
-          <Button variant="text" fullWidth sx={{ mt: 1.5 }} onClick={onReturn}>Back to main menu</Button>
+          {summary.map((t, i) => (
+            <TextField
+              key={i}
+              fullWidth
+              required={config.askNames}
+              sx={{ mb: 1.5 }}
+              label={`${TEAM_SYMBOLS[i]} ${t.team}: names or student IDs`}
+              value={members[i]}
+              onChange={(e) => setMembers((prev) => prev.map((m, j) => (j === i ? e.target.value : m)))}
+            />
+          ))}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 2 }}>
+            {config.resultsUrl && (
+              <>
+                <Button variant="contained" size="large" disabled={namesMissing || ["sending", "sent"].includes(sendState.status)} onClick={send}>
+                  {sendState.status === "sending" ? "Sending…" : sendState.status === "sent" ? "Sent ✓" : "📤 Send results to instructor"}
+                </Button>
+                <Typography variant="caption" color="text.secondary">Goes straight to your instructor's results sheet ({sheetHost}).</Typography>
+                {sendState.status === "sent" && <Alert severity="success">Sent! Your instructor has your results. You can also download a copy below.</Alert>}
+                {sendState.status === "error" && <Alert severity="error">{sendState.message}</Alert>}
+              </>
+            )}
+            {config.instructorEmail && (
+              <>
+                <Button variant={config.resultsUrl ? "outlined" : "contained"} size="large" disabled={namesMissing} href={mailtoHref} onClick={download}>✉ Email results to instructor</Button>
+                <Typography variant="caption" color="text.secondary">Downloads the results file and opens your email app. Attach the file before sending.</Typography>
+              </>
+            )}
+            <Button variant={hasDelivery ? "text" : "contained"} size="large" onClick={download}>⬇ Download results (CSV)</Button>
+            {!hasDelivery && <Typography variant="caption" color="text.secondary">Submit this file as your instructor asked, for example on your course page.</Typography>}
+            <Button variant="text" color="inherit" onClick={onReturn}>Back to main menu</Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 2 }}>
+            Closing this tab before sending or downloading loses the results.
+          </Typography>
         </Card>
       </Container>
     </Box>
@@ -249,6 +320,7 @@ export default function App() {
     () => (allTsvRows.length ? validateQuestionRows(allTsvRows) : null),
     [allTsvRows]
   );
+  const config = useMemo(() => readConfig(allTsvRows), [allTsvRows]);
 
   useEffect(() => {
     const handlePopState = () => window.history.pushState(null, document.title, window.location.href);
@@ -339,20 +411,6 @@ export default function App() {
     setPhase("PRE_SURVEY");
   };
 
-  const handleExport = () => {
-    const full = [...preRows, ...gameRows, ...postRows];
-    const headers = Array.from(new Set(full.flatMap(Object.keys)));
-    const csv = [headers.join(","), ...full.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g,'""')}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "sab_results.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   // --- Render ---
 
   // REVISED LOGIC: Show Landing Page if NO Data OR Not Confirmed
@@ -403,6 +461,9 @@ export default function App() {
               <Alert severity="success" sx={{ mb: 2 }}>
                 <strong>Loaded {allTsvRows.length} questions.</strong> Check the notes below, then continue.
               </Alert>
+              {(config.resultsUrl || config.instructorEmail) && (
+                <Alert severity="info" sx={{ mb: 2 }}>Results will be sent to your instructor at the end of the game.</Alert>
+              )}
               <ValidationReport validation={validation} imageMap={localImageMap} />
               <Button variant="outlined" component="label" fullWidth size="large" color="secondary" sx={{ mb: 1 }}>
                 🖼️ Optional: upload images
@@ -517,5 +578,5 @@ export default function App() {
   if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
   if (phase === "GAME") return <GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
   if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
-  return <SummaryView onExport={handleExport} onReturn={() => { setPhase("SETUP"); setGameMode(null); setAllTsvRows([]); }} />;
+  return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} onReturn={() => { setPhase("SETUP"); setGameMode(null); setAllTsvRows([]); }} />;
 }

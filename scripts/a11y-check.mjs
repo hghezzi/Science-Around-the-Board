@@ -63,6 +63,18 @@ for (const scheme of ["light", "dark"]) {
     const next = page.locator('.MuiModal-root button:has-text("CONTINUE"), .MuiModal-root button:has-text("DECLINE"), .MuiModal-root button:has-text("SKIP")').first();
     if (await next.count()) await next.click();
   }
+  // Close any open dialog, end the game and audit the end screen.
+  for (let k = 0; k < 5 && (await page.locator(".MuiModal-root").count()); k++) {
+    const close = page.locator('.MuiModal-root button:has-text("SKIP"), .MuiModal-root button:has-text("CONTINUE"), .MuiModal-root button:has-text("DECLINE")').first();
+    if (await close.count()) await close.click();
+    await page.waitForTimeout(400);
+  }
+  await page.click('button:has-text("End game")');
+  await page.click('button:has-text("CONTINUE TO POST-SURVEY")');
+  await page.click('button:has-text("Continue to Questions")');
+  await page.click('button:has-text("Finish Surveys")');
+  await page.getByText("Session complete").waitFor();
+  await audit(page, `${scheme} summary`);
   await context.close();
 }
 await browser.close();

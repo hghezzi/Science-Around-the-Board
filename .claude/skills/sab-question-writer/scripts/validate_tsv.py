@@ -15,7 +15,9 @@ import re
 import sys
 from collections import Counter
 
-KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence"]
+KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence", "config"]
+CONFIG_KEYS = ["results_url", "instructor_email", "course", "ask_names"]
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 QUIZ_TYPES = ["property", "milestone", "core", "survey"]
 REQUIRED = ["id", "question", "type"]
 QUIZ_HEADERS = ["option1", "option2", "option3", "option4", "correctIndex", "explanation"]
@@ -97,6 +99,27 @@ def explicit_amount(text):
     return bool(re.search(r"[+\-−]\s*\$\s*\d", s) or re.search(r"\(\s*[+\-−]\s*\d[\d,]*\s*\)", s))
 
 
+def check_config(r, label, errors, warnings):
+    """Instructor settings (type = config): setting name in `id`, value in `question`."""
+    key = (r.get("id") or "").strip().lower()
+    value = (r.get("question") or "").strip()
+    if key not in CONFIG_KEYS:
+        warnings.append(f"Unknown config setting {label} will be ignored. Valid settings: {', '.join(CONFIG_KEYS)}.")
+        return
+    if not value:
+        errors.append(f'Config "{key}" has no value; put the value in the question column.')
+        return
+    if key == "results_url":
+        if not re.match(r"^https://", value, re.I):
+            errors.append('Config "results_url" must be an https:// link (the Web app URL from Google Apps Script).')
+        elif not re.match(r"^https://script\.google\.com/macros/s/.+/exec", value, re.I):
+            warnings.append('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.')
+    if key == "instructor_email" and not EMAIL_RE.match(value):
+        errors.append('Config "instructor_email" is not a valid email address.')
+    if key == "ask_names" and value.lower() not in ("yes", "no", "y", "n", "true", "false", "1", "0"):
+        warnings.append('Config "ask_names" should be yes or no.')
+
+
 def summarize(labels, n=5):
     return ", ".join(labels) if len(labels) <= n else ", ".join(labels[:n]) + f" and {len(labels) - n} more"
 
@@ -119,6 +142,7 @@ def validate(headers, rows, image_dir=None):
     buckets = {k: [] for k in ["type", "case", "noq", "few", "ans", "fmt", "multi", "num", "tol", "text", "noexp", "mishap"]}
     ids = Counter(r.get("id") for r in rows if r.get("id"))
     images, positions = set(), Counter()
+    format_counts = {"mcq": 0, "trueFalse": 0, "multi": 0, "numeric": 0, "order": 0, "text": 0}
     for i, r in enumerate(rows):
         label = f'"{r["id"]}"' if r.get("id") else f"row {i + 2}"
         raw = (r.get("type") or "").strip()
@@ -130,6 +154,9 @@ def validate(headers, rows, image_dir=None):
             continue
         if raw != t:
             buckets["case"].append(label)
+        if t == "config":
+            check_config(r, label, errors, warnings)
+            continue
         if not (r.get("question") or "").strip():
             buckets["noq"].append(label)
         if t == "mishap" and not explicit_amount(r.get("question")):
@@ -143,6 +170,9 @@ def validate(headers, rows, image_dir=None):
             continue
         opts = [r.get(f"option{k}", "") for k in range(1, 5)]
         opts = [o for o in opts if o]
+        format_counts[fmt] += 1
+        if fmt == "mcq" and len(opts) == 2:
+            format_counts["trueFalse"] += 1
         if fmt == "mcq":
             if len(opts) < 2:
                 buckets["few"].append(label)
@@ -258,7 +288,8 @@ def validate(headers, rows, image_dir=None):
                 warnings.append(f'[{name}] No "confidence" rows.')
             games.append(game)
 
-    stats = {"rows": len(rows), "mcq_correct_positions": dict(sorted(positions.items())), "images": sorted(images)}
+    stats = {"rows": len(rows), "mcq_correct_positions": dict(sorted(positions.items())), "images": sorted(images),
+             "format_counts": format_counts}
     if image_dir is not None:
         present = set(os.listdir(image_dir)) if os.path.isdir(image_dir) else set()
         missing_imgs = [i for i in sorted(images) if not re.match(r"^(https?:|data:)", i, re.I) and i not in present]
@@ -297,6 +328,8 @@ def main():
             print(f"  core: {c['core']}, mishap: {c['mishap']}, survey: {c['survey']}, confidence: {c['confidence']}")
         s = result["stats"]
         print(f"Rows: {s['rows']}; mcq correct positions: {s['mcq_correct_positions']}")
+        f = s["format_counts"]
+        print(f"Formats: mcq {f['mcq']} (true/false {f['trueFalse']}), multi {f['multi']}, numeric {f['numeric']}, order {f['order']}, text {f['text']}")
         if s["images"]:
             print(f"Images referenced: {', '.join(s['images'])}")
         print()

@@ -102,3 +102,48 @@ describe("question formats in the validator", () => {
     expect(w).toMatch(/Mishap without an explicit amount.*"mm"/);
   });
 });
+
+describe("config rows and format counts", () => {
+  const cfg = (id, value) => [id, value, "", "", "", "", "", "", "", "", "", "", "config", ""].join("\t");
+  const withConfig = (...rows) => validate([makeTsv(), ...rows].join("\n"));
+
+  it("accepts valid instructor settings without errors or warnings", () => {
+    const r = withConfig(
+      cfg("results_url", "https://script.google.com/macros/s/AKfy123/exec"),
+      cfg("instructor_email", "prof@uni.edu"),
+      cfg("course", "BIOL 101"),
+      cfg("ask_names", "no"),
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("explains bad links, addresses, values and unknown settings", () => {
+    const r = withConfig(
+      cfg("results_url", "http://example.com/collect"),
+      cfg("instructor_email", "prof-at-uni"),
+      cfg("course", ""),
+      cfg("colour", "blue"),
+      cfg("ask_names", "maybe"),
+    );
+    const e = r.errors.join("\n");
+    const w = r.warnings.join("\n");
+    expect(e).toMatch(/"results_url" must be an https:\/\/ link/);
+    expect(e).toMatch(/"instructor_email" is not a valid email address/);
+    expect(e).toMatch(/"course" has no value/);
+    expect(w).toMatch(/Unknown config setting "colour"/);
+    expect(w).toMatch(/"ask_names" should be yes or no/);
+  });
+
+  it("warns when the results link isn't an Apps Script web app", () => {
+    const w = withConfig(cfg("results_url", "https://example.com/collect")).warnings.join("\n");
+    expect(w).toMatch(/doesn't look like a Google Apps Script/);
+  });
+
+  it("counts questions per answer format", () => {
+    const f = validate(DEMO_TSV).formatCounts;
+    expect(f.mcq).toBeGreaterThan(100);
+    ["multi", "numeric", "order", "text"].forEach((k) => expect(f[k]).toBeGreaterThanOrEqual(1));
+    expect(validate(makeTsv()).formatCounts).toEqual({ mcq: 43, trueFalse: 0, multi: 0, numeric: 0, order: 0, text: 0 }); // 4 themes x (2 + 6) + 1 core + 10 survey
+  });
+});
