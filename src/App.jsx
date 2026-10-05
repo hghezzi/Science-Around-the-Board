@@ -3,6 +3,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import CryptoJS from "crypto-js"; 
 import { buildBoardFromTsv } from "./gameData"; 
 import MicrobiopolyGame from "./MicrobiopolyGame";
+import { parseTsv, parseList, getAllTopics, getModulesForTopic } from "./tsvParser";
+import { validateQuestionRows } from "./tsvValidator";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
@@ -18,28 +20,6 @@ async function fetchDefaultQuestions(url = "./SAB_questions_Jan22_Filtered.tsv")
   if (!res.ok) throw new Error(`Could not load default questions (${res.status})`);
   const text = await res.text();
   return parseTsv(text);
-}
-
-function parseTsv(text) {
-  const cleanText = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const lines = cleanText.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
-  if (lines.length < 2) return [];
-  const headers = lines[0].split("\t").map((h) => h.trim());
-  return lines.slice(1).map((ln) => {
-    const cols = ln.split("\t");
-    const obj = {};
-    headers.forEach((h, i) => {
-      let val = (cols[i] || "").trim();
-      if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1).replace(/""/g, '"');
-      obj[h.trim()] = val;
-    });
-    return obj;
-  });
-}
-
-function parseList(str) {
-  if (!str) return [];
-  return str.split(",").map((item) => item.trim().replace(/^"|"$/g, ""));
 }
 
 function rowToSurveyQuestion(row) {
@@ -70,30 +50,6 @@ function filterSurveyRows(all, { bigTopic, module, type }) {
     }
     return true;
   });
-}
-
-function getModulesForTopic(all, bigTopic) {
-  const set = new Set();
-  all.forEach((r) => {
-    const rowTopicStr = (r.bigTopic || "").trim();
-    if (!rowTopicStr) return;
-    const topics = parseList(rowTopicStr);
-    if (topics.includes(bigTopic)) {
-      const mStr = (r.module || "").trim();
-      if (mStr) parseList(mStr).forEach((m) => set.add(m));
-    }
-  });
-  return Array.from(set);
-}
-
-function getAllTopics(all) {
-  const set = new Set();
-  all.forEach((r) => {
-    const tStr = (r.bigTopic || "").trim();
-    if (!tStr) return;
-    parseList(tStr).forEach((t) => { if (t) set.add(t); });
-  });
-  return Array.from(set);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -281,6 +237,46 @@ function PostSurveyView({ playerCount, playerQuestionSets, confidenceQuestions, 
   );
 }
 
+function ValidationReport({ validation, imageMap }) {
+  if (!validation) return null;
+  const { errors, warnings, images } = validation;
+  const missingImages = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/.test(img));
+  if (!errors.length && !warnings.length && !missingImages.length) return null;
+  return (
+    <Box sx={{ mb: 3, textAlign: "left" }}>
+      {errors.length > 0 && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+            {errors.length} problem{errors.length > 1 ? "s" : ""} found in this question file. The game may not work correctly.
+          </Typography>
+          <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+            {errors.map((e, i) => <li key={i}><Typography variant="caption">{e}</Typography></li>)}
+          </ul>
+        </Alert>
+      )}
+      {warnings.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 1 }}>
+          <details>
+            <summary style={{ cursor: "pointer" }}>
+              <Typography variant="body2" component="span">{warnings.length} note{warnings.length > 1 ? "s" : ""} about this question file</Typography>
+            </summary>
+            <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+              {warnings.map((w, i) => <li key={i}><Typography variant="caption">{w}</Typography></li>)}
+            </ul>
+          </details>
+        </Alert>
+      )}
+      {missingImages.length > 0 && (
+        <Alert severity="info">
+          <Typography variant="body2">
+            This file references {missingImages.length} image{missingImages.length > 1 ? "s" : ""} not uploaded yet: {missingImages.join(", ")}
+          </Typography>
+        </Alert>
+      )}
+    </Box>
+  );
+}
+
 function SummaryView({ onExport, onReturn }) {
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
@@ -314,8 +310,13 @@ export default function App() {
   const [filesConfirmed, setFilesConfirmed] = useState(false);
   const [localImageMap, setLocalImageMap] = useState({});
 
+  const validation = useMemo(
+    () => (allTsvRows.length ? validateQuestionRows(allTsvRows) : null),
+    [allTsvRows]
+  );
+
   useEffect(() => {
-    const handlePopState = (event) => window.history.pushState(null, document.title, window.location.href);
+    const handlePopState = () => window.history.pushState(null, document.title, window.location.href);
     const handleBeforeUnload = (e) => {
       if (phase !== "SETUP" && phase !== "SUMMARY") { e.preventDefault(); e.returnValue = "Game progress will be lost."; return "Game progress will be lost."; }
     };
@@ -361,13 +362,13 @@ export default function App() {
           const decrypted = bytes.toString(CryptoJS.enc.Utf8);
           if (!decrypted || !decrypted.includes("\t")) throw new Error();
           text = decrypted;
-        } catch (err) { setLoadingError("Incorrect password or invalid file."); return; }
+        } catch { setLoadingError("Incorrect password or invalid file."); return; }
       }
       try {
         const rows = parseTsv(text);
         if (rows.length > 0) { setAllTsvRows(rows); setGameMode(null); setSelectedModule(null); } 
         else { setLoadingError("File contains no valid rows."); }
-      } catch (err) { setLoadingError("Could not parse TSV."); }
+      } catch { setLoadingError("Could not parse TSV."); }
     };
     reader.readAsText(file);
   };
@@ -457,6 +458,8 @@ export default function App() {
                 <Alert severity="success" sx={{ mb: 3, textAlign: 'left' }}>
                     <Typography variant="body1"><strong>Success!</strong> Loaded {allTsvRows.length} questions.</Typography>
                 </Alert>
+
+                <ValidationReport validation={validation} imageMap={localImageMap} />
 
                 <Button variant="outlined" component="label" fullWidth size="large" color="secondary" sx={{ mb: 2 }}>
                     Optional: Upload Images

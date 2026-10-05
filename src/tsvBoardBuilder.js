@@ -25,13 +25,7 @@
 // - "core" rows -> CoreTech.questions
 // ------------------------------------------------------------
 
-// ✨ NEW: Helper to parse comma-separated lists (matches App.jsx logic)
-function parseList(str) {
-  if (!str) return [];
-  return str.split(",").map((item) => {
-    return item.trim().replace(/^"|"$/g, "");
-  });
-}
+import { parseList } from "./tsvParser.js";
 
 /**
  * Convert a TSV question row into the internal question format
@@ -71,7 +65,7 @@ export function rowToQuestion(row) {
  * 🔧 FIXED: Helper to check if row matches topic + module
  * Now uses comma-separated list logic (matches App.jsx)
  */
-function matchesTopicAndModule(row, bigTopic, module) {
+export function matchesTopicAndModule(row, bigTopic, module) {
   // 1. Check Topic Match
   const rowTopicStr = (row.bigTopic || "").trim();
   

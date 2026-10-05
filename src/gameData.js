@@ -23,7 +23,7 @@ export function buildBoardFromTsv(topicKey, tsvRows, module) {
 }
 
 // Legacy hook if something still calls this.
-export const getBoardByTopic = (topic) => createBoard(null);
+export const getBoardByTopic = () => createBoard(null);
 
 // -------------------------------------------------------------------
 //  MAIN BOARD GENERATION (36-tile layout)

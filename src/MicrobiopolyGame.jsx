@@ -17,6 +17,7 @@ import {
   Paper,
 } from '@mui/material';
 import { LAB_MISHAPS } from './questionBank';
+import { getSubgroupTiles, getRentMultiplier, computeRent } from './gameRules';
 
 const THEME = {
   bg: '#f0f2f5',
@@ -87,51 +88,6 @@ const CODE_CHALLENGE_BANK = [
 // ------------------------------------------------------------------
 //  HELPER FUNCTIONS
 // ------------------------------------------------------------------
-
-function getSubgroupTiles(board, tile) {
-  if (!tile || tile.type !== 'property') return [];
-  return board.filter(
-    (t) =>
-      t.type === 'property' &&
-      t.group === tile.group &&
-      t.sub === tile.sub
-  );
-}
-
-function ownsFullSubgroup(board, tile, ownerId) {
-  const groupTiles = getSubgroupTiles(board, tile);
-  if (groupTiles.length === 0) return false;
-  return groupTiles.every((t) => t.owner === ownerId);
-}
-
-// RENT MULTIPLIERS (Exponential Curve)
-function getRentMultiplier(board, tile) {
-  if (!tile) return 0;
-  if (tile.type === 'milestone') return 1.0;
-  if (tile.type === 'sequencing_core') return 1.0;
-  if (tile.type !== 'property') return 1.0;
-
-  const ownerId = tile.owner;
-  if (ownerId === null || ownerId === undefined) return 0;
-
-  const fullGroup = ownsFullSubgroup(board, tile, ownerId);
-  if (!fullGroup) return 0.5;
-
-  if (tile.level === 0) return 1.0;
-  if (tile.level === 1) return 3.0;
-  if (tile.level === 2) return 6.0;
-  if (tile.level === 3) return 10.0;
-  if (tile.level >= 4) return 20.0;
-
-  return 1.0;
-}
-
-function computeRent(board, tile) {
-  if (!tile) return 0;
-  const base = tile.baseRent || 0;
-  const mult = getRentMultiplier(board, tile);
-  return Math.floor(base * mult);
-}
 
 function downloadCSV(rows, filename = 'microbiopoly_log.csv') {
   if (!rows || rows.length === 0) return;
@@ -222,7 +178,6 @@ export default function MicrobiopolyGame({
   const [turn, setTurn] = useState(startingPlayerIndex || 0);
   const turnRef = useRef(startingPlayerIndex || 0);
 
-  const [round, setRound] = useState(1);
   const [totalTurns, setTotalTurns] = useState(0);
   const [isMoving, setIsMoving] = useState(false);
   const [dice, setDice] = useState([1, 1]);
@@ -255,7 +210,7 @@ export default function MicrobiopolyGame({
   const [manualUnlocked, setManualUnlocked] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [hoverTile, setHoverTile] = useState(null);
-  const [chaosMode, setChaosMode] = useState(null);
+  const [, setChaosMode] = useState(null);
   const [chaosTargetTile, setChaosTargetTile] = useState(null);
   const [logRows, setLogRows] = useState([]);
 
@@ -576,7 +531,7 @@ export default function MicrobiopolyGame({
     }
   };
 
-  const finishQuiz = (passed, score, mistakes) => {
+  const finishQuiz = (passed, score) => {
     const tile = quizState.tile;
     const mode = quizState.mode;
 
@@ -814,7 +769,7 @@ export default function MicrobiopolyGame({
     return true;
   };
 
-  const nextAllowedLevel = (tile, playerId) => {
+  const nextAllowedLevel = (tile) => {
     const groupTiles = getSubgroupTiles(board, tile);
     if (groupTiles.length === 0) return tile.level;
     const levels = groupTiles.map((t) => t.level || 0);
@@ -1006,7 +961,6 @@ export default function MicrobiopolyGame({
                 </Typography>
                 <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', padding: '10px', marginBottom: '20px' }}>
                     {activeCard.assets.map(t => {
-                        const buildValue = (t.level || 0) * (t.houseCost || 0);
                         const isDowngrade = t.level > 0;
                         const sellValue = Math.floor((isDowngrade ? (t.houseCost||t.price) : t.price) * 0.5);
                         
