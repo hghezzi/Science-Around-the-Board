@@ -3,128 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Microbiopoly Encryptor</title>
+    <title>Question Encryptor – Science Around the Board</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* Modern Reset & Base Styles */
+        :root {
+            color-scheme: light dark;
+            --bg: #eef2f6; --card: #ffffff; --text: #1e293b; --muted: #55627a; --border: #dbe2ea;
+            --field: #f8fafc; --accent: #2563eb; --accent-hover: #1d4ed8; --heading: #1e3a8a;
+            --success: #166534; --error: #b91c1c; --chip: #e2e8f0;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a; --card: #1e293b; --text: #e8edf4; --muted: #b8c4d4; --border: #334155;
+                --field: #0f172a; --accent: #3b82f6; --accent-hover: #2563eb; --heading: #bfdbfe;
+                --success: #4ade80; --error: #f87171; --chip: #334155;
+            }
+        }
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            color: #333;
+            background-color: var(--bg);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 16px;
+            color: var(--text);
         }
-
-        /* Main Card Container */
         .container {
-            background: white;
-            padding: 2.5rem;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-            width: 100%;
-            max-width: 480px;
-            text-align: center;
+            background: var(--card); border: 1px solid var(--border);
+            padding: 2.5rem; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            width: 100%; max-width: 480px; text-align: center;
         }
-
-        h1 {
-            margin-top: 0;
-            color: #1a237e; /* Matches your game theme */
-            font-size: 1.8rem;
-        }
-
-        p {
-            color: #666;
-            margin-bottom: 2rem;
-            line-height: 1.5;
-        }
-
-        /* Form Layout */
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-        }
-
-        /* Password Input Styling */
+        h1 { margin-top: 0; color: var(--heading); font-size: 1.8rem; }
+        p { color: var(--muted); margin-bottom: 2rem; line-height: 1.5; }
+        .form-group { display: flex; flex-direction: column; gap: 1.2rem; }
         input[type="text"] {
-            width: 100%;
-            padding: 14px;
-            font-size: 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            transition: border-color 0.2s;
-            background: #fafafa;
+            width: 100%; padding: 14px; font-size: 16px;
+            border: 2px solid var(--border); border-radius: 8px;
+            background: var(--field); color: var(--text); transition: border-color 0.2s;
         }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #2196f3;
-            background: white;
-        }
-
-        /* File Input Styling (The tricky part!) */
+        input[type="text"]:focus { outline: none; border-color: var(--accent); }
         input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px dashed #e0e0e0;
-            border-radius: 8px;
-            background: #fafafa;
-            text-align: center;
-            cursor: pointer;
+            width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 8px;
+            background: var(--field); color: var(--text); text-align: center; cursor: pointer;
         }
-        input[type="file"]:hover {
-            border-color: #bdbdbd;
-            background: #f5f5f5;
-        }
-        /* This styles the internal 'Choose File' button */
+        input[type="file"]:hover { border-color: var(--muted); }
         input[type="file"]::file-selector-button {
-            margin-right: 15px;
-            border: none;
-            background: #e0e0e0;
-            padding: 8px 12px;
-            border-radius: 6px;
-            color: #333;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.2s;
+            margin-right: 15px; border: none; background: var(--chip); color: var(--text);
+            padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
         }
-        input[type="file"]::file-selector-button:hover {
-            background: #d5d5d5;
-        }
-
-        /* Main Action Button */
         .btn-encrypt {
-            background: #2980b9;
-            color: white;
-            border: none;
-            padding: 16px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
+            background: var(--accent); color: white; border: none; padding: 16px; font-size: 16px;
+            font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px;
             transition: transform 0.1s, background 0.2s;
-            width: 100%;
-            margin-top: 10px;
         }
-        .btn-encrypt:hover {
-            background: #1f6391;
-            transform: translateY(-1px);
-        }
-        .btn-encrypt:active {
-            transform: translateY(1px);
-        }
-
-        /* Status Message */
-        #status {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            min-height: 20px;
-        }
-        .success { color: #2e7d32; }
-        .error { color: #c62828; }
+        .btn-encrypt:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-encrypt:active { transform: translateY(1px); }
+        #status { margin-top: 20px; font-size: 0.9rem; min-height: 20px; }
+        .success { color: var(--success); }
+        .error { color: var(--error); }
+        a { color: var(--accent); }
     </style>
 </head>
 <body>

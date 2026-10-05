@@ -47,11 +47,12 @@ function createBoard(QS) {
   const sides = [data.Side1, data.Side2, data.Side3, data.Side4];
 
   // 2. Define themes corresponding to those sides
+  // Band colours for [subtheme 1, subtheme 2] on each side (readable in light and dark).
   const THEMES = [
-    { hues: ["#F5F5F5", "#CFD8DC"] }, // Side 1 (Bottom) - Greys
-    { hues: ["#E3F2FD", "#90CAF9"] }, // Side 2 (Left)   - Blues
-    { hues: ["#E8F5E9", "#A5D6A7"] }, // Side 3 (Top)    - Greens
-    { hues: ["#FFF3E0", "#FFCC80"] }, // Side 4 (Right)  - Oranges
+    { hues: ["#a78bfa", "#7c3aed"] }, // Side 1 (Bottom) - Violet
+    { hues: ["#38bdf8", "#0284c7"] }, // Side 2 (Left)   - Sky
+    { hues: ["#4ade80", "#16a34a"] }, // Side 3 (Top)    - Green
+    { hues: ["#fbbf24", "#d97706"] }, // Side 4 (Right)  - Amber
   ];
 
   const TIER_1 = 100;
@@ -93,7 +94,7 @@ function createBoard(QS) {
     return {
       type: "sequencing_core",
       name: coreLabel,
-      color: "#b0bec5",
+      color: "#94a3b8",
       price: cost,
       questions,
     };
@@ -103,7 +104,7 @@ function createBoard(QS) {
     return {
       type: "chance",
       name: "Lab Mishap",
-      color: "#ffab91",
+      color: "#fb7185",
       fixedAmount: -100,
     };
   }

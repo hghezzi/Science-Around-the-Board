@@ -11,6 +11,7 @@ import { resolveImage } from "./images";
 import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
 import ConsentBanner from "./ConsentBanner";
+import { TEAM_COLORS, TEAM_NAMES, TEAM_SYMBOLS } from "./theme";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
@@ -100,10 +101,17 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
   const lastLabel = isPre ? "Start Game" : "Finish Surveys";
 
   return (
-    <Container maxWidth={false} sx={{ mt: 6, width: "95%", maxWidth: "1200px" }}>
-      <Card sx={{ p: { xs: 3, md: 6 } }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 5 }}>
+    <Container maxWidth="md">
+      <Card sx={{ p: { xs: 3, md: 5 } }}>
         <Typography variant="h4" gutterBottom>{isPre ? "Pre-Game Survey" : "Post-Game Survey"}</Typography>
-        <Typography variant="subtitle1">Player {currentPlayer + 1} of {playerCount}</Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box aria-hidden sx={{ width: 22, height: 22, borderRadius: "50%", bgcolor: TEAM_COLORS[currentPlayer], color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", textShadow: "0 0 2px rgba(0,0,0,.7)" }}>{TEAM_SYMBOLS[currentPlayer]}</Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{TEAM_NAMES[currentPlayer]} · player {currentPlayer + 1} of {playerCount}</Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {isPre ? "Answer on your own; this is your starting point, not a test. The best score goes first." : "Same questions as before the game. How much have you learned?"}
+        </Typography>
         <Divider sx={{ my: 3 }} />
         {C.length > 0 && (
           <>
@@ -128,7 +136,7 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
             <Typography variant="h5" sx={{ color: "primary.main", mb: 2 }}>{C.length > 0 ? "Section 2 – Questions" : "Questions"}</Typography>
             {currentQuestions.length === 0 && <Typography color="textSecondary">No survey questions in this file.</Typography>}
             {currentQuestions.map((q, qi) => (
-              <Box key={`${currentPlayer}-${qi}`} sx={{ mb: 4, p: 2, border: "1px solid #eee", borderRadius: 2 }}>
+              <Box key={`${currentPlayer}-${qi}`} sx={{ mb: 3, p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
                 <Typography variant="overline" color="textSecondary">Question {qi + 1} of {currentQuestions.length}</Typography>
                 <Typography variant="h6" gutterBottom sx={{ mt: 1, whiteSpace: "pre-wrap" }}>{q.prompt}</Typography>
                 <QuestionInput
@@ -149,6 +157,7 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
         )}
       </Card>
     </Container>
+    </Box>
   );
 }
 
@@ -194,13 +203,19 @@ function ValidationReport({ validation, imageMap }) {
 
 function SummaryView({ onExport, onReturn }) {
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Card sx={{ p: 4, textAlign: "center" }}>
-        <Typography variant="h4">Session Complete</Typography>
-        <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={onExport}>Export CSV</Button>
-        <Button variant="outlined" fullWidth sx={{ mt: 2 }} onClick={onReturn}>Main Menu</Button>
-      </Card>
-    </Container>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 8 }}>
+      <Container maxWidth="sm">
+        <Card sx={{ p: 4, textAlign: "center" }}>
+          <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1 }}>🏁</Box>
+          <Typography variant="h4" component="h1" sx={{ mt: 1 }}>Session complete</Typography>
+          <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+            Download your results and submit the file as your instructor asked. Closing this tab first will lose the data.
+          </Typography>
+          <Button variant="contained" size="large" fullWidth sx={{ py: 1.5, fontSize: "1.1rem" }} onClick={onExport}>⬇ Export CSV</Button>
+          <Button variant="text" fullWidth sx={{ mt: 1.5 }} onClick={onReturn}>Back to main menu</Button>
+        </Card>
+      </Container>
+    </Box>
   );
 }
 
@@ -344,76 +359,81 @@ export default function App() {
   if (allTsvRows.length === 0 || !filesConfirmed) {
     const hasData = allTsvRows.length > 0;
     
+    const choice = (icon, title, text, action) => (
+      <Card
+        component="button"
+        onClick={action.onClick}
+        sx={{ p: 2.5, textAlign: "left", cursor: "pointer", font: "inherit", color: "text.primary", bgcolor: "background.paper", display: "flex", gap: 2, alignItems: "center", width: "100%", transition: "transform .15s, box-shadow .15s", "&:hover": { transform: "translateY(-2px)", boxShadow: 6 }, "&:focus-visible": { outline: "3px solid", outlineColor: "primary.main" } }}
+      >
+        <Box aria-hidden sx={{ fontSize: 34, lineHeight: 1 }}>{icon}</Box>
+        <Box>
+          <Typography variant="h6" sx={{ lineHeight: 1.2 }}>{title}</Typography>
+          <Typography variant="body2" color="text.secondary">{text}</Typography>
+        </Box>
+      </Card>
+    );
+
     return (
-      <Container maxWidth="md" sx={{ textAlign: "center", mt: 8 }}>
-        <Typography variant="h2" sx={{ fontWeight: 'bold', color: '#2c3e50', mb: 2 }}>Science Around the Board</Typography>
-        <Typography variant="h5" sx={{ color: '#555', mb: 4 }}>A Monopoly-style bioinformatics learning adventure.</Typography>
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: { xs: 4, md: 8 } }}>
+        <Container maxWidth="sm" sx={{ textAlign: "center" }}>
+          <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1, mb: 1 }}>🎲</Box>
+          <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1 }}>Science Around the Board</Typography>
+          <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, mb: 4 }}>
+            Turn any course into a board-game review session: roll, answer, invest and outwit the other teams.
+          </Typography>
 
-        <Card sx={{ p: 6, boxShadow: 3, mx: "auto", maxWidth: 600 }}>
-          <Typography variant="h6" gutterBottom>Load Question Data</Typography>
-          
           {!hasData ? (
-             // --- STATE 1: NO DATA LOADED ---
-             <>
-                <Typography color="textSecondary" sx={{ mb: 3 }}>Select a question source to begin the session.</Typography>
-                <Button variant="contained" fullWidth size="large" onClick={() => handleLoadDefault()} sx={{ mb: 1 }}>Load Demo Game</Button>
-                <Button size="small" fullWidth onClick={() => handleLoadDefault("./examples/intro_statistics.tsv")} sx={{ mb: 2 }}>
-                  Or try a non-biology example: Intro Statistics
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, textAlign: "left" }}>
+              {choice("🧬", "Play the demo", "16S rRNA sequencing & QIIME 2 (the original course).", { onClick: () => handleLoadDefault() })}
+              {choice("📊", "Try a different subject", "Intro Statistics example, made with the question-writer skill.", { onClick: () => handleLoadDefault("./examples/intro_statistics.tsv") })}
+              <Card sx={{ p: 2.5, display: "flex", gap: 2, alignItems: "center", bgcolor: "background.paper" }}>
+                <Box aria-hidden sx={{ fontSize: 34, lineHeight: 1 }}>📂</Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6" sx={{ lineHeight: 1.2 }}>Use your instructor's questions</Typography>
+                  <Typography variant="body2" color="text.secondary">Upload the .tsv or encrypted .lock file you were given.</Typography>
+                </Box>
+                <Button variant="contained" component="label">
+                  Upload
+                  <input type="file" hidden accept=".tsv,.txt,.lock" onChange={handleFileUpload} />
                 </Button>
-                <Divider sx={{ my: 2 }}>OR</Divider>
-                <Button variant="outlined" component="label" fullWidth size="large">
-                    Upload Custom Questions (TSV)
-                    <input type="file" hidden accept=".tsv,.txt,.lock" onChange={handleFileUpload} />
-                </Button>
-             </>
+              </Card>
+            </Box>
           ) : (
-             // --- STATE 2: DATA LOADED (CONFIRMATION STEP) ---
-             <>
-                <Alert severity="success" sx={{ mb: 3, textAlign: 'left' }}>
-                    <Typography variant="body1"><strong>Success!</strong> Loaded {allTsvRows.length} questions.</Typography>
-                </Alert>
-
-                <ValidationReport validation={validation} imageMap={localImageMap} />
-
-                <Button variant="outlined" component="label" fullWidth size="large" color="secondary" sx={{ mb: 2 }}>
-                    Optional: Upload Images
-                    <input type="file" hidden multiple accept="image/*" onChange={handleImageUpload} />
-                </Button>
-                
-                {Object.keys(localImageMap).length > 0 && (
-                  <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'green' }}>
-                      {Object.keys(localImageMap).length} images ready.
-                  </Typography>
-                )}
-
-                <Divider sx={{ my: 3 }} />
-
-                <Button 
-                    variant="contained" 
-                    fullWidth 
-                    size="large" 
-                    color="success" 
-                    sx={{ mb: 2, fontWeight: 'bold', py: 1.5 }}
-                    onClick={() => setFilesConfirmed(true)} // <--- MOVES TO NEXT SCREEN
-                >
-                    Continue to Game Setup
-                </Button>
-
-                <Button size="small" color="error" onClick={() => setAllTsvRows([])}>
-                    Reset / Upload Different File
-                </Button>
-             </>
+            <Card sx={{ p: { xs: 3, md: 4 }, textAlign: "left" }}>
+              <Alert severity="success" sx={{ mb: 2 }}>
+                <strong>Loaded {allTsvRows.length} questions.</strong> Check the notes below, then continue.
+              </Alert>
+              <ValidationReport validation={validation} imageMap={localImageMap} />
+              <Button variant="outlined" component="label" fullWidth size="large" color="secondary" sx={{ mb: 1 }}>
+                🖼️ Optional: upload images
+                <input type="file" hidden multiple accept="image/*" onChange={handleImageUpload} />
+              </Button>
+              {Object.keys(localImageMap).length > 0 && (
+                <Typography variant="caption" sx={{ display: "block", mb: 1, color: "success.main", fontWeight: 700 }}>
+                  {Object.keys(localImageMap).length} images ready.
+                </Typography>
+              )}
+              <Button variant="contained" fullWidth size="large" color="success" sx={{ mt: 2, py: 1.5, fontSize: "1.1rem" }} onClick={() => setFilesConfirmed(true)}>
+                Continue to game setup →
+              </Button>
+              <Button fullWidth size="small" color="inherit" sx={{ mt: 1 }} onClick={() => setAllTsvRows([])}>Use a different file</Button>
+            </Card>
           )}
 
-          {loadingError && <Alert severity="error" sx={{ mt: 2 }}>{loadingError}</Alert>}
-        </Card>
-        <Typography variant="caption" sx={{ mt: 4, display: 'block', color: '#888' }}>
-          Designed by Hans Ghezzi ·{" "}
-          <a href="./privacy.html" target="_blank" rel="noopener" style={{ color: '#888' }}>Privacy</a> ·{" "}
-          <a href="#" onClick={(e) => { e.preventDefault(); resetConsent(); }} style={{ color: '#888' }}>Analytics settings</a>
-        </Typography>
+          {loadingError && <Alert severity="error" sx={{ mt: 2, textAlign: "left" }}>{loadingError}</Alert>}
+
+          <Typography variant="body2" sx={{ mt: 4 }}>
+            <a href="./guide/" target="_blank" rel="noopener">Instructor guide</a> ·{" "}
+            <a href="./encryptor.html" target="_blank" rel="noopener">Encrypt a question file</a>
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+            Designed by Hans Ghezzi ·{" "}
+            <a href="./privacy.html" target="_blank" rel="noopener">Privacy</a> ·{" "}
+            <a href="#" onClick={(e) => { e.preventDefault(); resetConsent(); }}>Analytics settings</a>
+          </Typography>
+        </Container>
         <ConsentBanner />
-      </Container>
+      </Box>
     );
   }
 
@@ -422,43 +442,75 @@ export default function App() {
   if (phase === "SETUP") {
     const topics = getAllTopics(allTsvRows);
     return (
-      <Container maxWidth="md" sx={{ textAlign: "center", mt: 6 }}>
-        <Typography variant="h3" gutterBottom sx={{ fontWeight: "bold" }}>Game Setup</Typography>
-        <Card sx={{ p: 3, mb: 4, mx: "auto", maxWidth: 600 }}>
-          <Typography variant="h6">Players</Typography>
-          <ToggleButtonGroup value={playerCount} exclusive onChange={(_, v) => v && setPlayerCount(v)} fullWidth color="primary">
-            {[1,2,3,4].map(n => <ToggleButton key={n} value={n}>{n} Player{n>1?'s':''}</ToggleButton>)}
-          </ToggleButtonGroup>
-          <Typography variant="h6" sx={{ mt: 3 }}>Session length</Typography>
-          <Typography variant="caption" color="textSecondary" sx={{ display: "block", mb: 1 }}>
-            The game ends when one team is left standing, or when time runs out (highest net worth wins).
-          </Typography>
-          <ToggleButtonGroup value={sessionMinutes} exclusive onChange={(_, v) => v !== null && setSessionMinutes(v)} fullWidth color="primary" size="small">
-            {[0, 30, 45, 60, 90].map(m => <ToggleButton key={m} value={m}>{m === 0 ? "No timer" : `${m} min`}</ToggleButton>)}
-          </ToggleButtonGroup>
-        </Card>
-        <Typography variant="h6" gutterBottom>Select Topic</Typography>
-        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center', mb: 5 }}>
-          {topics.map(t => (
-            <Card key={t} sx={{ p: 4, width: 220, cursor: 'pointer', border: gameMode === t ? '3px solid #1976d2' : '1px solid #ddd', boxShadow: gameMode === t ? 4 : 1, transform: gameMode === t ? 'scale(1.05)' : 'scale(1)', transition: 'all 0.2s' }} onClick={() => selectTopic(t)}>
-              <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>{t}</Typography>
-            </Card>
-          ))}
-        </Box>
-        <Paper elevation={3} sx={{ p: 2, position: 'fixed', bottom: 0, left: 0, right: 0, bgcolor: '#f5f5f5', display: 'flex', justifyContent: 'center', gap: 2, zIndex: 100 }}>
-             <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={() => setPhase("PRE_SURVEY")} sx={{ px: 6, py: 1.5, fontSize: '1.2rem' }}>Start Game</Button>
-             <Button size="small" color="inherit" onClick={() => setAllTsvRows([])}>Change File</Button>
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 5, pb: 14 }}>
+        <Container maxWidth="md">
+          <Typography variant="h3" component="h1" sx={{ textAlign: "center", mb: 4 }}>Game setup</Typography>
+
+          <Card sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>1 · How many teams?</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1.5 }}>
+              {[1, 2, 3, 4].map((n) => (
+                <Box
+                  key={n}
+                  component="button"
+                  aria-pressed={playerCount === n}
+                  onClick={() => setPlayerCount(n)}
+                  sx={{ p: 1.5, borderRadius: 2, cursor: "pointer", font: "inherit", color: "text.primary", bgcolor: playerCount === n ? "action.selected" : "background.paper", border: "2px solid", borderColor: playerCount === n ? "primary.main" : "divider" }}
+                >
+                  <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5, mb: 0.5 }}>
+                    {TEAM_COLORS.slice(0, n).map((c, i) => (
+                      <Box key={i} aria-hidden sx={{ width: 20, height: 20, borderRadius: "50%", bgcolor: c, color: "#fff", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", textShadow: "0 0 2px rgba(0,0,0,.7)" }}>{TEAM_SYMBOLS[i]}</Box>
+                    ))}
+                  </Box>
+                  <Typography sx={{ fontWeight: 800 }}>{n === 1 ? "Solo" : `${n} teams`}</Typography>
+                </Box>
+              ))}
+            </Box>
+          </Card>
+
+          <Card sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6">2 · Session length</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              The game ends when one team is left standing, or when time runs out (highest net worth wins).
+            </Typography>
+            <ToggleButtonGroup value={sessionMinutes} exclusive onChange={(_, v) => v !== null && setSessionMinutes(v)} fullWidth color="primary">
+              {[0, 30, 45, 60, 90].map((m) => <ToggleButton key={m} value={m} sx={{ fontWeight: 800 }}>{m === 0 ? "No timer" : `${m} min`}</ToggleButton>)}
+            </ToggleButtonGroup>
+          </Card>
+
+          <Card sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>3 · Choose a topic</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 1.5 }}>
+              {topics.map((t) => (
+                <Box
+                  key={t}
+                  component="button"
+                  aria-pressed={gameMode === t}
+                  onClick={() => selectTopic(t)}
+                  sx={{ p: 2.5, borderRadius: 2, cursor: "pointer", font: "inherit", textAlign: "left", color: "text.primary", bgcolor: gameMode === t ? "action.selected" : "background.paper", border: "2px solid", borderColor: gameMode === t ? "primary.main" : "divider", transition: "transform .15s", "&:hover": { transform: "translateY(-2px)" } }}
+                >
+                  <Typography variant="h6" sx={{ color: "primary.main" }}>{t}</Typography>
+                  {gameMode === t && selectedModule && <Typography variant="body2" color="text.secondary">Module: {selectedModule}</Typography>}
+                </Box>
+              ))}
+            </Box>
+          </Card>
+        </Container>
+
+        <Paper elevation={6} sx={{ p: 2, position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 2, zIndex: 100, borderRadius: 0 }}>
+          <Button size="small" color="inherit" onClick={() => setAllTsvRows([])}>Change file</Button>
+          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={() => setPhase("PRE_SURVEY")} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game →</Button>
         </Paper>
+
         <Modal open={moduleModalOpen} onClose={() => setModuleModalOpen(false)}>
-          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 300, bgcolor: 'background.paper', p: 4, borderRadius: 2 }}>
-            <Typography variant="h6" gutterBottom>Select Module</Typography>
-            {modules.length > 0 ? modules.map(m => <Button key={m} fullWidth variant={selectedModule === m ? 'contained' : 'outlined'} onClick={() => setSelectedModule(m)} sx={{ mb: 1 }}>{m}</Button>) : <Typography>No specific modules found.</Typography>}
+          <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(360px, 92vw)", bgcolor: "background.paper", color: "text.primary", p: 4, borderRadius: 3, boxShadow: 24 }}>
+            <Typography variant="h6" gutterBottom>Select module</Typography>
+            {modules.length > 0 ? modules.map((m) => <Button key={m} fullWidth variant={selectedModule === m ? "contained" : "outlined"} onClick={() => setSelectedModule(m)} sx={{ mb: 1 }}>{m}</Button>) : <Typography>No specific modules found.</Typography>}
             <Divider sx={{ my: 2 }} />
-            <Button fullWidth variant="contained" color="success" sx={{ mt: 1, py: 1.5 }} onClick={confirmModule}>Confirm Selection</Button>
+            <Button fullWidth variant="contained" color="success" sx={{ py: 1.5 }} onClick={confirmModule}>Confirm selection</Button>
           </Box>
         </Modal>
-        <Box sx={{ height: 100 }} />
-      </Container>
+      </Box>
     );
   }
 

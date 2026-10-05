@@ -11,7 +11,17 @@ import React, { useState } from "react";
 import { Box, Button, Checkbox, FormControlLabel, TextField, Typography, Alert } from "@mui/material";
 import { hasResponse } from "./questionFormats";
 
-const COLORS = { success: "#4caf50", danger: "#e91e63" };
+// Theme CSS variables so answers stay readable in light and dark mode.
+const COLORS = {
+  success: "var(--mui-palette-success-main)",
+  successBg: "var(--mui-palette-success-light)",
+  danger: "var(--mui-palette-error-main)",
+  dangerBg: "var(--mui-palette-error-light)",
+  selected: "var(--mui-palette-primary-main)",
+  selectedBg: "var(--mui-palette-action-selected)",
+  border: "var(--mui-palette-divider)",
+  text: "var(--mui-palette-text-primary)",
+};
 
 export function QuestionImage({ src, alt = "Question figure", maxHeight = 250 }) {
   const [failed, setFailed] = useState(false);
@@ -96,17 +106,17 @@ export default function QuestionInput({
     body = (
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         {q.options.map((opt, i) => {
-          let borderColor = "#999", bgColor = "transparent", textColor = "#333";
+          let borderColor = COLORS.border, bgColor = "transparent", textColor = COLORS.text;
           if (locked) {
             if (i === picked) {
               borderColor = reveal.correct ? COLORS.success : COLORS.danger;
-              bgColor = reveal.correct ? "#e8f5e9" : "#ffebee";
+              bgColor = reveal.correct ? COLORS.successBg : COLORS.dangerBg;
               textColor = borderColor;
             } else if (i === q.answer && !reveal.correct) {
               borderColor = COLORS.success;
             }
           } else if (survey && i === picked) {
-            borderColor = "#1976d2"; bgColor = "#e3f2fd";
+            borderColor = COLORS.selected; bgColor = COLORS.selectedBg;
           }
           return (
             <Button
@@ -121,6 +131,7 @@ export default function QuestionInput({
                 borderColor, backgroundColor: bgColor, color: textColor, whiteSpace: "normal",
                 borderWidth: i === picked ? "2px" : "1px",
                 "&.Mui-disabled": { color: textColor, borderColor },
+                "&:hover": { borderColor: COLORS.selected, backgroundColor: locked ? bgColor : COLORS.selectedBg },
               }}
             >
               <span style={{ fontWeight: "bold", marginRight: 10, minWidth: 20 }}>{String.fromCharCode(65 + i)}.</span> {opt}
@@ -182,8 +193,8 @@ export default function QuestionInput({
               key={item}
               sx={{
                 display: "flex", alignItems: "center", gap: 1, p: 1, borderRadius: 1,
-                border: `1px solid ${locked ? (right ? COLORS.success : COLORS.danger) : "#bbb"}`,
-                bgcolor: locked ? (right ? "#e8f5e9" : "#ffebee") : "#fff",
+                border: `1px solid ${locked ? (right ? COLORS.success : COLORS.danger) : COLORS.border}`,
+                bgcolor: locked ? (right ? COLORS.successBg : COLORS.dangerBg) : "background.paper",
               }}
             >
               <Typography sx={{ fontWeight: "bold", minWidth: 24 }}>{i + 1}.</Typography>
