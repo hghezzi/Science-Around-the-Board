@@ -70,7 +70,7 @@ try {
     await page.click('button:has-text("Roll")');
     await page.waitForTimeout(3300);
     const text = await page.locator(".MuiModal-root").last().innerText().catch(() => "");
-    if (text.includes("Data Validation") && !gotQuestion) {
+    if (text.includes("Question ·") && !gotQuestion) {
       gotQuestion = true;
       await shot("07-question");
       await answerOpenQuestion();

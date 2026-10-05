@@ -44,7 +44,7 @@ for (const scheme of ["light", "dark"]) {
     await page.click('button:has-text("Roll")');
     await page.waitForTimeout(3300);
     const text = await page.locator(".MuiModal-root").last().innerText().catch(() => "");
-    if (text.includes("Data Validation")) {
+    if (text.includes("Question ·")) {
       await audit(page, `${scheme} question`);
       const modal = page.locator(".MuiModal-root").last();
       const option = modal.locator('button:has-text("A.")');

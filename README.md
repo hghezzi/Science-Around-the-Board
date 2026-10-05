@@ -27,7 +27,7 @@ One row per question. The columns are `id, question, option1–option4, correctI
 * Full specification: [Technical Guide](website/docs/instructor/technical-guide.md) and [format reference](.claude/skills/sab-question-writer/references/format.md).
 
 ## How a game ends
-* **Last team standing.** A bankrupt team gets one Emergency Grant review; if it fails, or goes bankrupt again, it is eliminated.
+* **Last team standing.** A bankrupt team gets one Rescue Quiz; if it fails, or goes bankrupt again, it is eliminated.
 * **Time's up / End Game.** The highest net worth (cash + property value) wins. Set an optional session timer on the setup screen.
 
 ## Requirements

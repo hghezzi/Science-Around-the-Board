@@ -8,11 +8,11 @@ import {
   Card,
   Chip,
   LinearProgress,
-  Collapse,
   Divider,
   Alert,
 } from '@mui/material';
-import { LAB_MISHAPS } from './questionBank';
+import { DEFAULT_CHANCE_CARDS } from './questionBank';
+import { LABELS } from './labels';
 import {
   getSubgroupTiles, getRentMultiplier, computeRent, rankPlayers, nextActivePlayer, activePlayers,
 } from './gameRules';
@@ -109,7 +109,7 @@ export default function MicrobiopolyGame({
         eliminated: false,
       });
     }
-    if (count === 1) p[0].name = 'Candidate';
+    if (count === 1) p[0].name = LABELS.soloTeam;
     return p;
   };
 
@@ -151,8 +151,6 @@ export default function MicrobiopolyGame({
     tile: null,
   });
 
-  const [manualUnlocked, setManualUnlocked] = useState(false);
-  const [showManual, setShowManual] = useState(false);
   const [hoverTile, setHoverTile] = useState(null);
   const [, setChaosMode] = useState(null);
   const [chaosTargetTile, setChaosTargetTile] = useState(null);
@@ -195,7 +193,7 @@ export default function MicrobiopolyGame({
         setModalStage('LIQUIDATION');
         setModalOpen(true);
     } else if (player.rescueUsed) {
-        eliminatePlayer(player.id, 'Insolvent after using Emergency Grant');
+        eliminatePlayer(player.id, 'Bankrupt again after using the Rescue Quiz');
     } else {
         setActiveCard({ type: 'GRANT', debt: Math.abs(player.money) });
         setModalStage('GRANT_INTRO');
@@ -388,13 +386,13 @@ export default function MicrobiopolyGame({
 
   const handleGrantResult = (passed) => {
     if (!passed) {
-        eliminatePlayer(currentPlayer.id, 'Emergency Grant denied');
+        eliminatePlayer(currentPlayer.id, 'Did not pass the Rescue Quiz');
         return;
     }
     const debt = Math.abs(currentPlayer.money);
-    handleTransaction(currentPlayer.id, debt + 500, { action: 'EMERGENCY_GRANT', notes: 'Grant Approved' });
+    handleTransaction(currentPlayer.id, debt + 500, { action: 'EMERGENCY_GRANT', notes: 'Rescue Quiz passed' });
     setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, rescueUsed: true } : p));
-    setFeedback(`Grant Approved! Your $${debt} debt is cleared and you receive $500 in emergency funding. This was your team's only rescue: if you go bankrupt again, you are out.`);
+    setFeedback(`Your $${debt} debt is cleared and you receive $500 to keep playing. This was your team's only rescue: if you go bankrupt again, you are out.`);
     setModalStage('GRANT_RESULT');
   };
 
@@ -423,18 +421,6 @@ export default function MicrobiopolyGame({
   // ------------------------------------------------------------------
   //  GAME LOGIC
   // ------------------------------------------------------------------
-  const toggleManual = () => {
-    if (manualUnlocked) setShowManual((prev) => !prev);
-    else {
-      if (players[turnRef.current].money >= 50) {
-        handleTransaction(turnRef.current, -50, { action: 'CONSULT_MANUAL' });
-        setManualUnlocked(true);
-        setShowManual(true);
-        addLog('Manual purchased (-$50).');
-      } else alert('Insufficient funds.');
-    }
-  };
-
   // QUIZ LOGIC
   const startQuiz = (tile, mode) => {
     if (!tile.quiz || tile.quiz.length === 0) return;
@@ -525,7 +511,7 @@ export default function MicrobiopolyGame({
         const newBoard = board.map((t) => t.id === tile.id ? { ...t, owner: turnRef.current } : t);
         setBoard(newBoard);
         setPlayers((prev) => prev.map((p) => p.id === turnRef.current ? { ...p, chaosTokens: p.chaosTokens + 1 } : p));
-        addLog(`MASTERY: ${players[turnRef.current].name} captured ${tile.name}!`);
+        addLog(`${players[turnRef.current].name} captured the ${tile.name} milestone!`);
         setModalStage('MILESTONE_SUCCESS');
       } else {
         setModalStage('MILESTONE_FAIL');
@@ -537,13 +523,13 @@ export default function MicrobiopolyGame({
         const halfRent = Math.floor(baseRent / 2);
         handleTransaction(turnRef.current, -halfRent, { action: 'MILESTONE_CHALLENGE_SUCCESS', tileId: tile.id, tileName: tile.name, rentPaid: halfRent, correct: true });
         if (tile.owner !== 99 && tile.owner != null) handleTransaction(tile.owner, halfRent, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
-        setFeedback(`Impressive! Fees reduced to $${halfRent}.`);
+        setFeedback(`Impressive! Milestone fee halved to $${halfRent}.`);
         setModalStage('FEEDBACK_INCORRECT');
       } else {
         const fullRent = baseRent;
         handleTransaction(turnRef.current, -fullRent, { action: 'MILESTONE_CHALLENGE_FAIL', tileId: tile.id, tileName: tile.name, rentPaid: fullRent, correct: false });
         if (tile.owner !== 99 && tile.owner != null) handleTransaction(tile.owner, fullRent, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
-        setFeedback(`Quiz Failed. Paying full expert fees: $${fullRent}.`);
+        setFeedback(`Quiz Failed. Paying the full milestone fee: $${fullRent}.`);
         setModalStage('FEEDBACK_INCORRECT');
       }
     }
@@ -557,15 +543,13 @@ export default function MicrobiopolyGame({
 
       if (didPassGo) {
         handleTransaction(p.id, 200, { action: 'PASS_GO' });
-        addLog('Grant Renewal (+$200).');
+        addLog(LABELS.passStart);
       }
 
-      setManualUnlocked(false);
-      setShowManual(false);
       setFeedback(null);
 
       if (tile.owner === p.id) {
-        setActiveCard({ type: 'MSG', data: tile, msg: 'Welcome back to your lab. Operations are normal.' });
+        setActiveCard({ type: 'MSG', data: tile, msg: LABELS.ownTile });
         setModalStage('MSG');
         setModalOpen(true);
         return currentPlayers;
@@ -578,7 +562,7 @@ export default function MicrobiopolyGame({
             setModalStage('MILESTONE_INTRO');
             setModalOpen(true);
           } else {
-            setActiveCard({ type: 'MSG', data: tile, msg: 'Insufficient funds for mastery certification.' });
+            setActiveCard({ type: 'MSG', data: tile, msg: LABELS.cannotAffordMilestone(tile.price) });
             setModalStage('MSG');
             setModalOpen(true);
           }
@@ -595,7 +579,7 @@ export default function MicrobiopolyGame({
           const rentBase = tile.type === 'sequencing_core' ? tile.baseRent : computeRent(board, tile);
           const qPool = tile.questions || [];
           const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
-          setActiveCard({ type: 'RENT_DEFENSE', data: tile, rent: rentBase, ownerName: players[tile.owner]?.name || 'Rival Lab', ownerId: tile.owner, payerId: p.id, payerName: p.name, q: randomQ });
+          setActiveCard({ type: 'RENT_DEFENSE', data: tile, rent: rentBase, ownerName: players[tile.owner]?.name || LABELS.rivalTeam, ownerId: tile.owner, payerId: p.id, payerName: p.name, q: randomQ });
           setModalStage('QUESTION');
           setModalOpen(true);
         } else {
@@ -616,7 +600,7 @@ export default function MicrobiopolyGame({
             .map(r => ({ msg: r.question, fact: r.explanation }));
 
           // 2. Use TSV mishaps if found; otherwise fallback to defaults
-          const mishapPool = tsvMishaps.length > 0 ? tsvMishaps : (LAB_MISHAPS || []);
+          const mishapPool = tsvMishaps.length > 0 ? tsvMishaps : DEFAULT_CHANCE_CARDS;
           
           const randomMishap = mishapPool.length > 0 ? mishapPool[Math.floor(Math.random() * mishapPool.length)] : { msg: 'Equipment Malfunction (-$100)', fact: null };
           amount = parseMishapAmount(randomMishap.msg);
@@ -639,7 +623,7 @@ export default function MicrobiopolyGame({
   const handleRoll = () => {
     if (isMoving || timeUp || players[turn].eliminated) return;
     if (players[turn].money < 0) {
-        alert("You are in debt! You must resolve your funding crisis before continuing.");
+        alert("Your team is in debt! Sort out your debt before rolling again.");
         return;
     }
     const d1 = Math.floor(Math.random() * 6) + 1;
@@ -915,7 +899,7 @@ export default function MicrobiopolyGame({
               {rollLabel}
             </Button>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined" onClick={openLabManager}>🧪 Lab manager</Button>
+              <Button variant="outlined" onClick={openLabManager}>🏗️ {LABELS.upgrades}</Button>
               <Button variant="outlined" color="warning" onClick={openChaosSelect}>⚡ Use chaos ({currentPlayer.chaosTokens})</Button>
             </Box>
 
@@ -924,8 +908,8 @@ export default function MicrobiopolyGame({
                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.paper', borderLeft: `6px solid ${hoverTile.color}`, boxShadow: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 800 }}>{hoverTile.type === 'property' ? `${hoverTile.sub} · ${hoverTile.name}` : hoverTile.name}</Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {{ property: 'Property', milestone: 'Milestone (6-question exam)', sequencing_core: 'Core facility', chance: 'Lab mishap (random event)' }[hoverTile.type] || hoverTile.type}
-                    {hoverTile.owner != null && ` · Owner: ${hoverTile.owner === 99 ? 'Rival Lab' : players[hoverTile.owner]?.name}`}
+                    {LABELS.tileTypes[hoverTile.type] || hoverTile.type}
+                    {hoverTile.owner != null && ` · Owner: ${hoverTile.owner === 99 ? LABELS.rivalTeam : players[hoverTile.owner]?.name}`}
                   </Typography>
                   {(hoverTile.type === 'property' || hoverTile.type === 'sequencing_core') && (
                     <Typography variant="caption" sx={{ display: 'block' }}>
@@ -958,9 +942,9 @@ export default function MicrobiopolyGame({
         <Box sx={{ ...modalStyle, ...(activeCard?.data?.color ? { borderTopColor: activeCard.data.color } : {}) }}>
           {activeCard?.type === 'LIQUIDATION' && modalStage === 'LIQUIDATION' && (
             <>
-                <Typography variant="h4" color="error" gutterBottom>Funding Crisis</Typography>
+                <Typography variant="h4" color="error" gutterBottom>{LABELS.outOfMoney}</Typography>
                 <Typography variant="body1" paragraph>
-                    You are in debt (<strong>${activeCard.debt}</strong>). You must liquidate assets to continue.
+                    Your team is <strong>${activeCard.debt}</strong> in debt. Sell properties or remove upgrades to get back above $0.
                 </Typography>
                 <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, mb: 2.5 }}>
                     {activeCard.assets.map(t => {
@@ -987,25 +971,24 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'GRANT' && modalStage === 'GRANT_INTRO' && (
             <>
-                <Typography variant="h4" color="error" gutterBottom>Academic Probation</Typography>
+                <Typography variant="h4" color="error" gutterBottom>{LABELS.bankrupt}</Typography>
                 <Typography variant="body1" paragraph>
-                    You are insolvent (<strong>${activeCard.debt} in debt</strong>) and have no assets left to sell.
-                    Your lab is on the verge of shutdown.
+                    Your team is <strong>${activeCard.debt}</strong> in debt and selling everything still wouldn't cover it.
                 </Typography>
                 <Typography variant="body1" paragraph>
-                    You may apply for an <strong>Emergency Grant</strong>: a 3-question review. Answer at least 2 correctly to be rescued.
+                    You can take the <strong>{LABELS.rescueQuiz}</strong>: 3 questions. Answer at least 2 correctly to be rescued.
                 </Typography>
                 <Alert severity="warning" sx={{ mb: 3 }}>
                     Each team gets <strong>one</strong> rescue per game. If approved, your debt is cleared and you receive $500.
                     If denied, or if you go bankrupt again later, your team is eliminated and its properties return to the bank.
                 </Alert>
-                <Button fullWidth variant="contained" onClick={startGrantExam}>APPLY FOR EMERGENCY GRANT</Button>
+                <Button fullWidth variant="contained" onClick={startGrantExam}>START THE RESCUE QUIZ</Button>
             </>
           )}
 
           {modalStage === 'GRANT_QUIZ' && quizState.active && (
             <>
-              <Typography variant="overline">Grant Review: Question {quizState.qIndex + 1} of 3</Typography>
+              <Typography variant="overline">{LABELS.rescueQuiz}: Question {quizState.qIndex + 1} of 3</Typography>
               <LinearProgress variant="determinate" value={(quizState.qIndex / 3) * 100} sx={{ mb: 3 }} />
               {renderQuestion(quizState.questions[quizState.qIndex], handleQuizAnswer, {
                 variant: 'h6', key: `grant-${quizState.qIndex}`,
@@ -1019,7 +1002,7 @@ export default function MicrobiopolyGame({
                   <Typography variant="body2" sx={{ mb: 2 }}>{quizState.questions[quizState.qIndex].explanation || 'No explanation provided.'}</Typography>
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Button variant="contained" onClick={handleNextQuestion}>
-                      {quizState.qIndex < quizState.questions.length - 1 ? 'NEXT QUESTION' : 'SUBMIT APPLICATION'}
+                      {quizState.qIndex < quizState.questions.length - 1 ? 'NEXT QUESTION' : 'FINISH QUIZ'}
                     </Button>
                   </Box>
                 </Box>
@@ -1029,9 +1012,9 @@ export default function MicrobiopolyGame({
 
           {modalStage === 'GRANT_RESULT' && (
             <>
-                <Typography variant="h5" color="success.main">Application Successful</Typography>
+                <Typography variant="h5" color="success.main">{LABELS.rescued}</Typography>
                 <Typography variant="body1" paragraph>{feedback}</Typography>
-                <Button fullWidth variant="contained" onClick={passTurn}>RESUME OPERATIONS</Button>
+                <Button fullWidth variant="contained" onClick={passTurn}>KEEP PLAYING</Button>
             </>
           )}
 
@@ -1046,7 +1029,7 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'ELIMINATED' && modalStage === 'ELIMINATED' && (
             <>
-              <Typography variant="h4" color="error" gutterBottom>Lab Closed</Typography>
+              <Typography variant="h4" color="error" gutterBottom>{LABELS.eliminated}</Typography>
               <Typography variant="body1" paragraph>
                 <strong>{activeCard.name}</strong> could not cover its debts and has been <strong>eliminated</strong>. Its properties return to the bank.
               </Typography>
@@ -1110,7 +1093,7 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'MILESTONE_CHALLENGE' && modalStage === 'MILESTONE_CHALLENGE_INTRO' && (
             <>
-              <Typography variant="h4" color="error">⚠️ EXPERT CHALLENGE</Typography>
+              <Typography variant="h4" color="error">⚠️ {LABELS.rivalMilestone}</Typography>
               <Typography variant="body1">Base fee: <strong>${board.find((t) => t.id === activeCard.data.id)?.baseRent}</strong></Typography>
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                 <Button fullWidth variant="contained" color="warning" onClick={() => startQuiz(activeCard.data, 'MILESTONE_CHALLENGE')}>ACCEPT CHALLENGE</Button>
@@ -1174,10 +1157,8 @@ export default function MicrobiopolyGame({
           {activeCard?.type === 'QUESTION' && modalStage === 'QUESTION' && (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Data Validation</Typography>
-                {activeCard.data.manual && <Button size="small" variant="outlined" onClick={toggleManual}>{manualUnlocked ? showManual ? 'HIDE MANUAL' : 'SHOW MANUAL' : 'MANUAL ($50)'}</Button>}
+                <Typography variant="h6">{LABELS.questionTitle} · {activeCard.data.type === 'property' ? activeCard.data.sub : activeCard.data.name}</Typography>
               </Box>
-              <Collapse in={showManual}><Alert severity="info" sx={{ mb: 3 }}><Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{activeCard.data.manual}</Typography></Alert></Collapse>
               <Divider sx={{ my: 2 }} />
               
               {renderQuestion(activeCard.q, handleAnswer)}
@@ -1193,9 +1174,12 @@ export default function MicrobiopolyGame({
                 </Box>
               )}
               <Divider />
-              <Typography sx={{ my: 2 }}>Publish (Buy) for ${activeCard.data.price}?</Typography>
+              <Typography sx={{ my: 2 }}>{LABELS.buyPrompt(activeCard.data.price)}</Typography>
+              {currentPlayer.money < activeCard.data.price && (
+                <Alert severity="warning">Not enough cash: your team has ${currentPlayer.money}.</Alert>
+              )}
               <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                <Button fullWidth variant="contained" onClick={handleBuy}>PUBLISH</Button>
+                <Button fullWidth variant="contained" onClick={handleBuy} disabled={currentPlayer.money < activeCard.data.price}>{LABELS.buy.toUpperCase()}</Button>
                 <Button fullWidth variant="outlined" onClick={passTurn}>SKIP</Button>
               </Box>
             </>
@@ -1211,7 +1195,7 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'MISHAP' && modalStage === 'MISHAP' && (
             <>
-              <Typography variant="h5" gutterBottom>{activeCard.data.name}</Typography>
+              <Typography variant="h5" gutterBottom>❓ {LABELS.chanceCard}</Typography>
               <Typography variant="body1">{activeCard.msg}</Typography>
               {activeCard.data.fact && <Alert severity="info" sx={{ mt: 2 }}><Typography variant="body2">{activeCard.data.fact}</Typography></Alert>}
               <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>
@@ -1244,8 +1228,8 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'UPGRADE_OFFER' && (
             <>
-              <Typography variant="h5">Upgrade Infrastructure</Typography>
-              <Button fullWidth variant="contained" onClick={handleUpgrade} sx={{ mt: 2 }}>UPGRADE SUB-THEME</Button>
+              <Typography variant="h5">{LABELS.upgradeTitle}</Typography>
+              <Button fullWidth variant="contained" onClick={handleUpgrade} sx={{ mt: 2 }}>{LABELS.upgrade.toUpperCase()}</Button>
               <Button fullWidth onClick={() => setModalOpen(false)} sx={{ mt: 1 }}>CANCEL</Button>
             </>
           )}
@@ -1254,12 +1238,10 @@ export default function MicrobiopolyGame({
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h6" sx={{ color: THEME.danger }}>Rent Due: ${activeCard.rent}</Typography>
-                {activeCard.data.manual && <Button size="small" variant="outlined" onClick={toggleManual}>{manualUnlocked ? showManual ? 'HIDE MANUAL' : 'SHOW MANUAL' : 'MANUAL ($50)'}</Button>}
               </Box>
               <Box sx={{ bgcolor: 'info.light', p: 2, borderRadius: 2, mb: 2 }}>
                 <Typography variant="subtitle2" sx={{ color: 'info.main', fontWeight: 'bold' }}>{activeCard.payerName} (You) must answer!</Typography>
               </Box>
-              <Collapse in={showManual}><Alert severity="info" sx={{ mb: 3 }}><Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{activeCard.data.manual}</Typography></Alert></Collapse>
               <Divider sx={{ my: 2 }} />
               
               {renderQuestion(activeCard.q, handleRentChallengeAnswer, { imageMaxHeight: 200 })}
@@ -1297,7 +1279,7 @@ export default function MicrobiopolyGame({
 
       <Modal open={manageOpen} onClose={() => setManageOpen(false)}>
         <Box sx={modalStyle}>
-          <Typography variant="h5">Lab Manager</Typography>
+          <Typography variant="h5">{LABELS.upgrades}</Typography>
           <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: 10 }}>
             {board.map((tile) => {
               if (tile.owner === turn && tile.type === 'property') {

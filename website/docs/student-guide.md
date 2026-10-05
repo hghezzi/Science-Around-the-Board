@@ -36,12 +36,12 @@ This game runs in your browser. No installation is required.
 
 ### Movement & Properties
 * **Roll Dice:** Move your token.
-* **Unowned Property:** If you land on a research topic nobody owns, you can attempt to "Publish" (buy) it.
+* **Unowned Property:** If you land on a tile nobody owns, you can try to buy it.
     * *The Quiz:* You must answer a question correctly.
     * *Success:* You can choose to pay the cost and own the tile.
     * *Failure:* You pay a small penalty ($20) and do not get the tile. The correct answer and an explanation are shown so you can learn from it.
 * **Owned Property (Rival):** If you land on a tile owned by another team, you must pay **Rent**.
-* **Lab Mishaps:** Random events that cost or pay the amount shown on the card.
+* **Chance tiles:** Random events that cost or pay the amount shown on the card.
 
 ### Question Types
 Most questions are multiple choice (answer order is shuffled every time). Your instructor may also use:
@@ -60,7 +60,7 @@ When you owe rent, you have a chance to defend your funding:
 You can upgrade your labs to charge massive rent, but strict rules apply:
 1.  **Group Ownership:** You must own **ALL** tiles of a specific color group (e.g., all 3 "Side 1" tiles).
 2.  **Even Building:** You must upgrade evenly. You cannot build a Level 3 tile if the others in the group are still Level 0.
-3.  **How to Build:** Click the **"Lab Manager"** button to buy upgrades and multiply the rent charged to other players.
+3.  **How to Build:** Click the **"Upgrades"** button to buy upgrades and multiply the rent charged to other players.
 
 ### ⚡ Chaos Tokens
 Chaos Tokens introduce "Take That" mechanics to the game.
@@ -77,7 +77,7 @@ Chaos Tokens introduce "Take That" mechanics to the game.
 ### Bankruptcy
 If you run out of money (Negative Balance):
 1.  **Liquidation:** The game makes you sell assets or downgrade labs until your balance is positive.
-2.  **The Emergency Grant (once per game):** If selling everything still can't cover your debt, you get one 3-question grant review.
+2.  **The Rescue Quiz (once per game):** If selling everything still can't cover your debt, you get one 3-question Rescue Quiz.
     * *Pass (2 of 3):* Your debt is cleared and you receive $500 to keep playing.
     * *Fail:* Your team is **eliminated** and its properties return to the bank.
 3.  **Second bankruptcy:** If you go bankrupt again after using your grant, your team is eliminated.

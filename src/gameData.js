@@ -4,7 +4,7 @@
 //  - Geometry: classic 36-tile Monopoly loop
 //  - 4 corners = 4 milestones (from TSV Side1..Side4)
 //  - Each side interior (between two corners):
-//       3 × Subtheme1 → Core → 3 × Subtheme2 → Lab Mishap
+//       3 × Subtheme1 → Core → 3 × Subtheme2 → Chance
 //  - All names & questions come from tsvBoardBuilder (QS object).
 // -------------------------------------------------------------------
 
@@ -32,7 +32,7 @@ export const getBoardByTopic = () => createBoard(null);
 function createBoard(QS) {
   // Safe defaults if QS missing
   const data = QS || {
-    CoreTech: { name: "Core Facility", questions: [] },
+    CoreTech: { name: "Core Skills", questions: [] },
     Side1: null,
     Side2: null,
     Side3: null,
@@ -100,10 +100,10 @@ function createBoard(QS) {
     };
   }
 
-  function makeLabMishap() {
+  function makeChance() {
     return {
       type: "chance",
-      name: "Lab Mishap",
+      name: "Chance",
       color: "#fb7185",
       fixedAmount: -100,
     };
@@ -111,7 +111,7 @@ function createBoard(QS) {
 
   /**
    * Build the 8 interior tiles of a side (between two corner milestones).
-   * Pattern: 3 × Subtheme1 → Core → 3 × Subtheme2 → Lab Mishap
+   * Pattern: 3 × Subtheme1 → Core → 3 × Subtheme2 → Chance
    */
   function generateSideInterior(sideData, themeVisual, coreData) {
     if (!sideData) return [];
@@ -175,8 +175,8 @@ function createBoard(QS) {
         sub2.questions || []
       ),
 
-      // Lab Mishap
-      makeLabMishap(),
+      // Chance (random event)
+      makeChance(),
     ];
   }
 
