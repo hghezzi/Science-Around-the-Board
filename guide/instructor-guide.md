@@ -98,7 +98,7 @@ Science Around the Board requires students to load a file with all questions (re
 | Column | Required? | Description | Example |
 | :--- | :--- | :--- | :--- |
 | `id` | Yes | Unique ID for the row | `bio_01` |
-| `question` | Yes | The text prompt (for `mishap` rows, the chance-card text) | What is the start codon? |
+| `question` | Yes | The text prompt (for `mishap` rows, the wildcard text) | What is the start codon? |
 | `option1`–`option4` | For choice questions | Answer choices A–D | AUG |
 | `correctIndex` | For choice questions | Position of the correct option (1–4), or a list for select-all | `1`, or `1,3` |
 | `explanation` | Yes | Feedback shown after answering | AUG codes for methionine. |
@@ -129,7 +129,7 @@ These columns act as the blueprint for your game. They tell the engine where to 
   - **property:** standard questions used when a team tries to buy or defend a regular tile.
   - **milestone:** harder, comprehensive questions used for the corner exams. Students must answer 5 out of 6 correctly to capture a milestone, so provide at least 6, and ideally 8–10, per theme.
   - **core:** questions for the four utility tiles (the first `core` row’s subtheme names them, e.g. “UNIX” or “Statistics”), shared across the board.
-  - **mishap:** the Chance cards, random events drawn when a team lands on a Chance tile. Write the event text in the `question` column, including the amount, e.g. *"Someone left the freezer open! (-$100)"* or *"Scholarship awarded! (+$150)"*. The game charges or pays exactly that amount. Put a fun fact or practical lesson in the `explanation` column. Theme them to your subject: a history course might use *"Archive flooded! (-$100)"*. Without `mishap` rows, the game uses general built-in cards.
+  - **mishap:** the wildcards, random events drawn when a team lands on a Wildcard tile. Write the event text in the `question` column, including the amount, e.g. *"Someone left the freezer open! (-$100)"* or *"Scholarship awarded! (+$150)"*. The game charges or pays exactly that amount. Put a fun fact or practical lesson in the `explanation` column. Theme them to your subject: a history course might use *"Archive flooded! (-$100)"*. Without `mishap` rows, the game uses general built-in cards.
   - **survey / confidence:** these rows bypass the board and form the pre-game and post-game assessments. Ten `survey` questions are drawn at random for each student, and the same ones are asked again after the game. `confidence` rows appear as 0–10 sliders and are the same for all students.
 
 #### Question formats
@@ -173,7 +173,7 @@ If none is found, the question is shown without the image. Filenames are case-se
 When a file is loaded, the game checks it and lists any problems before the session starts:
 
 - **Red items** will break the game or make a question impossible to answer correctly. Examples: fewer than 4 themes, a `correctIndex` that doesn’t point to an option, or a theme with no milestone questions.
-- **Yellow notes** are suggestions. Examples: too few survey questions, chance cards without an amount, or ignored rows.
+- **Yellow notes** are suggestions. Examples: too few survey questions, wildcards without an amount, or ignored rows.
 
 Load your file yourself before class and fix the red items.
 
@@ -230,7 +230,7 @@ Next, each player completes a brief pre-game survey: the confidence sliders and 
 Each team’s turn follows a fast-paced loop:
 
 1. **Roll:** the active team rolls the dice in the centre of the board.
-2. **Move:** their pawn advances around the board automatically. Passing START pays $200.
+2. **Move:** their pawn advances around the board automatically. Passing START earns a $200 lap bonus.
 3. **Encounter:** the team interacts with the tile they land on.
 
 ![The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth](images/06-board.png)
@@ -247,7 +247,7 @@ The heart of the game lies in what happens when a team lands on a tile.
   - *Incorrect answer:* the team pays full rent.
 - **Milestones (corner exams):** capturing a corner requires more than money; it requires mastery. Teams pay an entrance fee and must answer 5 out of 6 questions on that side’s theme. Capturing a milestone earns a Chaos Token. Landing on a rival’s milestone offers an expert challenge to halve the fee.
 - **Core tiles:** utility tiles with questions from your `core` rows.
-- **Chance tiles:** draw a random card from your `mishap` rows that pays or costs the amount written on it (e.g. "Scholarship awarded! +$200" or "Contamination! -$100"), with a fun fact.
+- **Wildcard tiles:** draw a random card from your `mishap` rows that pays or costs the amount written on it (e.g. "Scholarship awarded! +$200" or "Contamination! -$100"), with a fun fact.
 
 ![A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder](images/07-question.png)
 
@@ -301,7 +301,7 @@ Before writing a single question, start with your Learning Outcomes. What exactl
 
 - **Foundational knowledge (properties):** use standard property tiles to test basic recall and terminology. If an LO is "Define the function of 16S rRNA", it belongs on a property tile.
 - **Synthesis and application (milestones):** the four corner milestones represent mastery. Reserve your highest-order thinking questions for these exams. If an LO is "Analyze a pipeline output to troubleshoot denoising errors", that scenario is better suited to a milestone quiz. Ordering questions (put the steps of a workflow in order) work especially well here.
-- **Practical realities (chance cards):** use your `mishap` rows to teach practical realities or common pitfalls that do not fit neatly into a question format (e.g. "You forgot to balance the centrifuge! (-$100)").
+- **Practical realities (wildcards):** use your `mishap` rows to teach practical realities or common pitfalls that do not fit neatly into a question format (e.g. "You forgot to balance the centrifuge! (-$100)").
 
 Science Around the Board was originally designed for review-style sessions, so it is naturally better suited to “recall”, “understand” or “apply” learning objectives than to “create” levels.
 

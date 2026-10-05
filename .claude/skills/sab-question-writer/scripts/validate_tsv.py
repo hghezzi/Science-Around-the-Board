@@ -249,7 +249,7 @@ def validate(headers, rows, image_dir=None):
             if c["core"] == 0:
                 warnings.append(f'[{name}] No "core" questions.')
             if c["mishap"] == 0:
-                warnings.append(f'[{name}] No "mishap" rows; the built-in general chance cards will be used.')
+                warnings.append(f'[{name}] No "mishap" rows; the built-in general wildcards will be used.')
             if c["survey"] == 0:
                 warnings.append(f'[{name}] No "survey" questions; the pre/post check will be empty.')
             elif c["survey"] < SURVEY_Q:

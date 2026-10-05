@@ -8,7 +8,7 @@ Contents: 1. How the file becomes a board · 2. Columns · 3. Row types · 4. An
 - Within a game, the **first 4 distinct `theme` values** (in file order, counting only `property` and `milestone` rows) become the 4 board sides. Extra themes are ignored. With fewer than 4, the board is broken.
 - In each theme, the **first 2 distinct `subtheme` values** among its `property` rows become two colour groups of 3 tiles each. Group 1 tiles cost $100 and group 2 tiles cost $160. Each tile draws a random question from its subtheme's pool.
 - Each side's corner is a **milestone**: a 6-question exam (5 correct to capture) drawn from that theme's `milestone` rows.
-- Each side has one **core** tile, with questions drawn from all `core` rows, and one **Chance** tile, which draws a random `mishap` row (a "chance card").
+- Each side has one **core** tile, with questions drawn from all `core` rows, and one **Wildcard** tile, which draws a random `mishap` row (a "wildcard").
 - `survey` rows form the pre- and post-game knowledge check: 10 random questions per player, and the same set again after the game. `confidence` rows become 0–10 sliders, shown before and after.
 - **Order matters**: put the rows for theme 1 first, then theme 2, and so on. Within each theme, list subtheme 1 before subtheme 2.
 
@@ -68,7 +68,7 @@ Tips:
 | property | 4 per subtheme | 8–10 per subtheme (64–80 total) | each subtheme pool feeds 3 tiles; small pools repeat quickly |
 | milestone | 6 per theme | 8–10 per theme | each exam asks 6, and teams retry |
 | core | 4 | 8–12 | shared by 4 tiles |
-| mishap | 3 | 6–10 | variety keeps chance tiles fun |
+| mishap | 3 | 6–10 | variety keeps wildcard tiles fun |
 | survey | 10 | 15–20 | each player draws 10; a bigger pool varies sets between players |
 | confidence | 1 | 3 | slider statements tied to LOs |
 

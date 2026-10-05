@@ -203,7 +203,7 @@ export function validateQuestionRows(rows, headers) {
       });
 
       if (game.counts.core === 0) warnings.push(`[${name}] No "core" questions; the 4 core tiles will show a generic event instead of a question.`);
-      if (game.counts.mishap === 0) warnings.push(`[${name}] No "mishap" rows; the built-in general chance cards will be used.`);
+      if (game.counts.mishap === 0) warnings.push(`[${name}] No "mishap" rows; the built-in general wildcards will be used.`);
       if (game.counts.survey === 0) warnings.push(`[${name}] No "survey" questions; the pre/post knowledge check will be empty.`);
       else if (game.counts.survey < SURVEY_QUIZ_SIZE) warnings.push(`[${name}] Only ${game.counts.survey} survey question(s); each player normally gets ${SURVEY_QUIZ_SIZE}.`);
       if (game.counts.confidence === 0) warnings.push(`[${name}] No "confidence" rows; the pre/post surveys will have no confidence sliders.`);

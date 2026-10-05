@@ -1,14 +1,15 @@
 // src/gameData.js
 // -------------------------------------------------------------------
 //  FULLY TSV-DRIVEN BOARD BUILDER FOR “Science Around the Board”
-//  - Geometry: classic 36-tile Monopoly loop
+//  - Geometry: 36-tile square loop
 //  - 4 corners = 4 milestones (from TSV Side1..Side4)
 //  - Each side interior (between two corners):
-//       3 × Subtheme1 → Core → 3 × Subtheme2 → Chance
+//       3 × Subtheme1 → Core → 3 × Subtheme2 → Wildcard
 //  - All names & questions come from tsvBoardBuilder (QS object).
 // -------------------------------------------------------------------
 
 import { buildBoardQuestionSet } from "./tsvBoardBuilder";
+import { LABELS } from "./labels";
 
 /**
  * Build a full board for a given topic + module using TSV rows.
@@ -103,7 +104,7 @@ function createBoard(QS) {
   function makeChance() {
     return {
       type: "chance",
-      name: "Chance",
+      name: LABELS.chanceTile,
       color: "#fb7185",
       fixedAmount: -100,
     };
@@ -111,7 +112,7 @@ function createBoard(QS) {
 
   /**
    * Build the 8 interior tiles of a side (between two corner milestones).
-   * Pattern: 3 × Subtheme1 → Core → 3 × Subtheme2 → Chance
+   * Pattern: 3 × Subtheme1 → Core → 3 × Subtheme2 → Wildcard
    */
   function generateSideInterior(sideData, themeVisual, coreData) {
     if (!sideData) return [];
@@ -175,7 +176,7 @@ function createBoard(QS) {
         sub2.questions || []
       ),
 
-      // Chance (random event)
+      // Wildcard (random event)
       makeChance(),
     ];
   }

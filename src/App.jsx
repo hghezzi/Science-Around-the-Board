@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import CryptoJS from "crypto-js"; 
 import { buildBoardFromTsv } from "./gameData"; 
-import MicrobiopolyGame from "./MicrobiopolyGame";
+import GameScreen from "./GameScreen";
 import { parseTsv, getAllTopics, getModulesForTopic } from "./tsvParser";
 import { validateQuestionRows } from "./tsvValidator";
 import { checkAnswer } from "./questionFormats";
@@ -347,7 +347,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "microbiopoly_data.csv";
+    a.download = "sab_results.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -515,7 +515,7 @@ export default function App() {
   }
 
   if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <MicrobiopolyGame boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
+  if (phase === "GAME") return <GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
   if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
   return <SummaryView onExport={handleExport} onReturn={() => { setPhase("SETUP"); setGameMode(null); setAllTsvRows([]); }} />;
 }

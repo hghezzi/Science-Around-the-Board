@@ -1,5 +1,5 @@
 // src/questionBank.js
-// Built-in chance cards, used only when a question file has no `mishap` rows.
+// Built-in wildcards, used only when a question file has no `mishap` rows.
 // Subject-neutral on purpose; each comes with a learning-science tip.
 
 export const DEFAULT_CHANCE_CARDS = [

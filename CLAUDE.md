@@ -1,6 +1,6 @@
 # Science Around the Board (SAB)
 
-A browser-only, Monopoly-style review game for higher education by Hans Ghezzi. It was built for UBC MICB 475 (16S rRNA / QIIME2), and the engine is meant to work for any subject. Instructors write a question file (TSV), and student teams (1–4 per computer) load it at https://hghezzi.github.io/Science-Around-the-Board/. The project goal is to keep improving the platform and make it easy for **other teaching teams** to adopt. Favour changes that keep it subject-agnostic, zero-install and privacy-preserving.
+A browser-only, property-trading review game for higher education by Hans Ghezzi. It was built for UBC MICB 475 (16S rRNA / QIIME2), and the engine is meant to work for any subject. Instructors write a question file (TSV), and student teams (1–4 per computer) load it at https://hghezzi.github.io/Science-Around-the-Board/. The project goal is to keep improving the platform and make it easy for **other teaching teams** to adopt. Favour changes that keep it subject-agnostic, zero-install and privacy-preserving.
 
 License: CC BY-NC-SA 4.0 (non-commercial).
 
@@ -37,9 +37,9 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 
 ## Code map
 - `src/App.jsx`:
-  - Phase machine: landing (demo, Intro Statistics example, or upload a TSV or `.lock`, plus optional images; validation report; consent banner), then `SETUP` (players, session length, topic/module), `PRE_SURVEY`, `GAME`, `POST_SURVEY`, `SUMMARY` (export `microbiopoly_data.csv`).
+  - Phase machine: landing (demo, Intro Statistics example, or upload a TSV or `.lock`, plus optional images; validation report; consent banner), then `SETUP` (players, session length, topic/module), `PRE_SURVEY`, `GAME`, `POST_SURVEY`, `SUMMARY` (export `sab_results.csv`).
   - `SurveyView` serves both pre and post surveys. The best pre-survey scorer starts the game (`bestPreSurveyPlayer`).
-- `src/MicrobiopolyGame.jsx`: a single component (~1300 lines) holding all turn logic and UI, with modal flows keyed by `modalStage` / `activeCard.type`.
+- `src/GameScreen.jsx`: a single component (~1300 lines) holding all turn logic and UI, with modal flows keyed by `modalStage` / `activeCard.type`.
   - Start money $2500; passing Go +$200.
   - Property question: right gives the option to buy; wrong is −$20.
   - Rent defense: right pays 50%.
@@ -79,8 +79,8 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/images.js` (pure): `resolveImage(name, uploaded)`. Order: uploaded file, then http/data URL, then `./questionImages/<name>` (hosted in `public/questionImages`).
 - `src/tsvValidator.js` (pure): instructor-facing checks that mirror what the engine needs. Shared by the UI, CLI and tests. **Update it, and its Python mirror in the skill, whenever engine assumptions change.**
 - `src/consent.js` and `src/ConsentBanner.jsx`: Google Analytics (`G-B2Z5WS4KQR`) loads only after opt-in. The banner appears on the start page only. `public/privacy.html` is the privacy notice.
-- `src/labels.js`: all player-facing game terms (Chance, Buy, Upgrades, Rescue Quiz…), kept subject-neutral.
-- `src/questionBank.js`: `DEFAULT_CHANCE_CARDS`, the neutral fallback chance cards used when a file has no `mishap` rows.
+- `src/labels.js`: all player-facing game terms (Wildcard, Buy, Upgrades, Rescue Quiz…), kept subject-neutral.
+- `src/questionBank.js`: `DEFAULT_CHANCE_CARDS`, the neutral fallback wildcards used when a file has no `mishap` rows.
 - `public/encryptor.html`: standalone tool that encrypts a TSV into a `.lock` file.
 - `public/SAB_questions_Jan22_Filtered.tsv`: demo file (`16S`/`QIIME2`, including rows in every format).
 - `public/examples/intro_statistics.tsv`: a non-biology example, generated with the skill.
@@ -99,7 +99,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - The parser is a simple tab split: quoted cells may not contain tabs or newlines.
 
 ## Known gaps / ideas. Confirm with the user before changing gameplay.
-1. Instructor-configurable labels (e.g. renaming Chance cards or the currency from the TSV) are planned. `src/labels.js` is the hook.
+1. Instructor-configurable labels (e.g. renaming Wildcards or the currency from the TSV) are planned. `src/labels.js` is the hook.
 2. There is no autosave (a refresh loses everything). The board needs at least about 600 px of width, and phone layouts are not a target.
 3. `type=post` rows are ignored. Pre and post surveys use the same items; parallel forms are an idea.
 4. Question selection is random with repeats. Preferring unseen questions and re-asking missed ones later is an idea.

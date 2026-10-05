@@ -37,7 +37,7 @@ export const theme = createTheme({
         text: { primary: "#1e293b", secondary: "#55627a" },
         divider: "#dbe2ea",
         action: { selected: "rgba(37, 99, 235, 0.08)", hover: "rgba(15, 23, 42, 0.04)" },
-        board: { felt: "#cfe8da", center: "#e6f4ec", tile: "#ffffff", tileBorder: "#b8c7d6", ink: "#1e293b", muted: "#64748b", shadow: "rgba(15, 23, 42, 0.18)" },
+        board: { felt: "#d5deef", center: "#edf1fa", tile: "#ffffff", tileBorder: "#b8c7d6", ink: "#1e293b", muted: "#64748b", shadow: "rgba(15, 23, 42, 0.18)" },
       },
     },
     dark: {
@@ -52,7 +52,7 @@ export const theme = createTheme({
         text: { primary: "#e8edf4", secondary: "#b8c4d4" },
         divider: "#334155",
         action: { selected: "rgba(124, 184, 251, 0.14)", hover: "rgba(255, 255, 255, 0.06)" },
-        board: { felt: "#163226", center: "#1b3b2d", tile: "#1f2a3a", tileBorder: "#3a4a60", ink: "#e8edf4", muted: "#9fb0c4", shadow: "rgba(0, 0, 0, 0.5)" },
+        board: { felt: "#17203a", center: "#1d2847", tile: "#1f2a3a", tileBorder: "#3a4a60", ink: "#e8edf4", muted: "#9fb0c4", shadow: "rgba(0, 0, 0, 0.5)" },
       },
     },
   },

@@ -39,7 +39,7 @@ The game requires a **Tab-Separated Values** file. We recommend using Excel or G
 * **`property`**: Questions used when landing on standard board tiles.
 * **`milestone`**: Harder questions for the 4 corner "Boss Tiles". (Need ~6-10 per theme).
 * **`core`**: Questions for the 4 Core tiles (the first core row's `subtheme` names them, e.g. "UNIX").
-* **`mishap`**: Chance cards, the random events drawn on Chance tiles. Theme them to your subject; without any, general built-in cards are used.
+* **`mishap`**: Wildcards, the random events drawn on Wildcard tiles. Theme them to your subject; without any, general built-in cards are used.
     * *Note:* For mishaps, `question` is the Event Text, `explanation` is the Fun Fact.
     * *Money:* Write the amount in the text, e.g. `Freezer failure! (-$100)` or `Grant renewed! (+$200)`. The game charges or pays exactly that amount. Without an amount, rewards (text containing `+`) pay $50 and penalties cost $100.
 * **`survey`**: General knowledge questions for Pre/Post test.
@@ -108,7 +108,7 @@ To prevent "cheating" (students reading the TSV answer key), you can encrypt the
 
 ## 5. Checking Your File
 
-When a file is loaded, the game lists any problems it finds before you start: missing or misspelled columns, `correctIndex` values that don't match an option, fewer than 4 themes, themes without milestone questions, invalid numeric or multi-select answers, chance cards without an amount, and images that haven't been uploaded. Fix the red items before class; the yellow notes are suggestions.
+When a file is loaded, the game lists any problems it finds before you start: missing or misspelled columns, `correctIndex` values that don't match an option, fewer than 4 themes, themes without milestone questions, invalid numeric or multi-select answers, wildcards without an amount, and images that haven't been uploaded. Fix the red items before class; the yellow notes are suggestions.
 
 ## 6. Generating Questions with Claude
 

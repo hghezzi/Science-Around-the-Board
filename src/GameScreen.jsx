@@ -1,4 +1,4 @@
-// src/MicrobiopolyGame.jsx
+// src/GameScreen.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Button,
@@ -53,7 +53,7 @@ const modalStyle = {
 //  MAIN COMPONENT
 // ------------------------------------------------------------------
 
-export default function MicrobiopolyGame({
+export default function GameScreen({
   boardData,
   playerCount,
   startingPlayerIndex = 0,
@@ -1166,7 +1166,7 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'MISHAP' && modalStage === 'MISHAP' && (
             <>
-              <Typography variant="h5" gutterBottom>❓ {LABELS.chanceCard}</Typography>
+              <Typography variant="h5" gutterBottom>🃏 {LABELS.chanceCard}</Typography>
               <Typography variant="body1">{activeCard.msg}</Typography>
               {activeCard.data.fact && <Alert severity="info" sx={{ mt: 2 }}><Typography variant="body2">{activeCard.data.fact}</Typography></Alert>}
               <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>

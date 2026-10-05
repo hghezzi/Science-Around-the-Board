@@ -41,7 +41,7 @@ This game runs in your browser. No installation is required.
     * *Success:* You can choose to pay the cost and own the tile.
     * *Failure:* You pay a small penalty ($20) and do not get the tile. The correct answer and an explanation are shown so you can learn from it.
 * **Owned Property (Rival):** If you land on a tile owned by another team, you must pay **Rent**.
-* **Chance tiles:** Random events that cost or pay the amount shown on the card.
+* **Wildcard tiles:** Random events that cost or pay the amount shown on the card.
 
 ### Question Types
 Most questions are multiple choice (answer order is shuffled every time). Your instructor may also use:
@@ -56,8 +56,8 @@ When you owe rent, you have a chance to defend your funding:
 * **Correct:** You proved your knowledge! You pay only **50%** of the rent.
 * **Incorrect:** You pay the **Full (100%)** rent.
 
-### 🧪 Upgrades (The "Monopoly" Mechanic)
-You can upgrade your labs to charge massive rent, but strict rules apply:
+### ⭐ Upgrades
+You can upgrade your tiles to charge much higher rent, but strict rules apply:
 1.  **Group Ownership:** You must own **ALL** tiles of a specific color group (e.g., all 3 "Side 1" tiles).
 2.  **Even Building:** You must upgrade evenly. You cannot build a Level 3 tile if the others in the group are still Level 0.
 3.  **How to Build:** Click the **"Upgrades"** button to buy upgrades and multiply the rent charged to other players.
