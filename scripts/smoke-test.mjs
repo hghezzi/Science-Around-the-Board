@@ -6,6 +6,7 @@
 import { preview } from "vite";
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
+import CryptoJS from "crypto-js";
 
 const ROLLS = Number(process.env.ROLLS || 10);
 const server = await preview({ preview: { port: 4181, strictPort: false }, logLevel: "error" });
@@ -201,10 +202,39 @@ async function resultsScenario() {
   await context.close();
 }
 
+// Encrypted (.lock) uploads, shared links and their error messages.
+async function filesScenario() {
+  console.log("▶ .lock upload and links");
+  const { context, page } = await newPage();
+  await page.goto(BASE);
+  await page.getByRole("button", { name: "No thanks" }).click();
+  const lock = CryptoJS.AES.encrypt(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "Class-Pass").toString();
+  await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions.lock", mimeType: "text/plain", buffer: Buffer.from(lock) });
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel(/Class password/).fill("wrong");
+  await dialog.getByRole("button", { name: "Unlock" }).click();
+  await dialog.getByText(/password didn't work/).waitFor();
+  await dialog.getByLabel(/Class password/).fill("Class-Pass");
+  await dialog.getByRole("button", { name: "Unlock" }).click();
+  await page.getByText(/Loaded 177 questions/).waitFor({ timeout: 10000 });
+  await page.getByRole("button", { name: /Use a different file/ }).click();
+  await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("just some notes") });
+  await page.getByText(/This isn't a question file/).waitFor();
+
+  await page.goto(`${BASE}?deck=stats`);
+  await page.getByText(/Loaded \d+ questions/).waitFor({ timeout: 15000 });
+  await page.getByRole("button", { name: /Continue to game setup/ }).click();
+  if (!(await page.getByRole("button", { name: /^Statistics/ }).count())) fail("files: ?deck=stats didn't load the statistics example");
+  await page.goto(`${BASE}?deck=${encodeURIComponent("https://docs.google.com/spreadsheets/d/1AbC/edit#gid=0")}`);
+  await page.getByText(/isn't published/).first().waitFor();
+  await context.close();
+}
+
 const SCENARIOS = {
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),
   results: resultsScenario,
+  files: filesScenario,
 };
 const selected = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
 for (const name of selected) {

@@ -60,6 +60,7 @@ export default function GameScreen({
   onExit,
   onEndGame,
   imageMap = {},
+  imageBase = '',
   tsvRows = [],
   sessionMinutes = 0,
   bigTopic = '',
@@ -86,7 +87,7 @@ export default function GameScreen({
 
   const [board, setBoard] = useState(boardData);
   const [players, setPlayers] = useState(generatePlayers(playerCount));
-  const getImgSrc = (imgName) => resolveImage(imgName, imageMap);
+  const getImgSrc = (imgName) => resolveImage(imgName, imageMap, imageBase);
   const [turn, setTurn] = useState(startingPlayerIndex || 0);
   const turnRef = useRef(startingPlayerIndex || 0);
   // Latest players for event handlers. Side effects must not run inside state

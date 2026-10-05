@@ -4,10 +4,14 @@
 // Usage: node scripts/a11y-check.mjs [baseUrl]
 import { chromium } from "playwright";
 import { AxeBuilder } from "@axe-core/playwright";
+import CryptoJS from "crypto-js";
+import { readFileSync } from "node:fs";
 
 const BASE = process.argv[2] || "http://localhost:4173/Science-Around-the-Board/";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 let failures = 0;
+// An encrypted copy of the demo, to open the password dialog.
+const LOCK = CryptoJS.AES.encrypt(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "a11y-test").toString();
 
 async function audit(page, label) {
   await page.waitForTimeout(400); // let MUI colour transitions finish
@@ -25,7 +29,13 @@ for (const scheme of ["light", "dark"]) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme });
   const page = await context.newPage();
   await page.goto(BASE);
+  await page.getByText(/share your questions as a link/).click();
+  await page.getByLabel("Link to your question file").fill("demo");
   await audit(page, `${scheme} landing`);
+  await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions.lock", mimeType: "text/plain", buffer: Buffer.from(LOCK) });
+  await page.getByText("This question file is protected").waitFor();
+  await audit(page, `${scheme} password`);
+  await page.getByRole("button", { name: "Cancel" }).click();
   await page.click("text=No thanks");
   await page.click("text=Play the demo");
   await audit(page, `${scheme} loaded`);

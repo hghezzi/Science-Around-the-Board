@@ -9,3 +9,14 @@ describe("resolveImage", () => {
     expect(resolveImage("")).toBeNull();
   });
 });
+
+describe("resolveImage with an image folder link", () => {
+  it("uses the folder for plain filenames, after uploads and full links", () => {
+    const base = "https://raw.githubusercontent.com/me/course/main/images/";
+    expect(resolveImage("plot 1.png", {}, base)).toBe("https://raw.githubusercontent.com/me/course/main/images/plot%201.png");
+    expect(resolveImage("sub/a.png", {}, base.slice(0, -1))).toBe("https://raw.githubusercontent.com/me/course/main/images/sub/a.png");
+    expect(resolveImage("plot 1.png", { "plot 1.png": "blob:x" }, base)).toBe("blob:x");
+    expect(resolveImage("https://x.org/a.png", {}, base)).toBe("https://x.org/a.png");
+    expect(resolveImage("a.png")).toBe("./questionImages/a.png");
+  });
+});
