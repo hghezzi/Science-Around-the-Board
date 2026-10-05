@@ -1,4 +1,4 @@
-// src/MicrobiopolyGame.jsx
+// src/GameScreen.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Button,
@@ -12,7 +12,8 @@ import {
   Alert,
 } from '@mui/material';
 import { DEFAULT_CHANCE_CARDS } from './questionBank';
-import { LABELS } from './labels';
+import { LABELS, teamDisplayName } from './labels';
+import { matchesTopicAndModule } from './tsvBoardBuilder';
 import {
   getSubgroupTiles, getRentMultiplier, computeRent, rankPlayers, nextActivePlayer, activePlayers,
 } from './gameRules';
@@ -23,7 +24,7 @@ import Board from './components/Board';
 import Dice from './components/Dice';
 import TeamPanel from './components/TeamPanel';
 import { celebrate } from './components/confetti';
-import { TEAM_COLORS, TEAM_NAMES, TEAM_SYMBOLS } from './theme';
+import { TEAM_COLORS, TEAM_SYMBOLS } from './theme';
 
 // Status colours as theme CSS variables (light/dark aware).
 const THEME = {
@@ -49,57 +50,31 @@ const modalStyle = {
 };
 
 // ------------------------------------------------------------------
-//  HELPER FUNCTIONS
-// ------------------------------------------------------------------
-
-function downloadCSV(rows, filename = 'microbiopoly_log.csv') {
-  if (!rows || rows.length === 0) return;
-  const headers = Object.keys(rows[0]);
-  const csv = [
-    headers.join(','),
-    ...rows.map((r) =>
-      headers.map((h) => {
-          const val = r[h] ?? '';
-          const str = String(val).replace(/"/g, '""');
-          return `"${str}"`;
-        }).join(',')
-    ),
-  ].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-// ------------------------------------------------------------------
 //  MAIN COMPONENT
 // ------------------------------------------------------------------
 
-export default function MicrobiopolyGame({
+export default function GameScreen({
   boardData,
   playerCount,
   startingPlayerIndex = 0,
   onExit,
   onEndGame,
   imageMap = {},
+  imageBase = '',
   tsvRows = [],
   sessionMinutes = 0,
   bigTopic = '',
   module = '',
+  resume = null, // autosaved game to continue (see App.jsx / autosave.js)
+  onSnapshot,
 }) {
   const generatePlayers = (count) => {
     const colors = TEAM_COLORS;
-    const names = TEAM_NAMES;
     let p = [];
     for (let i = 0; i < count; i++) {
       p.push({
         id: i,
-        name: names[i],
+        name: teamDisplayName(i, count),
         color: colors[i],
         position: 0,
         money: 2500,
@@ -109,23 +84,32 @@ export default function MicrobiopolyGame({
         eliminated: false,
       });
     }
-    if (count === 1) p[0].name = LABELS.soloTeam;
     return p;
   };
 
-  const [board, setBoard] = useState(boardData);
-  const [players, setPlayers] = useState(generatePlayers(playerCount));
-  const getImgSrc = (imgName) => resolveImage(imgName, imageMap);
-  const [turn, setTurn] = useState(startingPlayerIndex || 0);
-  const turnRef = useRef(startingPlayerIndex || 0);
+  // A resumed game keeps the freshly built board (its tiles share question arrays)
+  // and restores only what changes during play: each tile's owner and level.
+  const [board, setBoard] = useState(() => (resume?.tiles
+    ? boardData.map((t, i) => ({ ...t, owner: resume.tiles[i]?.[0] ?? null, level: resume.tiles[i]?.[1] ?? 0 }))
+    : boardData));
+  const [players, setPlayers] = useState(() => resume?.players ?? generatePlayers(playerCount));
+  const getImgSrc = (imgName) => resolveImage(imgName, imageMap, imageBase);
+  const [turn, setTurn] = useState(resume?.turn ?? (startingPlayerIndex || 0));
+  const turnRef = useRef(resume?.turn ?? (startingPlayerIndex || 0));
+  // True from the roll until the turn is passed: never autosave a half-finished turn.
+  const turnInProgressRef = useRef(false);
+  // Latest players for event handlers. Side effects must not run inside state
+  // updaters: React runs those twice in development (it doubled payouts).
+  const playersRef = useRef(players);
+  useEffect(() => { playersRef.current = players; }, [players]);
 
-  const [totalTurns, setTotalTurns] = useState(0);
+  const [totalTurns, setTotalTurns] = useState(resume?.totalTurns ?? 0);
   const [isMoving, setIsMoving] = useState(false);
-  const [dice, setDice] = useState([1, 1]);
+  const [dice, setDice] = useState(resume?.dice ?? [1, 1]);
   const [rollId, setRollId] = useState(0);
-  const [logs, setLogs] = useState(() => [
-    playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.',
-  ]);
+  const [logs, setLogs] = useState(() => (resume
+    ? ['Game resumed.', ...(resume.logs || [])].slice(0, 10)
+    : [playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.']));
 
   // Modal + flow state
   const [modalOpen, setModalOpen] = useState(false);
@@ -154,10 +138,10 @@ export default function MicrobiopolyGame({
   const [hoverTile, setHoverTile] = useState(null);
   const [, setChaosMode] = useState(null);
   const [chaosTargetTile, setChaosTargetTile] = useState(null);
-  const [logRows, setLogRows] = useState([]);
+  const [logRows, setLogRows] = useState(resume?.logRows ?? []);
 
   // Optional session timer: when it runs out, the game ends on net worth.
-  const [endsAt] = useState(() => (sessionMinutes > 0 ? Date.now() + sessionMinutes * 60000 : null));
+  const [endsAt] = useState(() => (resume ? resume.endsAt ?? null : (sessionMinutes > 0 ? Date.now() + sessionMinutes * 60000 : null)));
   const [now, setNow] = useState(() => Date.now());
   const standingsShownRef = useRef(false);
   useEffect(() => {
@@ -536,88 +520,86 @@ export default function MicrobiopolyGame({
   };
 
   const checkLanding = (didPassGo) => {
-    setPlayers((currentPlayers) => {
-      const currentTurnIndex = turnRef.current;
-      const p = currentPlayers[currentTurnIndex];
-      const tile = board[p.position];
+    const currentPlayers = playersRef.current;
+    const currentTurnIndex = turnRef.current;
+    const p = currentPlayers[currentTurnIndex];
+    const tile = board[p.position];
 
-      if (didPassGo) {
-        handleTransaction(p.id, 200, { action: 'PASS_GO' });
-        addLog(LABELS.passStart);
-      }
+    if (didPassGo) {
+      handleTransaction(p.id, 200, { action: 'PASS_GO' });
+      addLog(LABELS.passStart);
+    }
 
-      setFeedback(null);
+    setFeedback(null);
 
-      if (tile.owner === p.id) {
-        setActiveCard({ type: 'MSG', data: tile, msg: LABELS.ownTile });
-        setModalStage('MSG');
-        setModalOpen(true);
-        return currentPlayers;
-      }
+    if (tile.owner === p.id) {
+      setActiveCard({ type: 'MSG', data: tile, msg: LABELS.ownTile });
+      setModalStage('MSG');
+      setModalOpen(true);
+      return;
+    }
 
-      if (tile.type === 'milestone') {
-        if (tile.owner == null) {
-          if (p.money >= tile.price) {
-            setActiveCard({ type: 'MILESTONE', data: tile });
-            setModalStage('MILESTONE_INTRO');
-            setModalOpen(true);
-          } else {
-            setActiveCard({ type: 'MSG', data: tile, msg: LABELS.cannotAffordMilestone(tile.price) });
-            setModalStage('MSG');
-            setModalOpen(true);
-          }
-        } else if (tile.owner !== p.id) {
-          setActiveCard({ type: 'MILESTONE_CHALLENGE', data: tile, ownerId: tile.owner });
-          setModalStage('MILESTONE_CHALLENGE_INTRO');
-          setModalOpen(true);
-        }
-        return currentPlayers;
-      }
-
-      if (tile.questions && tile.questions.length > 0) {
-        if (tile.owner != null && tile.owner !== p.id) {
-          const rentBase = tile.type === 'sequencing_core' ? tile.baseRent : computeRent(board, tile);
-          const qPool = tile.questions || [];
-          const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
-          setActiveCard({ type: 'RENT_DEFENSE', data: tile, rent: rentBase, ownerName: players[tile.owner]?.name || LABELS.rivalTeam, ownerId: tile.owner, payerId: p.id, payerName: p.name, q: randomQ });
-          setModalStage('QUESTION');
+    if (tile.type === 'milestone') {
+      if (tile.owner == null) {
+        if (p.money >= tile.price) {
+          setActiveCard({ type: 'MILESTONE', data: tile });
+          setModalStage('MILESTONE_INTRO');
           setModalOpen(true);
         } else {
-          const qPool = tile.questions || [];
-          const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
-          setActiveCard({ type: 'QUESTION', data: tile, q: randomQ });
-          setModalStage('QUESTION');
-          setModalOpen(true);
-        }
-      } else {
-        let msg = 'Event triggered.';
-        let amount = 0;
-        let fact = null;
-        if (tile.type === 'chance') {
-          // 1. Look for 'mishap' rows in the TSV
-          const tsvMishaps = tsvRows
-            .filter(r => (r.type || '').trim().toLowerCase() === 'mishap')
-            .map(r => ({ msg: r.question, fact: r.explanation }));
-
-          // 2. Use TSV mishaps if found; otherwise fallback to defaults
-          const mishapPool = tsvMishaps.length > 0 ? tsvMishaps : DEFAULT_CHANCE_CARDS;
-          
-          const randomMishap = mishapPool.length > 0 ? mishapPool[Math.floor(Math.random() * mishapPool.length)] : { msg: 'Equipment Malfunction (-$100)', fact: null };
-          amount = parseMishapAmount(randomMishap.msg);
-          msg = randomMishap.msg;
-          fact = randomMishap.fact || null;
-          if (amount !== 0) handleTransaction(currentTurnIndex, amount, { action: 'LAB_MISHAP', tileId: tile.id, tileName: tile.name, notes: msg });
-          setActiveCard({ type: 'MISHAP', data: { ...tile, fact }, msg });
-          setModalStage('MISHAP');
-          setModalOpen(true);
-        } else {
-          setActiveCard({ type: 'MSG', data: tile, msg });
+          setActiveCard({ type: 'MSG', data: tile, msg: LABELS.cannotAffordMilestone(tile.price) });
           setModalStage('MSG');
           setModalOpen(true);
         }
+      } else if (tile.owner !== p.id) {
+        setActiveCard({ type: 'MILESTONE_CHALLENGE', data: tile, ownerId: tile.owner });
+        setModalStage('MILESTONE_CHALLENGE_INTRO');
+        setModalOpen(true);
       }
-      return currentPlayers;
-    });
+      return;
+    }
+
+    if (tile.questions && tile.questions.length > 0) {
+      if (tile.owner != null && tile.owner !== p.id) {
+        const rentBase = tile.type === 'sequencing_core' ? tile.baseRent : computeRent(board, tile);
+        const qPool = tile.questions || [];
+        const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
+        setActiveCard({ type: 'RENT_DEFENSE', data: tile, rent: rentBase, ownerName: players[tile.owner]?.name || LABELS.rivalTeam, ownerId: tile.owner, payerId: p.id, payerName: p.name, q: randomQ });
+        setModalStage('QUESTION');
+        setModalOpen(true);
+      } else {
+        const qPool = tile.questions || [];
+        const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
+        setActiveCard({ type: 'QUESTION', data: tile, q: randomQ });
+        setModalStage('QUESTION');
+        setModalOpen(true);
+      }
+    } else {
+      let msg = 'Event triggered.';
+      let amount = 0;
+      let fact = null;
+      if (tile.type === 'chance') {
+        // 1. Look for 'mishap' rows in the TSV
+        const tsvMishaps = tsvRows
+          .filter(r => (r.type || '').trim().toLowerCase() === 'mishap' && matchesTopicAndModule(r, bigTopic, module))
+          .map(r => ({ msg: r.question, fact: r.explanation }));
+
+        // 2. Use TSV mishaps if found; otherwise fallback to defaults
+        const mishapPool = tsvMishaps.length > 0 ? tsvMishaps : DEFAULT_CHANCE_CARDS;
+        
+        const randomMishap = mishapPool.length > 0 ? mishapPool[Math.floor(Math.random() * mishapPool.length)] : { msg: 'Unexpected expense (-$100)', fact: null };
+        amount = parseMishapAmount(randomMishap.msg);
+        msg = randomMishap.msg;
+        fact = randomMishap.fact || null;
+        if (amount !== 0) handleTransaction(currentTurnIndex, amount, { action: 'LAB_MISHAP', tileId: tile.id, tileName: tile.name, notes: msg });
+        setActiveCard({ type: 'MISHAP', data: { ...tile, fact }, msg });
+        setModalStage('MISHAP');
+        setModalOpen(true);
+      } else {
+        setActiveCard({ type: 'MSG', data: tile, msg });
+        setModalStage('MSG');
+        setModalOpen(true);
+      }
+    }
   };
 
   const handleRoll = () => {
@@ -630,6 +612,7 @@ export default function MicrobiopolyGame({
     const d2 = Math.floor(Math.random() * 6) + 1;
     setDice([d1, d2]);
     setRollId((n) => n + 1);
+    turnInProgressRef.current = true;
     setIsMoving(true);
 
     const startPos = players[turn].position;
@@ -672,9 +655,16 @@ export default function MicrobiopolyGame({
   };
 
   const passTurn = () => {
+    turnInProgressRef.current = false;
     setModalOpen(false);
     setTurn((prev) => nextActivePlayer(players, prev));
   };
+
+  // Autosave between turns only: a refresh in the middle of a turn returns to its start.
+  useEffect(() => {
+    if (!onSnapshot || isMoving || modalOpen || manageOpen || turnInProgressRef.current) return;
+    onSnapshot({ tiles: board.map((t) => [t.owner ?? null, t.level || 0]), players, turn, totalTurns, logs, logRows, dice, endsAt });
+  }, [board, players, turn, totalTurns, logRows, isMoving, modalOpen, manageOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRentChallengeAnswer = (response) => {
     const tile = activeCard.data;
@@ -792,7 +782,6 @@ export default function MicrobiopolyGame({
   };
   const clearHover = () => setHoverTile(null);
 
-  const handleExportCSV = () => { if (!logRows.length) { alert('No logged events.'); return; } downloadCSV(logRows); };
   // Final standings: opened by END GAME, by the timer, or after a last-standing win.
   const openStandings = (forced, reason) => {
     setActiveCard({ type: 'STANDINGS', forced, reason });
@@ -871,8 +860,7 @@ export default function MicrobiopolyGame({
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button variant="contained" color="warning" onClick={() => openStandings(false, 'ended')}>End game</Button>
-          <Button variant="outlined" onClick={handleExportCSV}>Export CSV</Button>
-          <Button variant="text" color="error" onClick={onExit}>Exit session</Button>
+          <Button variant="text" color="error" onClick={() => { if (window.confirm('Leave this game? The current game and its results will be lost.')) onExit(); }}>Exit session</Button>
         </Box>
       </Box>
 
@@ -1071,7 +1059,7 @@ export default function MicrobiopolyGame({
                     ))}
                   </tbody>
                 </Box>
-                <Alert severity="info" sx={{ mb: 2 }}>Next: the post-game survey. Then export your CSV from the summary screen.</Alert>
+                <Alert severity="info" sx={{ mb: 2 }}>Next: the post-game survey. Then send or download your results on the final screen.</Alert>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   {!activeCard.forced && <Button fullWidth variant="outlined" onClick={() => setModalOpen(false)}>BACK TO GAME</Button>}
                   <Button fullWidth variant="contained" color="success" onClick={() => handleEndGame(activeCard.reason)}>CONTINUE TO POST-SURVEY</Button>
@@ -1195,7 +1183,7 @@ export default function MicrobiopolyGame({
 
           {activeCard?.type === 'MISHAP' && modalStage === 'MISHAP' && (
             <>
-              <Typography variant="h5" gutterBottom>❓ {LABELS.chanceCard}</Typography>
+              <Typography variant="h5" gutterBottom>🃏 {LABELS.chanceCard}</Typography>
               <Typography variant="body1">{activeCard.msg}</Typography>
               {activeCard.data.fact && <Alert severity="info" sx={{ mt: 2 }}><Typography variant="body2">{activeCard.data.fact}</Typography></Alert>}
               <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>

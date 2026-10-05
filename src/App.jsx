@@ -2,49 +2,29 @@
 import React, { useState, useEffect, useMemo } from "react";
 import CryptoJS from "crypto-js"; 
 import { buildBoardFromTsv } from "./gameData"; 
-import MicrobiopolyGame from "./MicrobiopolyGame";
-import { parseTsv, parseList, getAllTopics, getModulesForTopic } from "./tsvParser";
+import GameScreen from "./GameScreen";
+import { parseTsv, getAllTopics, getModulesForTopic } from "./tsvParser";
 import { validateQuestionRows } from "./tsvValidator";
-import { normalizeQuestion, prepareQuestion, checkAnswer } from "./questionFormats";
+import { checkAnswer } from "./questionFormats";
+import { buildSurveySets, buildConfidenceQuestions } from "./surveys";
+import { readConfig } from "./config";
+import { saveSnapshot, loadSnapshot, clearSnapshot } from "./autosave";
+import { toCsv, resultsFilename, summarizeTeams, teamInfoRows, makeSessionId, buildPayload, sendResults, buildMailto, downloadText } from "./results";
 import { bestPreSurveyPlayer } from "./gameRules";
 import { resolveImage } from "./images";
 import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
 import ConsentBanner from "./ConsentBanner";
-import { TEAM_COLORS, TEAM_NAMES, TEAM_SYMBOLS } from "./theme";
+import PasswordDialog from "./components/PasswordDialog";
+import InstallButton from "./components/InstallButton";
+import { DECK_SHORTCUTS, buildShareLink, isUnpublishedSheet, normalizeDeckUrl, normalizeImagesBase, readDeckParams } from "./deckLinks";
+import { TEAM_COLORS, TEAM_SYMBOLS } from "./theme";
+import { teamDisplayName } from "./labels";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
-  Box, Slider, Divider, Modal, Alert, Paper,
+  Box, Slider, Divider, Modal, Alert, Paper, TextField, Accordion, AccordionSummary, AccordionDetails,
 } from "@mui/material";
-
-/* -------------------------------------------------------------------------- */
-/* TSV PARSING LOGIC                                                          */
-/* -------------------------------------------------------------------------- */
-
-async function fetchDefaultQuestions(url = "./SAB_questions_Jan22_Filtered.tsv") {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Could not load default questions (${res.status})`);
-  const text = await res.text();
-  return parseTsv(text);
-}
-
-function filterSurveyRows(all, { bigTopic, module, type }) {
-  return all.filter((r) => {
-    if (!r.type || r.type.trim().toLowerCase() !== type) return false;
-    const rowTopicStr = (r.bigTopic || "").trim();
-    if (bigTopic && rowTopicStr) {
-      const topics = parseList(rowTopicStr);
-      if (!topics.includes(bigTopic)) return false;
-    }
-    const rowModuleStr = (r.module || "").trim();
-    if (module && rowModuleStr) {
-      const modules = parseList(rowModuleStr);
-      if (!modules.includes(module)) return false;
-    }
-    return true;
-  });
-}
 
 /* -------------------------------------------------------------------------- */
 /* SURVEY VIEWS                                                               */
@@ -107,7 +87,7 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
         <Typography variant="h4" gutterBottom>{isPre ? "Pre-Game Survey" : "Post-Game Survey"}</Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Box aria-hidden sx={{ width: 22, height: 22, borderRadius: "50%", bgcolor: TEAM_COLORS[currentPlayer], color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", textShadow: "0 0 2px rgba(0,0,0,.7)" }}>{TEAM_SYMBOLS[currentPlayer]}</Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{TEAM_NAMES[currentPlayer]} · player {currentPlayer + 1} of {playerCount}</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{teamDisplayName(currentPlayer, playerCount)} · player {currentPlayer + 1} of {playerCount}</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           {isPre ? "Answer on your own; this is your starting point, not a test. The best score goes first." : "Same questions as before the game. How much have you learned?"}
@@ -161,10 +141,28 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
   );
 }
 
-function ValidationReport({ validation, imageMap }) {
+function ValidationReport({ validation, imageMap, imageBase = "" }) {
+  const [missingImages, setMissingImages] = useState([]);
+  const images = validation ? validation.images : [];
+  const imagesKey = images.join("|");
+  // Only warn about images that can't be found anywhere (uploads, links, hosted copies).
+  // A failed check (offline, or a host without CORS headers) is not proof that an image is missing.
+  useEffect(() => {
+    let cancelled = false;
+    const candidates = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/i.test(img));
+    Promise.all(candidates.map(async (img) => {
+      try {
+        const res = await fetch(resolveImage(img, {}, imageBase), { method: "HEAD" });
+        return res.ok && (res.headers.get("content-type") || "").startsWith("image/") ? null : img;
+      } catch {
+        return null;
+      }
+    })).then((found) => { if (!cancelled) setMissingImages(found.filter(Boolean)); });
+    return () => { cancelled = true; };
+  }, [imagesKey, imageMap, imageBase]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!validation) return null;
-  const { errors, warnings, images } = validation;
-  const missingImages = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/.test(img));
+  const { errors, warnings } = validation;
   if (!errors.length && !warnings.length && !missingImages.length) return null;
   return (
     <Box sx={{ mb: 3, textAlign: "left" }}>
@@ -193,7 +191,8 @@ function ValidationReport({ validation, imageMap }) {
       {missingImages.length > 0 && (
         <Alert severity="info">
           <Typography variant="body2">
-            This file references {missingImages.length} image{missingImages.length > 1 ? "s" : ""} not uploaded yet: {missingImages.join(", ")}
+            {missingImages.length} image{missingImages.length > 1 ? "s" : ""} couldn't be found: {missingImages.join(", ")}.
+            Those questions still work, just without the picture. If you have the files, add them with "Optional: upload images".
           </Typography>
         </Alert>
       )}
@@ -201,25 +200,135 @@ function ValidationReport({ validation, imageMap }) {
   );
 }
 
-function SummaryView({ onExport, onReturn }) {
+function SummaryView({ playerCount, config, topic, module, preRows, postRows, gameRows, sessionId: savedSessionId, onReturn }) {
+  const [members, setMembers] = useState(() => Array(playerCount).fill(""));
+  const [fallbackId] = useState(() => makeSessionId());
+  const sessionId = savedSessionId || fallbackId; // one id per game, so a re-sent result can be spotted
+  const [sendState, setSendState] = useState({ status: "idle", message: "" });
+  const summary = summarizeTeams({ preRows, postRows, gameRows, playerCount, members });
+  const namesMissing = config.askNames && members.some((m) => !m.trim());
+  const filename = resultsFilename(topic, module);
+  const allRows = () => [...teamInfoRows(summary, sessionId), ...preRows, ...gameRows, ...postRows];
+  const download = () => downloadText(filename, toCsv(allRows()));
+  const send = async () => {
+    setSendState({ status: "sending", message: "" });
+    const result = await sendResults(config.resultsUrl, buildPayload({ sessionId, config, topic, module, summary, rows: allRows() }));
+    setSendState(result.status === "sent" ? { status: "sent", message: "" } : { status: "error", message: result.message });
+  };
+  // A real mailto: link (most reliable way to open the email app); clicking it also downloads the file to attach.
+  const mailtoHref = config.instructorEmail
+    ? buildMailto({ to: config.instructorEmail, course: config.course, topic, module, summary, filename })
+    : "";
+  const hasDelivery = Boolean(config.resultsUrl || config.instructorEmail);
+  let sheetHost = "";
+  try { sheetHost = config.resultsUrl ? new URL(config.resultsUrl).hostname : ""; } catch { /* filtered by readConfig */ }
+
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 8 }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 6 }}>
       <Container maxWidth="sm">
-        <Card sx={{ p: 4, textAlign: "center" }}>
-          <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1 }}>🏁</Box>
-          <Typography variant="h4" component="h1" sx={{ mt: 1 }}>Session complete</Typography>
-          <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
-            Download your results and submit the file as your instructor asked. Closing this tab first will lose the data.
+        <Card sx={{ p: { xs: 3, md: 4 } }}>
+          <Box sx={{ textAlign: "center" }}>
+            <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1 }}>🏁</Box>
+            <Typography variant="h4" component="h1" sx={{ mt: 1 }}>Session complete</Typography>
+          </Box>
+          <Box component="table" sx={{ width: "100%", borderCollapse: "collapse", my: 3, "& td, & th": { p: 1, borderBottom: "1px solid", borderColor: "divider", textAlign: "left" } }}>
+            <thead><tr><th>Team</th><th>Survey before</th><th>Survey after</th></tr></thead>
+            <tbody>
+              {summary.map((t) => (
+                <tr key={t.playerIndex}>
+                  <td>{TEAM_SYMBOLS[t.playerIndex]} {t.team}</td>
+                  <td>{t.preScore}/{t.surveyQuestions}</td>
+                  <td><strong>{t.postScore}/{t.surveyQuestions}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          </Box>
+          <Typography variant="h6" component="h2">Who played?</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            {config.askNames ? "Required by your instructor:" : "Optional:"} type the names or student IDs of everyone on each team.
           </Typography>
-          <Button variant="contained" size="large" fullWidth sx={{ py: 1.5, fontSize: "1.1rem" }} onClick={onExport}>⬇ Export CSV</Button>
-          <Button variant="text" fullWidth sx={{ mt: 1.5 }} onClick={onReturn}>Back to main menu</Button>
+          {summary.map((t, i) => (
+            <TextField
+              key={i}
+              fullWidth
+              required={config.askNames}
+              sx={{ mb: 1.5 }}
+              label={`${TEAM_SYMBOLS[i]} ${t.team}: names or student IDs`}
+              value={members[i]}
+              onChange={(e) => setMembers((prev) => prev.map((m, j) => (j === i ? e.target.value : m)))}
+            />
+          ))}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 2 }}>
+            {config.resultsUrl && (
+              <>
+                <Button variant="contained" size="large" disabled={namesMissing || ["sending", "sent"].includes(sendState.status)} onClick={send}>
+                  {sendState.status === "sending" ? "Sending…" : sendState.status === "sent" ? "Sent ✓" : "📤 Send results to instructor"}
+                </Button>
+                <Typography variant="caption" color="text.secondary">Goes straight to your instructor's results sheet ({sheetHost}).</Typography>
+                {sendState.status === "sent" && <Alert severity="success">Sent! Your instructor has your results. You can also download a copy below.</Alert>}
+                {sendState.status === "error" && <Alert severity="error">{sendState.message}</Alert>}
+              </>
+            )}
+            {config.instructorEmail && (
+              <>
+                <Button variant={config.resultsUrl ? "outlined" : "contained"} size="large" disabled={namesMissing} href={mailtoHref} onClick={download}>✉ Email results to instructor</Button>
+                <Typography variant="caption" color="text.secondary">Downloads the results file and opens your email app. Attach the file before sending.</Typography>
+              </>
+            )}
+            <Button variant={hasDelivery ? "text" : "contained"} size="large" onClick={download}>⬇ Download results (CSV)</Button>
+            {!hasDelivery && <Typography variant="caption" color="text.secondary">Submit this file as your instructor asked, for example on your course page.</Typography>}
+            <Button variant="text" color="inherit" onClick={onReturn}>Back to main menu</Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 2 }}>
+            Closing this tab before sending or downloading loses the results.
+          </Typography>
         </Card>
       </Container>
     </Box>
   );
 }
 
+// Instructors paste a question-file link and get a game link for students.
+function ShareLinkBuilder() {
+  const [deck, setDeck] = useState("");
+  const [images, setImages] = useState("");
+  const [copied, setCopied] = useState(false);
+  const pageUrl = `${window.location.origin}${window.location.pathname}`;
+  const link = deck.trim() ? buildShareLink(pageUrl, deck, images) : "";
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setCopied(false); }
+  };
+  return (
+    <Accordion sx={{ mt: 3, textAlign: "left" }}>
+      <AccordionSummary expandIcon={<span aria-hidden>▾</span>}>
+        <Typography sx={{ fontWeight: 700 }}>🔗 For instructors: share your questions as a link</Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Students open the link and your questions load automatically. Use a Google Sheets "Publish to web → Tab-separated values" link,
+          a GitHub file, or any public .tsv or .lock link. Anyone with a plain .tsv link can read the answers; share an encrypted .lock file to keep them hidden.
+        </Typography>
+        {isUnpublishedSheet(deck) && <Alert severity="warning" sx={{ mb: 2 }}>This Sheets link isn't published yet: File → Share → Publish to web → Tab-separated values.</Alert>}
+        <TextField fullWidth label="Link to your question file" value={deck} onChange={(e) => { setDeck(e.target.value); setCopied(false); }} sx={{ mb: 2 }} />
+        <TextField fullWidth label="Link to your image folder (optional)" value={images} onChange={(e) => { setImages(e.target.value); setCopied(false); }} sx={{ mb: 2 }} />
+        {link && (
+          <>
+            <TextField fullWidth label="Game link for students" value={link} slotProps={{ htmlInput: { readOnly: true } }} sx={{ mb: 1 }} />
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button variant="contained" onClick={copy}>{copied ? "Copied ✓" : "Copy link"}</Button>
+              <Button href={link} target="_blank" rel="noopener">Test it</Button>
+            </Box>
+          </>
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 // --- MAIN APP ---
+
+// Phases that are autosaved and can be resumed after a refresh.
+const RESUMABLE_PHASES = ["PRE_SURVEY", "GAME", "POST_SURVEY", "SUMMARY"];
 
 export default function App() {
   const [phase, setPhase] = useState("SETUP");
@@ -241,11 +350,34 @@ export default function App() {
   // NEW STATES
   const [filesConfirmed, setFilesConfirmed] = useState(false);
   const [localImageMap, setLocalImageMap] = useState({});
+  const [imagesBase, setImagesBase] = useState(""); // image folder link (?images=)
+  const [pendingCipher, setPendingCipher] = useState(null); // encrypted file waiting for its password
+  const [passwordError, setPasswordError] = useState("");
+  // Autosave: a saved session offered on the start page, the game's latest state and the state to resume from.
+  const [resumeOffer, setResumeOffer] = useState(() => {
+    const saved = loadSnapshot();
+    return saved && RESUMABLE_PHASES.includes(saved.phase) ? saved : null;
+  });
+  const [gameSnapshot, setGameSnapshot] = useState(null);
+  const [resumeGame, setResumeGame] = useState(null);
+  const [sessionId, setSessionId] = useState("");
 
   const validation = useMemo(
     () => (allTsvRows.length ? validateQuestionRows(allTsvRows) : null),
     [allTsvRows]
   );
+  const config = useMemo(() => readConfig(allTsvRows), [allTsvRows]);
+
+  // Save the session in this browser so an accidental refresh doesn't lose it.
+  useEffect(() => {
+    if (!RESUMABLE_PHASES.includes(phase)) return;
+    saveSnapshot({
+      phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
+      playerQuestionSets, confQ, preRows, postRows, gameRows, game: gameSnapshot,
+      hadImages: Object.keys(localImageMap).length > 0,
+    });
+  }, [phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
+      playerQuestionSets, confQ, preRows, postRows, gameRows, gameSnapshot, localImageMap]);
 
   useEffect(() => {
     const handlePopState = () => window.history.pushState(null, document.title, window.location.href);
@@ -270,39 +402,93 @@ export default function App() {
 
   // --- Handlers ---
 
-  const handleLoadDefault = async (url) => {
-    setLoadingError(null);
+  const decryptQuestionFile = (cipherText, password) => {
     try {
-      const rows = await fetchDefaultQuestions(url);
-      if (rows.length > 0) setAllTsvRows(rows);
-      else setLoadingError("Default file is empty.");
-    } catch (e) { setLoadingError(e.message); }
+      const out = CryptoJS.AES.decrypt(cipherText.trim(), password).toString(CryptoJS.enc.Utf8);
+      return out && out.includes("\t") ? out : null;
+    } catch {
+      return null;
+    }
   };
+  const parseAndLoad = (text) => {
+    let rows = [];
+    try { rows = parseTsv(text); } catch { /* reported below */ }
+    if (rows.length > 0) { setAllTsvRows(rows); setGameMode(null); setSelectedModule(null); }
+    else setLoadingError("This question file has no question rows. It needs a header line plus at least one row.");
+  };
+  const acceptQuestionText = (text) => {
+    // Files from encryptor.html (CryptoJS AES) always start with "U2FsdGVkX1" ("Salted__" in base64).
+    if (text.trim().startsWith("U2FsdGVkX1")) { setPasswordError(""); setPendingCipher(text); return; }
+    if (!text.includes("\t")) {
+      setLoadingError("This isn't a question file (.tsv or .lock). If you used a link, check that it points to the file itself, not to a web page.");
+      return;
+    }
+    parseAndLoad(text);
+  };
+  const unlock = (password) => {
+    const text = decryptQuestionFile(pendingCipher, password);
+    if (!text) { setPasswordError("That password didn't work. Passwords are case-sensitive."); return; }
+    setPendingCipher(null);
+    parseAndLoad(text);
+  };
+  const loadFromLink = async (input) => {
+    setLoadingError(null);
+    if (isUnpublishedSheet(input)) {
+      setLoadingError("This Google Sheets link isn't published. In Google Sheets choose File → Share → Publish to web → Tab-separated values (.tsv), then use that link.");
+      return;
+    }
+    const url = normalizeDeckUrl(input);
+    if (!url) { setLoadingError("That doesn't look like a link to a question file."); return; }
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      acceptQuestionText(await res.text());
+    } catch {
+      setLoadingError(DECK_SHORTCUTS[String(input).trim().toLowerCase()]
+        ? "Couldn't load the example questions. Check your internet connection and try again."
+        : "Couldn't load the question file from this link. Check that it's public (for Google Sheets: Publish to web as TSV) and that you're online.");
+    }
+  };
+  const forgetSavedGame = () => {
+    clearSnapshot(); setGameSnapshot(null); setResumeGame(null);
+  };
+  // Back to the start page with no file (also drops ?deck= from the address bar).
+  const resetFile = () => {
+    forgetSavedGame();
+    setAllTsvRows([]); setImagesBase("");
+    window.history.replaceState(null, "", window.location.pathname);
+  };
+  const resumeSaved = () => {
+    const saved = resumeOffer;
+    setAllTsvRows(saved.allTsvRows); setImagesBase(saved.imagesBase || "");
+    setGameMode(saved.gameMode); setSelectedModule(saved.selectedModule); setPlayerCount(saved.playerCount);
+    setSessionMinutes(saved.sessionMinutes); setStartPlayer(saved.startPlayer); setSessionId(saved.sessionId || "");
+    setPlayerQuestionSets(saved.playerQuestionSets); setConfQ(saved.confQ);
+    setPreRows(saved.preRows); setPostRows(saved.postRows); setGameRows(saved.gameRows);
+    setResumeGame(saved.game || null); setGameSnapshot(saved.game || null);
+    setFilesConfirmed(true); setPhase(saved.phase); setResumeOffer(null);
+  };
+  const discardSaved = () => {
+    clearSnapshot(); setResumeOffer(null);
+    const { deck } = readDeckParams(window.location.search);
+    if (deck) loadFromLink(deck);
+  };
+
+  // Shareable links: ?deck=<question file link or shortcut>&images=<image folder link>
+  useEffect(() => {
+    const { deck, images } = readDeckParams(window.location.search);
+    if (images) setImagesBase(normalizeImagesBase(images));
+    if (deck && !resumeOffer) loadFromLink(deck); // a saved game is offered first
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFileUpload = (e) => {
     setLoadingError(null);
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      let text = evt.target.result;
-      if (!text.includes("\t")) {
-        const password = prompt("Encrypted file detected. Enter Class Password:");
-        if (!password) return;
-        try {
-          const bytes = CryptoJS.AES.decrypt(text, password);
-          const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-          if (!decrypted || !decrypted.includes("\t")) throw new Error();
-          text = decrypted;
-        } catch { setLoadingError("Incorrect password or invalid file."); return; }
-      }
-      try {
-        const rows = parseTsv(text);
-        if (rows.length > 0) { setAllTsvRows(rows); setGameMode(null); setSelectedModule(null); } 
-        else { setLoadingError("File contains no valid rows."); }
-      } catch { setLoadingError("Could not parse TSV."); }
-    };
+    reader.onload = (evt) => acceptQuestionText(String(evt.target.result || ""));
     reader.readAsText(file);
+    e.target.value = ""; // allow choosing the same file again
   };
 
   const handleImageUpload = (e) => {
@@ -314,7 +500,7 @@ export default function App() {
     setLocalImageMap(prev => ({ ...prev, ...newMap }));
   };
 
-  const resolveImageSource = (imgName) => resolveImage(imgName, localImageMap);
+  const resolveImageSource = (imgName) => resolveImage(imgName, localImageMap, imagesBase);
 
   const selectTopic = (t) => {
     setGameMode(t);
@@ -325,32 +511,17 @@ export default function App() {
   };
 
   const confirmModule = () => {
-    const poolRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "survey" });
-    const poolQuestions = poolRows.map(normalizeQuestion);
-    const newSets = [];
-    for (let i = 0; i < playerCount; i++) {
-      const shuffled = [...poolQuestions].sort(() => 0.5 - Math.random());
-      newSets.push(shuffled.slice(0, 10).map((q) => prepareQuestion(q)));
-    }
-    setPlayerQuestionSets(newSets);
-    const confRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "confidence" });
-    const cQuestions = confRows.map((r, i) => ({ key: r.id || `conf_${i}`, label: r.question }));
-    setConfQ(cQuestions);
     setModuleModalOpen(false);
   };
 
-  const handleExport = () => {
-    const full = [...preRows, ...gameRows, ...postRows];
-    const headers = Array.from(new Set(full.flatMap(Object.keys)));
-    const csv = [headers.join(","), ...full.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g,'""')}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "microbiopoly_data.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  // Survey sets are built here (not when the module is confirmed) so they always
+  // match the final team count.
+  const startGame = () => {
+    forgetSavedGame(); // a new game replaces any saved one
+    setSessionId(makeSessionId());
+    setPlayerQuestionSets(buildSurveySets(allTsvRows, { topic: gameMode, module: selectedModule, playerCount }));
+    setConfQ(buildConfidenceQuestions(allTsvRows, { topic: gameMode, module: selectedModule }));
+    setPhase("PRE_SURVEY");
   };
 
   // --- Render ---
@@ -382,10 +553,28 @@ export default function App() {
             Turn any course into a board-game review session: roll, answer, invest and outwit the other teams.
           </Typography>
 
+          {resumeOffer && !hasData && (
+            <Alert
+              severity="info"
+              sx={{ mb: 2, textAlign: "left" }}
+              action={
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button variant="contained" size="small" onClick={resumeSaved}>Resume</Button>
+                  <Button size="small" color="inherit" onClick={discardSaved}>Start over</Button>
+                </Box>
+              }
+            >
+              <strong>Resume your game?</strong>{" "}
+              Saved at {new Date(resumeOffer.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
+              {[resumeOffer.gameMode, resumeOffer.selectedModule].filter(Boolean).join(" / ")} · {resumeOffer.playerCount === 1 ? "solo" : `${resumeOffer.playerCount} teams`} ·{" "}
+              {{ PRE_SURVEY: "pre-game survey", GAME: `turn ${resumeOffer.game?.totalTurns ?? 0}`, POST_SURVEY: "post-game survey", SUMMARY: "results screen" }[resumeOffer.phase]}.
+              {resumeOffer.hadImages && " Uploaded images aren't saved; upload them again if your questions use them."}
+            </Alert>
+          )}
           {!hasData ? (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, textAlign: "left" }}>
-              {choice("🧬", "Play the demo", "16S rRNA sequencing & QIIME 2 (the original course).", { onClick: () => handleLoadDefault() })}
-              {choice("📊", "Try a different subject", "Intro Statistics example, made with the question-writer skill.", { onClick: () => handleLoadDefault("./examples/intro_statistics.tsv") })}
+              {choice("🧬", "Play the demo", "16S rRNA sequencing & QIIME 2 (the original course).", { onClick: () => loadFromLink("demo") })}
+              {choice("📊", "Try a different subject", "Intro Statistics example, made with the question-writer skill.", { onClick: () => loadFromLink("stats") })}
               <Card sx={{ p: 2.5, display: "flex", gap: 2, alignItems: "center", bgcolor: "background.paper" }}>
                 <Box aria-hidden sx={{ fontSize: 34, lineHeight: 1 }}>📂</Box>
                 <Box sx={{ flex: 1 }}>
@@ -403,7 +592,10 @@ export default function App() {
               <Alert severity="success" sx={{ mb: 2 }}>
                 <strong>Loaded {allTsvRows.length} questions.</strong> Check the notes below, then continue.
               </Alert>
-              <ValidationReport validation={validation} imageMap={localImageMap} />
+              {(config.resultsUrl || config.instructorEmail) && (
+                <Alert severity="info" sx={{ mb: 2 }}>Results will be sent to your instructor at the end of the game.</Alert>
+              )}
+              <ValidationReport validation={validation} imageMap={localImageMap} imageBase={imagesBase} />
               <Button variant="outlined" component="label" fullWidth size="large" color="secondary" sx={{ mb: 1 }}>
                 🖼️ Optional: upload images
                 <input type="file" hidden multiple accept="image/*" onChange={handleImageUpload} />
@@ -416,11 +608,13 @@ export default function App() {
               <Button variant="contained" fullWidth size="large" color="success" sx={{ mt: 2, py: 1.5, fontSize: "1.1rem" }} onClick={() => setFilesConfirmed(true)}>
                 Continue to game setup →
               </Button>
-              <Button fullWidth size="small" color="inherit" sx={{ mt: 1 }} onClick={() => setAllTsvRows([])}>Use a different file</Button>
+              <Button fullWidth size="small" color="inherit" sx={{ mt: 1 }} onClick={resetFile}>Use a different file</Button>
             </Card>
           )}
 
           {loadingError && <Alert severity="error" sx={{ mt: 2, textAlign: "left" }}>{loadingError}</Alert>}
+          {!hasData && <ShareLinkBuilder />}
+          <InstallButton />
 
           <Typography variant="body2" sx={{ mt: 4 }}>
             <a href="./guide/" target="_blank" rel="noopener">Instructor guide</a> ·{" "}
@@ -433,6 +627,7 @@ export default function App() {
           </Typography>
         </Container>
         <ConsentBanner />
+        {pendingCipher != null && <PasswordDialog error={passwordError} onSubmit={unlock} onCancel={() => setPendingCipher(null)} />}
       </Box>
     );
   }
@@ -498,8 +693,8 @@ export default function App() {
         </Container>
 
         <Paper elevation={6} sx={{ p: 2, position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 2, zIndex: 100, borderRadius: 0 }}>
-          <Button size="small" color="inherit" onClick={() => setAllTsvRows([])}>Change file</Button>
-          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={() => setPhase("PRE_SURVEY")} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game →</Button>
+          <Button size="small" color="inherit" onClick={resetFile}>Change file</Button>
+          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game →</Button>
         </Paper>
 
         <Modal open={moduleModalOpen} onClose={() => setModuleModalOpen(false)}>
@@ -515,7 +710,7 @@ export default function App() {
   }
 
   if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <MicrobiopolyGame boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
+  if (phase === "GAME") return <GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); setPhase("SETUP"); setGameMode(null); }} />;
   if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
-  return <SummaryView onExport={handleExport} onReturn={() => { setPhase("SETUP"); setGameMode(null); setAllTsvRows([]); }} />;
+  return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} sessionId={sessionId} onReturn={() => { setPhase("SETUP"); setGameMode(null); resetFile(); }} />;
 }

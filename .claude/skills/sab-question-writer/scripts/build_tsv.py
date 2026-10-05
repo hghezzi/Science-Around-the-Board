@@ -58,9 +58,10 @@ def to_row(obj, defaults):
         o["format"] = str(o["format"]).strip().lower()
         if o["format"] == "mcq":
             o["format"] = ""
-    for k, v in defaults.items():
-        if v and not o.get(k):
-            o[k] = v
+    if o["type"] != "config":  # config rows apply to the whole file
+        for k, v in defaults.items():
+            if v and not o.get(k):
+                o[k] = v
     unknown = set(o) - set(COLUMNS)
     if unknown:
         print(f"note: {o.get('id')}: ignoring unknown keys {sorted(unknown)}", file=sys.stderr)

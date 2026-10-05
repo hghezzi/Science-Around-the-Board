@@ -15,8 +15,9 @@
 import { getAllTopics, getModulesForTopic } from "./tsvParser.js";
 import { matchesTopicAndModule } from "./tsvBoardBuilder.js";
 import { FORMATS, parseFormat, parseIndexList, parseNumber, parseTolerance, hasExplicitMishapAmount } from "./questionFormats.js";
+import { CONFIG_KEYS, EMAIL_PATTERN } from "./config.js";
 
-export const KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence"];
+export const KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence", "config"];
 const QUIZ_TYPES = ["property", "milestone", "core", "survey"];
 const REQUIRED_HEADERS = ["id", "question", "type"];
 const QUIZ_HEADERS = ["option1", "option2", "option3", "option4", "correctIndex", "explanation"];
@@ -31,6 +32,26 @@ const SURVEY_QUIZ_SIZE = 10;
 
 const rowLabel = (row, i) => (row.id ? `"${row.id}"` : `row ${i + 2}`);
 
+// Instructor settings (type = config): the setting name goes in `id`, its value in `question`.
+function checkConfigRow(row, label, errors, warnings) {
+  const key = (row.id || "").trim().toLowerCase();
+  const value = (row.question || "").trim();
+  if (!CONFIG_KEYS.includes(key)) {
+    warnings.push(`Unknown config setting ${label} will be ignored. Valid settings: ${CONFIG_KEYS.join(", ")}.`);
+    return;
+  }
+  if (!value) {
+    errors.push(`Config "${key}" has no value; put the value in the question column.`);
+    return;
+  }
+  if (key === "results_url") {
+    if (!/^https:\/\//i.test(value)) errors.push('Config "results_url" must be an https:// link (the Web app URL from Google Apps Script).');
+    else if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/i.test(value)) warnings.push('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.');
+  }
+  if (key === "instructor_email" && !EMAIL_PATTERN.test(value)) errors.push('Config "instructor_email" is not a valid email address.');
+  if (key === "ask_names" && !["yes", "no", "y", "n", "true", "false", "1", "0"].includes(value.toLowerCase())) warnings.push('Config "ask_names" should be yes or no.');
+}
+
 function summarizeLabels(labels, max = 5) {
   if (labels.length <= max) return labels.join(", ");
   return `${labels.slice(0, max).join(", ")} and ${labels.length - max} more`;
@@ -40,16 +61,17 @@ function summarizeLabels(labels, max = 5) {
  * Validate parsed TSV rows.
  * @param {object[]} rows   output of parseTsv()
  * @param {string[]} headers header names (optional; inferred from rows)
- * @returns {{ errors: string[], warnings: string[], games: object[], images: string[] }}
+ * @returns {{ errors: string[], warnings: string[], games: object[], images: string[], formatCounts: object }}
  */
 export function validateQuestionRows(rows, headers) {
   const errors = [];
   const warnings = [];
   const cols = headers && headers.length ? headers : Object.keys(rows[0] || {});
+  const formatCounts = { mcq: 0, trueFalse: 0, multi: 0, numeric: 0, order: 0, text: 0 };
 
   if (!rows.length) {
     errors.push("The file has no question rows (it needs a header line plus at least one row).");
-    return { errors, warnings, games: [], images: [] };
+    return { errors, warnings, games: [], images: [], formatCounts };
   }
 
   // ---------- Headers ----------
@@ -97,6 +119,10 @@ export function validateQuestionRows(rows, headers) {
       return;
     }
     if (rawType !== type) caseType.push(label);
+    if (type === "config") {
+      checkConfigRow(row, label, errors, warnings);
+      return;
+    }
     if (!(row.question || "").trim()) noQuestion.push(label);
 
     if (type === "mishap" && !hasExplicitMishapAmount(row.question)) vagueMishap.push(label);
@@ -108,6 +134,8 @@ export function validateQuestionRows(rows, headers) {
         return;
       }
       const options = [row.option1, row.option2, row.option3, row.option4].filter((o) => o && o.length > 0);
+      formatCounts[format]++;
+      if (format === "mcq" && options.length === 2) formatCounts.trueFalse++;
       if (format === "mcq") {
         if (options.length < 2) fewOptions.push(label);
         const idx = parseInt(row.correctIndex, 10);
@@ -203,7 +231,7 @@ export function validateQuestionRows(rows, headers) {
       });
 
       if (game.counts.core === 0) warnings.push(`[${name}] No "core" questions; the 4 core tiles will show a generic event instead of a question.`);
-      if (game.counts.mishap === 0) warnings.push(`[${name}] No "mishap" rows; the built-in general chance cards will be used.`);
+      if (game.counts.mishap === 0) warnings.push(`[${name}] No "mishap" rows; the built-in general wildcards will be used.`);
       if (game.counts.survey === 0) warnings.push(`[${name}] No "survey" questions; the pre/post knowledge check will be empty.`);
       else if (game.counts.survey < SURVEY_QUIZ_SIZE) warnings.push(`[${name}] Only ${game.counts.survey} survey question(s); each player normally gets ${SURVEY_QUIZ_SIZE}.`);
       if (game.counts.confidence === 0) warnings.push(`[${name}] No "confidence" rows; the pre/post surveys will have no confidence sliders.`);
@@ -212,7 +240,7 @@ export function validateQuestionRows(rows, headers) {
     });
   });
 
-  return { errors, warnings, games, images: [...images] };
+  return { errors, warnings, games, images: [...images], formatCounts };
 }
 
 /** Format a validation result as plain text (CLI output). */
@@ -227,6 +255,8 @@ export function formatValidationReport(result) {
     const c = g.counts;
     lines.push(`  core: ${c.core}, mishap: ${c.mishap}, survey: ${c.survey}, confidence: ${c.confidence}`);
   });
+  const f = result.formatCounts;
+  if (f) lines.push(`Formats: mcq ${f.mcq} (true/false ${f.trueFalse}), multi ${f.multi}, numeric ${f.numeric}, order ${f.order}, text ${f.text}`);
   if (result.images.length) lines.push(`Images referenced (${result.images.length}): ${result.images.join(", ")}`);
   lines.push("");
   result.errors.forEach((e) => lines.push(`ERROR: ${e}`));

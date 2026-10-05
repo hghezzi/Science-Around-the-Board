@@ -4,10 +4,14 @@
 // Usage: node scripts/a11y-check.mjs [baseUrl]
 import { chromium } from "playwright";
 import { AxeBuilder } from "@axe-core/playwright";
+import CryptoJS from "crypto-js";
+import { readFileSync } from "node:fs";
 
 const BASE = process.argv[2] || "http://localhost:4173/Science-Around-the-Board/";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 let failures = 0;
+// An encrypted copy of the demo, to open the password dialog.
+const LOCK = CryptoJS.AES.encrypt(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "a11y-test").toString();
 
 async function audit(page, label) {
   await page.waitForTimeout(400); // let MUI colour transitions finish
@@ -22,10 +26,16 @@ async function audit(page, label) {
 }
 
 for (const scheme of ["light", "dark"]) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme, serviceWorkers: "block" });
   const page = await context.newPage();
   await page.goto(BASE);
+  await page.getByText(/share your questions as a link/).click();
+  await page.getByLabel("Link to your question file").fill("demo");
   await audit(page, `${scheme} landing`);
+  await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions.lock", mimeType: "text/plain", buffer: Buffer.from(LOCK) });
+  await page.getByText("This question file is protected").waitFor();
+  await audit(page, `${scheme} password`);
+  await page.getByRole("button", { name: "Cancel" }).click();
   await page.click("text=No thanks");
   await page.click("text=Play the demo");
   await audit(page, `${scheme} loaded`);
@@ -40,6 +50,13 @@ for (const scheme of ["light", "dark"]) {
   await page.click('button:has-text("Start Game")');
   await page.waitForTimeout(400);
   await audit(page, `${scheme} board`);
+  // A refresh mid-game offers to resume the autosaved game.
+  page.on("dialog", (d) => d.accept().catch(() => {}));
+  await page.reload();
+  await page.getByText("Resume your game?").waitFor();
+  await audit(page, `${scheme} resume`);
+  await page.click('button:has-text("Resume")');
+  await page.getByText("Game log").waitFor();
   for (let i = 0; i < 12; i++) {
     await page.click('button:has-text("Roll")');
     await page.waitForTimeout(3300);
@@ -63,6 +80,18 @@ for (const scheme of ["light", "dark"]) {
     const next = page.locator('.MuiModal-root button:has-text("CONTINUE"), .MuiModal-root button:has-text("DECLINE"), .MuiModal-root button:has-text("SKIP")').first();
     if (await next.count()) await next.click();
   }
+  // Close any open dialog, end the game and audit the end screen.
+  for (let k = 0; k < 5 && (await page.locator(".MuiModal-root").count()); k++) {
+    const close = page.locator('.MuiModal-root button:has-text("SKIP"), .MuiModal-root button:has-text("CONTINUE"), .MuiModal-root button:has-text("DECLINE")').first();
+    if (await close.count()) await close.click();
+    await page.waitForTimeout(400);
+  }
+  await page.click('button:has-text("End game")');
+  await page.click('button:has-text("CONTINUE TO POST-SURVEY")');
+  await page.click('button:has-text("Continue to Questions")');
+  await page.click('button:has-text("Finish Surveys")');
+  await page.getByText("Session complete").waitFor();
+  await audit(page, `${scheme} summary`);
   await context.close();
 }
 await browser.close();

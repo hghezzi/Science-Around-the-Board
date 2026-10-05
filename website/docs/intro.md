@@ -8,7 +8,7 @@ title: Introduction
 
 **Science Around the Board** is an open-source, customizable board game engine designed to gamify higher education. 
 
-Originally developed to teach bioinformatics at the University of British Columbia, it has evolved into a **subject-agnostic platform**. Whether you are teaching History, Physics, Literature, or Coding, this engine allows you to turn your curriculum into a competitive, "Monopoly-style" strategy game.
+Originally developed to teach bioinformatics at the University of British Columbia, it has evolved into a **subject-agnostic platform**. Whether you are teaching History, Physics, Literature, or Coding, this engine allows you to turn your curriculum into a competitive property-trading strategy game.
 
 
 ![Science Around The Board Board Game](https://raw.githubusercontent.com/hghezzi/Science-Around-the-Board/main/images/ScienceAroundTheBoardIMAGE.png)

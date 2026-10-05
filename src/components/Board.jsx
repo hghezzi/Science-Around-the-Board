@@ -94,7 +94,7 @@ function OwnerBadge({ owner }) {
   );
 }
 
-const ICONS = { milestone: "🏆", sequencing_core: "⚙️", chance: "❓" };
+const ICONS = { milestone: "🏆", sequencing_core: "⚙️", chance: "🃏" };
 
 function Tile({ tile, index, owner, pawns, onHover, onLeave }) {
   const { row, col, edge } = tilePlacement(index);

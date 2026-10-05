@@ -27,7 +27,7 @@ After the game, the survey repeats.
 * **Confidence Delta:** We often see confidence *drop* initially as students realize the complexity of the topic (the "Valley of Despair"), followed by a rise as they master it.
 
 ### Phase 4: The Data Log (Submission)
-The game generates a `microbiopoly_data.csv` file. This is your "Lab Notebook." It contains every answer (question id, format, response, correct answer, right/wrong), every transaction, and the final standings.
+The game generates a results file (`sab_results_<topic>_<module>_<date>.csv`). This is your "Lab Notebook." It contains every answer (question id, format, response, correct answer, right/wrong), every transaction, and the final standings.
 * **Grading:** You can grade based on *Participation* (file submitted) or *Performance* (final score).
 * **Analytics:** You can open this file in Excel to see exactly which questions were missed most often by the class, allowing you to target your next lecture.
 

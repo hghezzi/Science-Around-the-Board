@@ -16,7 +16,8 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "a11y": "node scripts/a11y-check.mjs",
-    "guide": "vite build && node scripts/guide-screenshots.mjs && node scripts/build-guide.mjs"
+    "guide": "vite build && node scripts/guide-screenshots.mjs && node scripts/build-guide.mjs",
+    "smoke": "vite build && node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -44,6 +45,7 @@
     "marked": "^18.1.0",
     "playwright": "^1.56.1",
     "vite": "^7.2.2",
+    "vite-plugin-pwa": "^2.0.0",
     "vitest": "^3.2.7"
   }
 }

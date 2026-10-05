@@ -1,12 +1,12 @@
 // src/labels.js
 // Every player-facing game term in one place. Keep these subject-neutral:
 // SAB is used for any field, so no lab/science wording here. Question-file
-// content (themes, questions, chance-card text) comes from the instructor.
+// content (themes, questions, wildcard text) comes from the instructor.
 // A future "instructor-configurable labels" feature can override this object.
 
 export const LABELS = {
-  chanceTile: "Chance",
-  chanceCard: "Chance card",
+  chanceTile: "Wildcard",
+  chanceCard: "Wildcard",
   coreTileFallback: "Core Skills",
   questionTitle: "Question",
   buyPrompt: (price) => `Buy this tile for $${price}?`,
@@ -22,7 +22,7 @@ export const LABELS = {
   rescueUsed: "Rescue used",
   keepPlaying: "Keep playing",
   eliminated: "Team eliminated",
-  passStart: "Passed START (+$200).",
+  passStart: "Lap bonus: +$200 for passing START.",
   ownTile: "This is your tile, so nothing to pay.",
   cannotAffordMilestone: (price) => `You need $${price} to attempt this milestone.`,
   rivalMilestone: "Rival's milestone",
@@ -32,6 +32,13 @@ export const LABELS = {
     property: "Property",
     milestone: "Milestone (6-question exam)",
     sequencing_core: "Core tile",
-    chance: "Chance (random event)",
+    chance: "Wildcard (random event)",
   },
 };
+
+export const TEAM_NAMES = ["Red Team", "Blue Team", "Green Team", "Orange Team"];
+
+/** Display name for team `index` when `count` teams play (a single team is "Solo Team"). */
+export function teamDisplayName(index, count) {
+  return count === 1 ? LABELS.soloTeam : TEAM_NAMES[index];
+}

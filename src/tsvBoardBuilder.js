@@ -2,8 +2,7 @@
 
 // ------------------------------------------------------------
 // Turn TSV rows into a compact "question set" (QS) structure
-// that gameData.js can use to build the fixed Monopoly-style
-// board.
+// that gameData.js can use to build the fixed square board.
 //
 // For a given (bigTopic, module) we build:
 //

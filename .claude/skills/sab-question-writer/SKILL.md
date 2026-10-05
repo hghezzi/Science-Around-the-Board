@@ -1,6 +1,6 @@
 ---
 name: sab-question-writer
-description: Writes complete question files (TSV "cartridges") for Science Around the Board (SAB), the Monopoly-style classroom review game at hghezzi.github.io/Science-Around-the-Board. Interviews the instructor about their course, learning objectives and materials, researches the topic, proposes a board blueprint (4 themes x 2 subthemes), then writes property, milestone, core, mishap, survey and confidence questions with misconception-based distractors and teaching explanations, optionally generates figures, and validates the file so it loads in the game. Use this skill whenever someone wants questions, a quiz, a review game, a question bank or a TSV for Science Around the Board / SAB / "the board game", or wants to turn lecture notes, slides or a syllabus into game content, even if they don't name the file format.
+description: Writes complete question files (TSV "cartridges") for Science Around the Board (SAB), the property-trading classroom review game at hghezzi.github.io/Science-Around-the-Board. Interviews the instructor about their course, learning objectives and materials, researches the topic, proposes a board blueprint (4 themes x 2 subthemes), then writes property, milestone, core, mishap, survey and confidence questions with misconception-based distractors and teaching explanations, optionally generates figures, and validates the file so it loads in the game. Use this skill whenever someone wants questions, a quiz, a review game, a question bank or a TSV for Science Around the Board / SAB / "the board game", or wants to turn lecture notes, slides or a syllabus into game content, even if they don't name the file format.
 ---
 
 # SAB Question Writer
@@ -29,12 +29,26 @@ Ask conversationally, a few questions at a time, and reuse anything already said
 - **Topic scope**: what the game should review. Ask for a syllabus, lecture slides, notes, readings or an existing question bank. Uploaded material is the best source, because it matches what was actually taught.
 - **Learning objectives (LOs)**: 4–8 statements of what students should be able to do. If the instructor has none, draft them from the materials and ask for confirmation. Every question should trace back to an LO.
 - **Session**: length (typically 45–90 min) and number of teams (1–4 per computer). This sets how many questions are needed (see the counts table in `references/format.md`).
-- **Formats**: multiple choice is the default. Offer multi-select, numeric, ordering and short-text (explained in `references/format.md`). Suggest which fit the topic, for example numeric for calculations or ordering for workflows and pathways.
+- **Question formats**: show the instructor this menu and ask which to use. The default is **all of them** (encodings in `references/format.md`):
+  - multiple choice (the default);
+  - true/false (multiple choice with 2 options);
+  - select all that apply (`multi`);
+  - numeric, with an optional tolerance;
+  - ordering (put 3–4 steps in order);
+  - short answer (`text`).
+
+  Write one example of each from their topic so they can see what students will get. If a format doesn't fit (for example numeric in a course without quantities), say so and leave it out.
 - **Names**: the `bigTopic` and `module` labels students will pick from the menu (e.g. `Microbiology` / `16S Sequencing`).
 - **Images**: whether they want figures (plots, diagrams, gels) and whether they have their own.
-- **Tone of chance cards** (`mishap` rows): events themed to the subject (e.g. lab accidents for a science course, archive floods for history) or general study-life events. These can be fun. The game itself uses neutral wording, so the theme comes only from this text.
+- **Results delivery**: how the end-of-game results should reach them. Offer:
+  - (a) a **Google Sheet collector**: students click "Send results to instructor" and every team's results land in the instructor's own Sheet. One-time setup of about 5 minutes (steps in `references/format.md`, section 8);
+  - (b) **email**: a button downloads the results file and opens a pre-addressed email that students send with the file attached;
+  - (c) students **download the CSV** and upload it to the course page (no setup).
 
-If the instructor says "just make something about X", fill sensible defaults: an upper-year undergrad audience, a 60-minute session, mostly MCQ with a few other formats, and no images. State these defaults in one line and proceed. Asking ten questions when they wanted speed is worse than a good default.
+  For (a) and (b), add the matching `config` rows (`results_url`, `instructor_email`, and optionally `course` and `ask_names`). Both can be combined.
+- **Tone of wildcards** (`mishap` rows): events themed to the subject (e.g. lab accidents for a science course, archive floods for history) or general study-life events. These can be fun. The game itself uses neutral wording, so the theme comes only from this text.
+
+If the instructor says "just make something about X", fill sensible defaults: an upper-year undergrad audience, a 60-minute session, the default format mix (all formats), download-only results and no images. State these defaults in one line and proceed. Asking ten questions when they wanted speed is worse than a good default.
 
 ## 2. Sources and research
 
@@ -49,7 +63,8 @@ Before writing questions, show a compact blueprint and wait for approval or edit
 - `bigTopic` / `module`.
 - **4 themes** (one per board side), each with **2 subthemes** (the property groups), mapped to LOs. Order them so the board tells a sensible story (e.g. foundations → methods → analysis → interpretation). The first theme sits on the bottom edge and play moves through them in order.
 - The `core` utility-tile theme: one cross-cutting skill used throughout, e.g. "UNIX" or "Statistics".
-- Planned counts per type and format, from the counts table in `references/format.md`.
+- Planned counts per type, from the counts table in `references/format.md`.
+- A **formats table**: the planned count of each format for property, milestone, core and survey rows. Unless the instructor opted out of a format, every format appears at least twice.
 - 3 confidence statements, which become the pre/post sliders. Phrase them as "I am confident I can …", aligned to the LOs.
 
 The blueprint is cheap to change and the questions are not, so this is where the instructor's input matters most.
@@ -65,8 +80,9 @@ Guidelines that matter most (the full list is in `references/question-design.md`
 - **Survey** questions: the pre/post knowledge check. Write them parallel to the board content (same LOs) but **not duplicates** of property or milestone questions; otherwise the post-test measures memory of the exact item rather than learning.
 - **Distractors**: every wrong option should be a real misconception or a common error, not a joke. When a student picks it, it should reveal a specific gap.
 - **Explanations**: say why the right answer is right *and* address the most tempting distractor. Students read this immediately after answering, right or wrong. One to three sentences.
+- **Format mix** (unless the instructor chose otherwise): about 60% multiple choice (including 2–4 true/false) and about 10% each of multi, order, numeric and text, spread across property, milestone and core rows. Ordering suits milestone workflows and numeric suits calculations. Keep survey rows mostly multiple choice so pre/post scores stay comparable.
 - **Balance**: spread correct answers across positions 1–4. (The game shuffles options, but balance keeps the source file honest and reviewable.) Vary question stems.
-- **Chance cards (`mishap` rows)**: event text with an explicit amount such as `(-$100)` or `(+$150)`; the game pays exactly that amount. Put a related fun fact or practical lesson in `explanation`. Aim for roughly 2/3 penalties, 1/3 rewards, in the range $50–$200.
+- **Wildcards (`mishap` rows)**: event text with an explicit amount such as `(-$100)` or `(+$150)`; the game pays exactly that amount. Put a related fun fact or practical lesson in `explanation`. Aim for roughly 2/3 penalties, 1/3 rewards, in the range $50–$200.
 - **IDs**: stable and readable, e.g. `prop_t1s1_01`, `mile_t2_03`, `surv_04`, `core_02`, `mis_01`, `conf_01`. They are how the instructor traces exported data back to questions.
 
 Write in batches by theme, and re-read each batch for accuracy and for answers that a test-wise student could guess without knowing the material.
@@ -86,7 +102,7 @@ python scripts/build_tsv.py questions.json questions.tsv
 python scripts/validate_tsv.py questions.tsv --images images/
 ```
 
-`build_tsv.py` writes the columns in the right order, strips tabs and newlines from cells, and normalises formats. `validate_tsv.py` mirrors the game's own upload checker: it checks themes and subthemes per board, milestone and survey counts, `correctIndex` validity, numeric, multi and text answers, chance-card amounts, duplicate IDs and missing images. It also reports answer-position balance. Fix every **ERROR**, and fix **WARNING**s unless there is a reason not to. Rerun until it is clean.
+`build_tsv.py` writes the columns in the right order, strips tabs and newlines from cells, and normalises formats. `validate_tsv.py` mirrors the game's own upload checker: it checks themes and subthemes per board, milestone and survey counts, `correctIndex` validity, numeric, multi and text answers, wildcard amounts, duplicate IDs and missing images. It also reports answer-position balance and prints a `Formats:` line with the count of each format. Fix every **ERROR**, and fix **WARNING**s unless there is a reason not to. Compare the `Formats:` line with the blueprint's formats table and add rows for any planned format that is missing. Rerun until it is clean.
 
 When working inside the SAB repository, you can also run `npm run validate-tsv -- questions.tsv`, which uses the game's real validator.
 
@@ -101,7 +117,9 @@ Give the instructor:
    - anything they should fact-check (flagged items, version-specific details);
    - **next steps**:
      - open the TSV in Google Sheets or Excel to review and edit;
-     - test it with "Upload Custom Questions";
+     - test it on the start page with **Upload** ("Use your instructor's questions");
+     - share it with students as a link: the start page's "For instructors: share your questions as a link" turns a published Google Sheet, a GitHub file or any public link into a game link;
+     - if they chose the Google Sheet collector: the setup steps from `references/format.md`, section 8, and a reminder to test with a quick solo game;
      - optionally encrypt it with the Password Encryptor (https://hghezzi.github.io/Science-Around-the-Board/encryptor.html), so students can't read the answer key, and share the `.lock` file plus the password;
      - share any images with students as a folder.
 

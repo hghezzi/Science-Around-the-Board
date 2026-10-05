@@ -14,6 +14,19 @@ updated: October 2026
 
 ## What’s new
 
+**October 2026 (update 2)**
+
+- **Results can go straight to you.** Students type their names or student IDs on the end screen, then click **Send results to instructor** (an optional Google Sheet you set up once), **Email results to instructor**, or **Download results**. See *Collecting results*.
+- **Shareable game links.** Paste a link to your question file, for example a published Google Sheet, and give students one link: the questions load by themselves. See *Sharing the game with students*.
+- **Autosave.** An accidental refresh now offers **Resume your game?** instead of losing the session.
+- **Install as an app and play offline** after the first visit.
+- **Password dialog** for encrypted `.lock` files, with a clear message when the password is wrong.
+- **Wildcard tiles** (formerly "Chance"), a **lap bonus** for passing START and a new board colour. The rules are unchanged.
+- **Demo fixes:** every team now gets its survey questions, whatever order you choose the topic and the number of teams in (teams 3 and 4 used to get none); the demo now includes questions with images; image notices list only images that truly can't be found.
+- **The in-game "Export CSV" button is gone.** It saved only the game log, so students could hand in an incomplete file. The end screen exports everything, now as `sab_results_<topic>_<module>_<date>.csv` with a `TEAM_INFO` row per team.
+- **"Exit session" asks for confirmation.**
+- **The question-writer skill** now offers every question format (defaulting to all of them) and sets up how results reach you.
+
 **October 2026 (update)**
 
 - **Subject-neutral wording.** Everything the game says itself now fits any field: Chance tiles instead of "Lab Mishaps", **Buy** instead of "Publish", **Upgrades** instead of "Lab manager", a **Rescue Quiz** instead of an "Emergency Grant", and so on. Your own themes, questions and chance-card text are shown exactly as you write them, so a science course can still have lab-themed events.
@@ -52,7 +65,7 @@ Playful pedagogy is an instructional approach that integrates the structures and
 
 Science Around the Board is a customizable, web-based, open-source educational platform developed to gamify the learning of complex topics.
 
-- **Setup:** instructors provide a question file in tab-separated values (.tsv) format, plus optional images. Teams of 1–4 students load it on their own computer.
+- **Setup:** instructors provide a question file in tab-separated values (.tsv) format, plus optional images. Teams of 1–4 students load it on their own computer, or simply open a game link the instructor shares.
 - **Pre-game survey:** before starting, each student completes a short pre-assessment.
 - **Moving around the board:** teams take turns rolling a pair of dice and moving around a square board. Each side of the board is dedicated to one theme.
   - **Unowned tile:** the team answers one of your questions for the option to buy it.
@@ -82,6 +95,7 @@ Science Around the Board is best suited as a replacement for review sessions, wi
 | This guide (web / PDF) | [Web version](https://hghezzi.github.io/Science-Around-the-Board/guide/) · [PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf) |
 | Encryption tool | <https://hghezzi.github.io/Science-Around-the-Board/encryptor.html> |
 | Question-writer skill for Claude | [Download (.zip)](https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip) |
+| Results collector for Google Sheets | [Apps Script code](https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs) (see *Collecting results*) |
 | Privacy notice | <https://hghezzi.github.io/Science-Around-the-Board/privacy.html> |
 | GitHub repository | <https://github.com/hghezzi/Science-Around-the-Board> |
 
@@ -98,7 +112,7 @@ Science Around the Board requires students to load a file with all questions (re
 | Column | Required? | Description | Example |
 | :--- | :--- | :--- | :--- |
 | `id` | Yes | Unique ID for the row | `bio_01` |
-| `question` | Yes | The text prompt (for `mishap` rows, the chance-card text) | What is the start codon? |
+| `question` | Yes | The text prompt (for `mishap` rows, the wildcard text) | What is the start codon? |
 | `option1`–`option4` | For choice questions | Answer choices A–D | AUG |
 | `correctIndex` | For choice questions | Position of the correct option (1–4), or a list for select-all | `1`, or `1,3` |
 | `explanation` | Yes | Feedback shown after answering | AUG codes for methionine. |
@@ -129,8 +143,9 @@ These columns act as the blueprint for your game. They tell the engine where to 
   - **property:** standard questions used when a team tries to buy or defend a regular tile.
   - **milestone:** harder, comprehensive questions used for the corner exams. Students must answer 5 out of 6 correctly to capture a milestone, so provide at least 6, and ideally 8–10, per theme.
   - **core:** questions for the four utility tiles (the first `core` row’s subtheme names them, e.g. “UNIX” or “Statistics”), shared across the board.
-  - **mishap:** the Chance cards, random events drawn when a team lands on a Chance tile. Write the event text in the `question` column, including the amount, e.g. *"Someone left the freezer open! (-$100)"* or *"Scholarship awarded! (+$150)"*. The game charges or pays exactly that amount. Put a fun fact or practical lesson in the `explanation` column. Theme them to your subject: a history course might use *"Archive flooded! (-$100)"*. Without `mishap` rows, the game uses general built-in cards.
+  - **mishap:** the wildcards, random events drawn when a team lands on a Wildcard tile. Write the event text in the `question` column, including the amount, e.g. *"Someone left the freezer open! (-$100)"* or *"Scholarship awarded! (+$150)"*. The game charges or pays exactly that amount. Put a fun fact or practical lesson in the `explanation` column. Theme them to your subject: a history course might use *"Archive flooded! (-$100)"*. Without `mishap` rows, the game uses general built-in cards.
   - **survey / confidence:** these rows bypass the board and form the pre-game and post-game assessments. Ten `survey` questions are drawn at random for each student, and the same ones are asked again after the game. `confidence` rows appear as 0–10 sliders and are the same for all students.
+  - **config:** optional settings, not questions (see *Config rows* below).
 
 #### Question formats
 
@@ -146,6 +161,19 @@ Multiple choice is the default, but the `format` column unlocks other question t
 | `text` (short answer) | `answer` with alternatives separated by `\|` | A text box | it matches an accepted answer (case, punctuation and one small typo are forgiven) |
 
 Tips: say *"(Select all that apply)"* in multi-select prompts, state units in numeric prompts, keep short answers to one to three words, and list every reasonable spelling.
+
+#### Config rows (optional settings)
+
+Rows with `type` = `config` are not questions: they set up how results reach you. Put the setting name in `id`, its value in `question`, and leave the other columns blank.
+
+| `id` | Value (in the `question` column) | Effect |
+| :--- | :--- | :--- |
+| `results_url` | the Web app URL of your results collector | adds **Send results to instructor** to the end screen (see *Collecting results*) |
+| `instructor_email` | your email address | adds **Email results to instructor** |
+| `course` | e.g. BIOL 301 – Week 5 | labels the results in your Sheet and in the email |
+| `ask_names` | `yes` or `no` | whether names or student IDs are required before sending; the default is yes when results are sent or emailed |
+
+Config rows apply to the whole file, whatever topic and module students pick. The file check flags links and addresses that won't work.
 
 #### The assessment content
 
@@ -164,16 +192,17 @@ Images are always optional. For each question with an `imageFile`, the game look
 
 1. a file the students uploaded with the same name;
 2. a full web link (`https://…`) written in the column;
-3. an image hosted with the game.
+3. a file in the image folder of a shared game link (see *Sharing the game with students*);
+4. an image hosted with the game.
 
-If none is found, the question is shown without the image. Filenames are case-sensitive (`graph.PNG` is not `graph.png`). Students upload all images at once with the **Optional: upload images** button after loading the question file.
+If none is found, the question is shown without the image, and the start page lists the images it couldn't find. Filenames are case-sensitive (`graph.PNG` is not `graph.png`). Students upload all images at once with the **Optional: upload images** button after loading the question file.
 
 #### Checking your file
 
 When a file is loaded, the game checks it and lists any problems before the session starts:
 
 - **Red items** will break the game or make a question impossible to answer correctly. Examples: fewer than 4 themes, a `correctIndex` that doesn’t point to an option, or a theme with no milestone questions.
-- **Yellow notes** are suggestions. Examples: too few survey questions, chance cards without an amount, or ignored rows.
+- **Yellow notes** are suggestions. Examples: too few survey questions, wildcards without an amount, or ignored rows.
 
 Load your file yourself before class and fix the red items.
 
@@ -194,7 +223,28 @@ To use it, download the [skill zip](https://hghezzi.github.io/Science-Around-the
 
 #### Optional: encrypting your questions file
 
-Since the question file you distribute to students also contains the answers, I created an encryptor tool. Upload your `.tsv` file, choose a password to share with students, and you will receive an encrypted `.lock` file. Share that file together with the password. Encryption keeps casual eyes off the answer key; it is not meant as strong security, since every student knows the password.
+Since the question file you distribute to students also contains the answers, I created an encryptor tool. Upload your `.tsv` file, choose a password to share with students, and you will receive an encrypted `.lock` file. Share that file together with the password; when students open it, the game asks for the class password. Encryption keeps casual eyes off the answer key; it is not meant as strong security, since every student knows the password.
+
+### Sharing the game with students
+
+Students can load your questions in three ways:
+
+- **A game link (easiest):** on the start page, open **For instructors: share your questions as a link**, paste a link to your question file and copy the game link it creates. Students click it and your questions load straight away, so you can post it on your course page or put it on a slide.
+
+![The link builder on the start page turns a link to your question file into a game link](images/11-share-link.png)
+
+- **Uploading the file:** students download your `.tsv` or `.lock` file and click **Upload** on the start page.
+- **The built-in examples:** `?deck=demo` and `?deck=stats` at the end of the game's address open the demo and the statistics example.
+
+Where can the file live?
+
+- **Google Sheets:** keep your questions in a Sheet, then choose **File → Share → Publish to web**, pick the tab with your questions, choose **Tab-separated values (.tsv)** and click **Publish**. Paste the link it gives you into the link builder. Edits to the Sheet reach new games within about 5 minutes. A normal share or edit link doesn't work: the Sheet must be published.
+- **GitHub:** paste the link of the file's page; the game turns it into a link to the raw file.
+- **Any public web link** to a `.tsv` or `.lock` file, for example on your own website. Google Drive file links don't work, because Drive shows a preview page instead of the file.
+
+For images, put them in a public folder (for example a GitHub folder) and paste its link in **Link to your image folder**; the game then looks for each `imageFile` there.
+
+Anyone with a link to a plain `.tsv` can read the answers. To keep them hidden, link to an encrypted `.lock` file instead; students then type the class password when the game opens.
 
 ## Game mechanics
 
@@ -211,7 +261,7 @@ Milestones don't win the game on their own. They earn Chaos Tokens and add to a 
 
 ### Game setup
 
-One member of each team loads the question file (and the optional images). The team then picks:
+One member of each team loads the question file, or opens your game link, and adds the optional images. The team then picks:
 
 - the number of teams sharing the computer;
 - a session length (no timer, or 30, 45, 60 or 90 minutes);
@@ -230,7 +280,7 @@ Next, each player completes a brief pre-game survey: the confidence sliders and 
 Each team’s turn follows a fast-paced loop:
 
 1. **Roll:** the active team rolls the dice in the centre of the board.
-2. **Move:** their pawn advances around the board automatically. Passing START pays $200.
+2. **Move:** their pawn advances around the board automatically. Passing START earns a $200 lap bonus.
 3. **Encounter:** the team interacts with the tile they land on.
 
 ![The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth](images/06-board.png)
@@ -247,13 +297,13 @@ The heart of the game lies in what happens when a team lands on a tile.
   - *Incorrect answer:* the team pays full rent.
 - **Milestones (corner exams):** capturing a corner requires more than money; it requires mastery. Teams pay an entrance fee and must answer 5 out of 6 questions on that side’s theme. Capturing a milestone earns a Chaos Token. Landing on a rival’s milestone offers an expert challenge to halve the fee.
 - **Core tiles:** utility tiles with questions from your `core` rows.
-- **Chance tiles:** draw a random card from your `mishap` rows that pays or costs the amount written on it (e.g. "Scholarship awarded! +$200" or "Contamination! -$100"), with a fun fact.
+- **Wildcard tiles:** draw a random card from your `mishap` rows that pays or costs the amount written on it (e.g. "Scholarship awarded! +$200" or "Contamination! -$100"), with a fun fact.
 
 ![A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder](images/07-question.png)
 
 ![Feedback after an answer, with the correct answer and your explanation](images/08-feedback.png)
 
-### Advanced mechanics: lab management and chaos
+### Advanced mechanics: upgrades and chaos
 
 To keep engagement high in the later stages of the session, the engine includes two advanced mechanics:
 
@@ -274,14 +324,44 @@ The game ends when only one team is left standing, when the session timer runs o
 
 ![Final standings](images/09-standings.png)
 
-Next, every player completes the post-game survey: the same confidence sliders and questions as before the game. On the summary screen, students click **Export CSV** and submit the file as you instructed.
+Next, every player completes the post-game survey: the same confidence sliders and questions as before the game. The end screen then shows each team’s survey scores before and after the game, and students hand in their results.
 
-Science Around the Board collects feedback on student performance through this downloadable Comma-Separated Values (CSV) file. It tracks every answer and transaction during the game, plus the pre- and post-game survey results. Instructors can open it in Excel or Google Sheets, or analyse it with R or Python, to see which questions were missed most often and how confidence and knowledge changed.
+![The results screen when the question file sets a results Sheet and an email address. Without config rows, only Download appears](images/10-summary.png)
+
+### Collecting results
+
+On the end screen, students type the names or student IDs of everyone on each team, then hand in the results in one of three ways. You choose which ones appear with config rows in your question file (see *Config rows*):
+
+| Option | What students do | What you set up |
+| :--- | :--- | :--- |
+| **Google Sheet** (recommended) | click **Send results to instructor** | a results Sheet with the collector script, once per course (about 5 minutes), and a `results_url` config row |
+| **Email** | click **Email results to instructor**: the results file downloads and their email app opens a draft addressed to you; they attach the file and send it | an `instructor_email` config row |
+| **Download** (always available) | click **Download results (CSV)** and submit the file where you ask, for example on your course page | nothing |
+
+When a results link or email address is set, names are required before sending (add an `ask_names` row set to `no` to make them optional).
+
+**Setting up the Google Sheet collector**
+
+1. Create a new Google Sheet, for example "SAB results – BIOL 301".
+2. Choose **Extensions → Apps Script**. Delete the sample code, paste the [collector script](https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs) and click **Save**.
+3. Choose **Deploy → New deployment**, select the type **Web app**, set *Execute as* to **Me** and *Who has access* to **Anyone**, then click **Deploy** and authorize the script with your Google account.
+4. Copy the **Web app URL** (it ends in `/exec`) and add it to your question file as a config row: `id` = `results_url`, `type` = `config`, `question` = the URL.
+5. Optionally, add `instructor_email` and `course` rows as well.
+6. Test it: load your file, play a quick solo game and click **Send results to instructor**. Two tabs appear in your Sheet: **Summary** (one row per team, with names, survey scores and rank) and **Details** (every answer and transaction).
+
+If you edit the script later, use **Deploy → Manage deployments → Edit → Version: New version**, so the URL stays the same. Every submission carries a `sessionId`, so if a team sends its results twice you can spot and delete the duplicate.
+
+*Who has access: Anyone* lets anyone with the link send data to your Sheet, but only you can read it, and the collector accepts only game submissions. If your institution doesn't allow Google services for student data, use the email or download option instead, and ask students to type student numbers or initials rather than full names if your rules require it.
+
+**What the results contain**
+
+Science Around the Board collects feedback on student performance in a Comma-Separated Values (CSV) file named `sab_results_<topic>_<module>_<date>.csv`; the **Details** tab of the results Sheet holds the same rows. It tracks every answer and transaction during the game, plus the pre- and post-game survey results. Instructors can open it in Excel or Google Sheets, or analyse it with R or Python, to see which questions were missed most often and how confidence and knowledge changed.
 
 Each row has an `eventType` (game events) or a `phase` (surveys):
 
 | Row | What it records |
 | :--- | :--- |
+| `TEAM_INFO` | One row per team: the names or IDs typed on the end screen, survey scores before and after, rank and net worth |
 | `phase` = `pre` / `post`, `section` = `confidence` | Each player’s slider value for each confidence statement |
 | `phase` = `pre` / `post`, `section` = `quiz` | Each survey question: `questionId`, `selectedOption`, `correctAnswer`, `correct` |
 | `PROPERTY_Q`, `RENT_Q`, `MILESTONE_Q`, `CHAOS_Q`, `GRANT_Q` | Every in-game question: team, `questionId`, `format`, `response`, `correctAnswer`, `correct`, tile |
@@ -289,7 +369,7 @@ Each row has an `eventType` (game events) or a `phase` (surveys):
 | `ELIMINATED` | A team leaving the game, and why |
 | `GAME_RESULT` | Final rank, cash, property value and net worth for each team, and how the game ended |
 
-Remind students not to close or refresh the tab before exporting: the game keeps everything in the browser, and closing it erases the session.
+The game saves the session in the browser as it goes, so an accidental refresh offers **Resume your game?** on the start page. Students should still send or download their results before closing the tab: the saved copy stays on that computer and expires after 12 hours.
 
 ## Designing a session based on ‘Science Around the Board’
 
@@ -301,7 +381,7 @@ Before writing a single question, start with your Learning Outcomes. What exactl
 
 - **Foundational knowledge (properties):** use standard property tiles to test basic recall and terminology. If an LO is "Define the function of 16S rRNA", it belongs on a property tile.
 - **Synthesis and application (milestones):** the four corner milestones represent mastery. Reserve your highest-order thinking questions for these exams. If an LO is "Analyze a pipeline output to troubleshoot denoising errors", that scenario is better suited to a milestone quiz. Ordering questions (put the steps of a workflow in order) work especially well here.
-- **Practical realities (chance cards):** use your `mishap` rows to teach practical realities or common pitfalls that do not fit neatly into a question format (e.g. "You forgot to balance the centrifuge! (-$100)").
+- **Practical realities (wildcards):** use your `mishap` rows to teach practical realities or common pitfalls that do not fit neatly into a question format (e.g. "You forgot to balance the centrifuge! (-$100)").
 
 Science Around the Board was originally designed for review-style sessions, so it is naturally better suited to “recall”, “understand” or “apply” learning objectives than to “create” levels.
 
@@ -321,7 +401,7 @@ To ensure the game serves an academic purpose, I highly recommend structuring yo
 2. **Outcomes (2 mins):** explicitly state the LOs on the board so students know what they are meant to be learning.
 3. **Pre-assessment (10 mins):** have students load the game and complete the mandatory pre-game survey. This establishes a metacognitive baseline for their confidence and current knowledge.
 4. **Participatory learning (45 mins):** this is the gameplay phase. Set the session timer to 45 minutes so the game ends on time by itself. Step back and become the Game Master, and let the competitive tension and "hard fun" drive the engagement.
-5. **Post-assessment (10 mins):** when the timer ends the game, students check the final standings, complete the post-game survey and export their data.
+5. **Post-assessment (10 mins):** when the timer ends the game, students check the final standings, complete the post-game survey and send or download their results.
 6. **Summary / debrief (8 mins):** do not skip this! Ask the room: "Which side of the board was the hardest to defend?" or "What was the most surprising thing you learned from a mistake?" Harvesting the play into conscious realization is critical.
 
 While this is only an example, you can certainly explore other lesson-design strategies such as the CARD model or 5E lesson planning.
@@ -329,15 +409,18 @@ While this is only an example, you can certainly explore other lesson-design str
 ## Common challenges
 
 1. **Dark mode:** no longer a problem. The game follows each computer’s light or dark setting and is readable in both. (Older versions hid questions in dark mode.)
-2. **Lost progress:** the game keeps everything in the browser tab. Closing or refreshing the tab before exporting the CSV loses the session, so remind students before they start.
+2. **Lost progress:** the game saves the session in the browser as it goes. After an accidental refresh, the start page offers **Resume your game?**; uploaded images have to be selected again.
 3. **The file won't load:** check that the column names are spelled exactly as above and that the file was exported as tab-separated. The file check on the loading screen explains most problems.
 4. **Images are missing:** check that filenames match exactly (including capitals) and that students selected all the image files at once. Questions still work without their images.
 5. **An encrypted file won't open:** passwords are case-sensitive; share the password exactly as you typed it in the encryptor.
 6. **The board looks wrong:** you probably have fewer or more than 4 themes, or more than 2 subthemes per theme, in the chosen module. The file check lists these.
+7. **Installing the app:** in Chrome or Edge, click **Install as an app** on the start page (or the install icon in the address bar). On an iPad, use Safari’s **Share → Add to Home Screen**. After the first visit, the game also works offline.
+8. **A game link won't load:** for Google Sheets, use **File → Share → Publish to web** with *Tab-separated values*, not a normal share link. For other links, check that the file is public, for example by opening the link in a private browser window.
+9. **"Send" says it couldn't reach the sheet:** students can use **Email** or **Download** instead. Check that your deployment's *Who has access* is set to **Anyone** and that `results_url` is the Web app URL ending in `/exec`.
 
 ## Privacy and student data
 
-The game runs entirely in the students’ browsers. There is no account and no game server: question files, answers, surveys and exported CSVs never leave the students’ computers unless they submit the file themselves. Anonymous usage analytics (Google Analytics: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs entirely in the students’ browsers. There is no account and no game server. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Anonymous usage analytics (Google Analytics: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
 
 ## Conclusion
 
