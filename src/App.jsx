@@ -5,10 +5,14 @@ import { buildBoardFromTsv } from "./gameData";
 import MicrobiopolyGame from "./MicrobiopolyGame";
 import { parseTsv, parseList, getAllTopics, getModulesForTopic } from "./tsvParser";
 import { validateQuestionRows } from "./tsvValidator";
+import { normalizeQuestion, prepareQuestion, checkAnswer } from "./questionFormats";
+import { bestPreSurveyPlayer } from "./gameRules";
+import { resolveImage } from "./images";
+import QuestionInput from "./QuestionInput";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
-  Box, Slider, RadioGroup, Radio, FormControlLabel, Divider, Modal, Alert, Paper,
+  Box, Slider, Divider, Modal, Alert, Paper,
 } from "@mui/material";
 
 /* -------------------------------------------------------------------------- */
@@ -22,22 +26,9 @@ async function fetchDefaultQuestions(url = "./SAB_questions_Jan22_Filtered.tsv")
   return parseTsv(text);
 }
 
-function rowToSurveyQuestion(row) {
-  const opts = [row.option1, row.option2, row.option3, row.option4].filter(o => o && o.length > 0);
-  let idx = null;
-  if (row.correctIndex) idx = parseInt(row.correctIndex, 10);
-  return {
-    id: row.id || null,
-    prompt: row.question || "",
-    options: opts,
-    answer: idx && !isNaN(idx) ? idx - 1 : null,
-    image: row.imageFile || null, 
-  };
-}
-
 function filterSurveyRows(all, { bigTopic, module, type }) {
   return all.filter((r) => {
-    if (!r.type || r.type.trim() !== type) return false;
+    if (!r.type || r.type.trim().toLowerCase() !== type) return false;
     const rowTopicStr = (r.bigTopic || "").trim();
     if (bigTopic && rowTopicStr) {
       const topics = parseList(rowTopicStr);
@@ -56,180 +47,102 @@ function filterSurveyRows(all, { bigTopic, module, type }) {
 /* SURVEY VIEWS                                                               */
 /* -------------------------------------------------------------------------- */
 
-function PreSurveyView({ playerCount, playerQuestionSets, confidenceQuestions, onComplete, resolveImage }) {
+function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestions, onComplete, resolveImage }) {
   const C = confidenceQuestions || [];
+  const isPre = phase === "pre";
   const [currentPlayer, setCurrentPlayer] = useState(0);
   const currentQuestions = playerQuestionSets[currentPlayer] || [];
-  const [sliderValues, setSliderValues] = useState(Array.from({ length: playerCount }, () => { const obj = {}; C.forEach(c => obj[c.key]=5); return obj; }));
-  const [answers, setAnswers] = useState(playerQuestionSets.map(set => set.map(() => null)));
-  const [lock, setLock] = useState(Array(playerCount).fill(false));
+  const [sliderValues, setSliderValues] = useState(() => Array.from({ length: playerCount }, () => Object.fromEntries(C.map((c) => [c.key, 5]))));
+  const [answers, setAnswers] = useState(() => playerQuestionSets.map((set) => set.map(() => null)));
+  const [lock, setLock] = useState(() => Array(playerCount).fill(false));
 
   const handleSliderChange = (key, val) => {
     if (lock[currentPlayer]) return;
-    setSliderValues(prev => prev.map((p, i) => i === currentPlayer ? { ...p, [key]: val } : p));
+    setSliderValues((prev) => prev.map((p, i) => (i === currentPlayer ? { ...p, [key]: val } : p)));
   };
-  const submitConfidence = () => setLock(prev => prev.map((x, i) => i === currentPlayer ? true : x));
-  const setAns = (qi, opt) => setAnswers(prev => prev.map((P, i) => i === currentPlayer ? P.map((x, j) => j === qi ? opt : x) : P));
-  
+  const submitConfidence = () => setLock((prev) => prev.map((x, i) => (i === currentPlayer ? true : x)));
+  const setAns = (qi, response) =>
+    setAnswers((prev) => prev.map((P, i) => (i === currentPlayer ? P.map((x, j) => (j === qi ? response : x)) : P)));
+
   const submitPlayer = () => {
-    if (currentPlayer < playerCount - 1) setCurrentPlayer(p => p + 1);
-    else {
-      const rows = [];
-      for (let p = 0; p < playerCount; p++) {
-        C.forEach(cfg => rows.push({ phase: "pre", section: "confidence", playerIndex: p, playerLabel: `Player ${p+1}`, questionPrompt: cfg.label, response: sliderValues[p][cfg.key] }));
-        const pSet = playerQuestionSets[p];
-        pSet.forEach((q, qi) => {
-          const sel = answers[p][qi];
-          rows.push({ 
-            phase: "pre", section: "quiz", playerIndex: p, playerLabel: `Player ${p+1}`, 
-            questionPrompt: q.prompt, selectedIndex: sel, 
-            selectedOption: sel!=null?q.options[sel]:"", correct: sel===q.answer 
-          });
-        });
-      }
-      onComplete({ tidyRows: rows });
+    if (currentPlayer < playerCount - 1) {
+      setCurrentPlayer((p) => p + 1);
+      window.scrollTo(0, 0);
+      return;
     }
+    const rows = [];
+    for (let p = 0; p < playerCount; p++) {
+      const base = { phase, playerIndex: p, playerLabel: `Player ${p + 1}` };
+      C.forEach((cfg) => rows.push({ ...base, section: "confidence", questionId: cfg.key, questionPrompt: cfg.label, response: sliderValues[p][cfg.key] }));
+      (playerQuestionSets[p] || []).forEach((q, qi) => {
+        const response = answers[p]?.[qi] ?? null;
+        const result = checkAnswer(q, response);
+        rows.push({
+          ...base,
+          section: "quiz",
+          questionId: q.id || "",
+          format: q.format,
+          questionPrompt: q.prompt,
+          selectedIndex: q.format === "mcq" ? response : "",
+          selectedOption: result.responseText,
+          correctAnswer: result.correctText,
+          correct: result.correct,
+        });
+      });
+    }
+    onComplete({ tidyRows: rows });
   };
-  
+
   const currentSliders = sliderValues[currentPlayer];
-  const currentAns = answers[currentPlayer];
   const locked = lock[currentPlayer];
+  const lastLabel = isPre ? "Start Game" : "Finish Surveys";
 
   return (
     <Container maxWidth={false} sx={{ mt: 6, width: "95%", maxWidth: "1200px" }}>
-      <Card sx={{ p: 6 }}>
-        <Typography variant="h4" gutterBottom>Pre-Game Survey</Typography>
+      <Card sx={{ p: { xs: 3, md: 6 } }}>
+        <Typography variant="h4" gutterBottom>{isPre ? "Pre-Game Survey" : "Post-Game Survey"}</Typography>
         <Typography variant="subtitle1">Player {currentPlayer + 1} of {playerCount}</Typography>
         <Divider sx={{ my: 3 }} />
-        <Typography variant="h5" sx={{ color: "primary.main" }}>Section 1 – Confidence</Typography>
-        {C.map(cfg => (
-          <Box key={cfg.key} sx={{ my: 4 }}>
-            <Typography variant="h6" gutterBottom>{cfg.label}</Typography>
-            <Slider min={0} max={10} marks value={currentSliders[cfg.key]||5} disabled={locked} onChange={(_,v)=>handleSliderChange(cfg.key,v)} valueLabelDisplay="auto"/>
-          </Box>
-        ))}
-        {!locked && <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitConfidence}>Continue to Questions</Button>}
-        
-        {locked && (
+        {C.length > 0 && (
           <>
-            <Divider sx={{ my: 4 }} />
-            <Typography variant="h5" sx={{ color: "primary.main", mb: 2 }}>Section 2 – Questions</Typography>
-            {currentQuestions.map((q, qi) => (
-              <Box key={qi} sx={{ mb: 4, p: 2, border: '1px solid #eee', borderRadius: 2 }}>
-                {/* 1. NUMBERING */}
-                <Typography variant="overline" color="textSecondary">
-                  Question {qi + 1} of {currentQuestions.length}
-                </Typography>
-
-                <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>{q.prompt}</Typography>
-                
-                {/* 2. IMAGE MOVED BELOW TEXT */}
-                {q.image && (
-                  <Box sx={{ mb: 2, mt: 2, textAlign: 'center' }}>
-                    <img 
-                      src={resolveImage(q.image)} 
-                      alt="Question Diagram" 
-                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px' }}
-                    />
-                  </Box>
-                )}
-
-                <RadioGroup value={currentAns[qi]??-1} onChange={(e)=>setAns(qi, Number(e.target.value))}>
-                  {q.options.map((o, oi) => <FormControlLabel key={oi} value={oi} control={<Radio />} label={<Typography variant="body1">{o}</Typography>} />)}
-                </RadioGroup>
+            <Typography variant="h5" sx={{ color: "primary.main" }}>Section 1 – Confidence</Typography>
+            {C.map((cfg) => (
+              <Box key={cfg.key} sx={{ my: 4 }}>
+                <Typography variant="h6" gutterBottom>{cfg.label}</Typography>
+                <Slider min={0} max={10} marks value={currentSliders[cfg.key] ?? 5} disabled={locked} onChange={(_, v) => handleSliderChange(cfg.key, v)} valueLabelDisplay="auto" aria-label={cfg.label} />
               </Box>
             ))}
-            <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitPlayer}>{currentPlayer < playerCount - 1 ? "Next Player" : "Start Game"}</Button>
           </>
         )}
-      </Card>
-    </Container>
-  );
-}
+        {!locked && (
+          <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitConfidence}>
+            {C.length > 0 ? "Continue to Questions" : "Start Questions"}
+          </Button>
+        )}
 
-function PostSurveyView({ playerCount, playerQuestionSets, confidenceQuestions, onComplete, resolveImage }) {
-  const C = confidenceQuestions || [];
-  const [currentPlayer, setCurrentPlayer] = useState(0);
-  const displayedQuestions = playerQuestionSets[currentPlayer] || [];
-  const [sliderValues, setSliderValues] = useState(Array.from({ length: playerCount }, () => { const obj = {}; C.forEach(c => obj[c.key]=5); return obj; }));
-  const [answers, setAnswers] = useState(Array(playerCount).fill([]).map(() => []));
-  const [lock, setLock] = useState(Array(playerCount).fill(false));
-
-  const handleSliderChange = (key, val) => {
-    if(!lock[currentPlayer]) setSliderValues(prev => prev.map((p, i) => i === currentPlayer ? { ...p, [key]: val } : p));
-  };
-  const submitConfidence = () => setLock(prev => prev.map((x, i) => i === currentPlayer ? true : x));
-  
-  const setAns = (qi, opt) => {
-    setAnswers(prev => {
-      const pAnswers = [...prev[currentPlayer]];
-      pAnswers[qi] = opt;
-      const newAll = [...prev];
-      newAll[currentPlayer] = pAnswers;
-      return newAll;
-    });
-  };
-
-  const submitPlayer = () => {
-    if (currentPlayer < playerCount - 1) setCurrentPlayer(p => p + 1);
-    else {
-      const rows = [];
-      for (let p = 0; p < playerCount; p++) {
-        C.forEach(cfg => rows.push({ phase: "post", section: "confidence", playerIndex: p, playerLabel: `Player ${p+1}`, questionPrompt: cfg.label, response: sliderValues[p][cfg.key] }));
-        const pSet = playerQuestionSets[p];
-        pSet.forEach((q, qi) => {
-          const sel = answers[p][qi];
-          rows.push({ 
-            phase: "post", section: "quiz", playerIndex: p, playerLabel: `Player ${p+1}`, 
-            questionPrompt: q.prompt, selectedIndex: sel, selectedOption: sel!=null?q.options[sel]:"" 
-          });
-        });
-      }
-      onComplete({ tidyRows: rows });
-    }
-  };
-
-  const currentSliders = sliderValues[currentPlayer];
-  const currentAns = answers[currentPlayer] || [];
-  const locked = lock[currentPlayer];
-
-  return (
-    <Container maxWidth={false} sx={{ mt: 6, width: "95%", maxWidth: "1200px" }}>
-      <Card sx={{ p: 6 }}>
-        <Typography variant="h4" gutterBottom>Post-Game Survey</Typography>
-        <Typography variant="subtitle1">Player {currentPlayer + 1} of {playerCount}</Typography>
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="h5" sx={{ color: "primary.main" }}>Section 1 – Confidence</Typography>
-        {C.map(cfg => (
-          <Box key={cfg.key} sx={{ my: 4 }}>
-            <Typography variant="h6" gutterBottom>{cfg.label}</Typography>
-            <Slider min={0} max={10} marks value={currentSliders[cfg.key]||5} disabled={locked} onChange={(_,v)=>handleSliderChange(cfg.key,v)} valueLabelDisplay="auto"/>
-          </Box>
-        ))}
-        {!locked && <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitConfidence}>Continue to Questions</Button>}
-        
         {locked && (
           <>
             <Divider sx={{ my: 4 }} />
-            <Typography variant="h5" sx={{ color: "primary.main", mb: 2 }}>Section 2 – Questions</Typography>
-            {displayedQuestions.map((q, qi) => (
-              <Box key={qi} sx={{ mb: 4 }}>
-                {q.image && (
-                  <Box sx={{ mb: 2, textAlign: 'center' }}>
-                    <img 
-                      src={resolveImage(q.image)} 
-                      alt="Question Diagram" 
-                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px' }}
-                    />
-                  </Box>
-                )}
-                <Typography variant="h6" gutterBottom>{q.prompt}</Typography>
-                <RadioGroup value={currentAns[qi]??-1} onChange={(e)=>setAns(qi, Number(e.target.value))}>
-                  {q.options.map((o, oi) => <FormControlLabel key={oi} value={oi} control={<Radio />} label={<Typography variant="body1">{o}</Typography>} />)}
-                </RadioGroup>
+            <Typography variant="h5" sx={{ color: "primary.main", mb: 2 }}>{C.length > 0 ? "Section 2 – Questions" : "Questions"}</Typography>
+            {currentQuestions.length === 0 && <Typography color="textSecondary">No survey questions in this file.</Typography>}
+            {currentQuestions.map((q, qi) => (
+              <Box key={`${currentPlayer}-${qi}`} sx={{ mb: 4, p: 2, border: "1px solid #eee", borderRadius: 2 }}>
+                <Typography variant="overline" color="textSecondary">Question {qi + 1} of {currentQuestions.length}</Typography>
+                <Typography variant="h6" gutterBottom sx={{ mt: 1, whiteSpace: "pre-wrap" }}>{q.prompt}</Typography>
+                <QuestionInput
+                  key={`${phase}-${currentPlayer}-${qi}`}
+                  question={q}
+                  survey
+                  value={answers[currentPlayer]?.[qi]}
+                  onChange={(r) => setAns(qi, r)}
+                  resolveImage={resolveImage}
+                  imageMaxHeight={300}
+                />
               </Box>
             ))}
-            <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitPlayer}>{currentPlayer < playerCount - 1 ? "Next Player" : "Finish Surveys"}</Button>
+            <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitPlayer}>
+              {currentPlayer < playerCount - 1 ? "Next Player" : lastLabel}
+            </Button>
           </>
         )}
       </Card>
@@ -295,6 +208,8 @@ export default function App() {
   const [phase, setPhase] = useState("SETUP");
   const [gameMode, setGameMode] = useState(null);
   const [playerCount, setPlayerCount] = useState(2);
+  const [sessionMinutes, setSessionMinutes] = useState(0);
+  const [startPlayer, setStartPlayer] = useState(0);
   const [allTsvRows, setAllTsvRows] = useState([]);
   const [loadingError, setLoadingError] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
@@ -382,12 +297,7 @@ export default function App() {
     setLocalImageMap(prev => ({ ...prev, ...newMap }));
   };
 
-  const resolveImageSource = (imgName) => {
-    if (!imgName) return null;
-    if (localImageMap[imgName]) return localImageMap[imgName];
-    if (imgName.startsWith("http") || imgName.startsWith("data:")) return imgName;
-    return `./question_images/${imgName}`;
-  };
+  const resolveImageSource = (imgName) => resolveImage(imgName, localImageMap);
 
   const selectTopic = (t) => {
     setGameMode(t);
@@ -399,12 +309,11 @@ export default function App() {
 
   const confirmModule = () => {
     const poolRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "survey" });
-    const poolQuestions = poolRows.map(rowToSurveyQuestion);
+    const poolQuestions = poolRows.map(normalizeQuestion);
     const newSets = [];
     for (let i = 0; i < playerCount; i++) {
       const shuffled = [...poolQuestions].sort(() => 0.5 - Math.random());
-      const selected = shuffled.slice(0, 10);
-      newSets.push(selected);
+      newSets.push(shuffled.slice(0, 10).map((q) => prepareQuestion(q)));
     }
     setPlayerQuestionSets(newSets);
     const confRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "confidence" });
@@ -416,7 +325,7 @@ export default function App() {
   const handleExport = () => {
     const full = [...preRows, ...gameRows, ...postRows];
     const headers = Array.from(new Set(full.flatMap(Object.keys)));
-    const csv = [headers.join(","), ...full.map(r => headers.map(h => `"${(r[h]||"").toString().replace(/"/g,'""')}"`).join(","))].join("\n");
+    const csv = [headers.join(","), ...full.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g,'""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -510,6 +419,13 @@ export default function App() {
           <ToggleButtonGroup value={playerCount} exclusive onChange={(_, v) => v && setPlayerCount(v)} fullWidth color="primary">
             {[1,2,3,4].map(n => <ToggleButton key={n} value={n}>{n} Player{n>1?'s':''}</ToggleButton>)}
           </ToggleButtonGroup>
+          <Typography variant="h6" sx={{ mt: 3 }}>Session length</Typography>
+          <Typography variant="caption" color="textSecondary" sx={{ display: "block", mb: 1 }}>
+            The game ends when one team is left standing, or when time runs out (highest net worth wins).
+          </Typography>
+          <ToggleButtonGroup value={sessionMinutes} exclusive onChange={(_, v) => v !== null && setSessionMinutes(v)} fullWidth color="primary" size="small">
+            {[0, 30, 45, 60, 90].map(m => <ToggleButton key={m} value={m}>{m === 0 ? "No timer" : `${m} min`}</ToggleButton>)}
+          </ToggleButtonGroup>
         </Card>
         <Typography variant="h6" gutterBottom>Select Topic</Typography>
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center', mb: 5 }}>
@@ -536,8 +452,8 @@ export default function App() {
     );
   }
 
-  if (phase === "PRE_SURVEY") return <PreSurveyView playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <MicrobiopolyGame boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} tsvRows={allTsvRows} imageMap={localImageMap} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
-  if (phase === "POST_SURVEY") return <PostSurveyView playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
+  if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
+  if (phase === "GAME") return <MicrobiopolyGame boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { setPhase("SETUP"); setGameMode(null); }} />;
+  if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
   return <SummaryView onExport={handleExport} onReturn={() => { setPhase("SETUP"); setGameMode(null); setAllTsvRows([]); }} />;
 }

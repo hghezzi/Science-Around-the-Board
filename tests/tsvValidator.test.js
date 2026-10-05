@@ -63,3 +63,42 @@ describe("validateQuestionRows", () => {
     expect(validate(makeTsv({ extra: [img] })).images).toEqual(["fig.png"]);
   });
 });
+
+describe("question formats in the validator", () => {
+  const H = HEADER + "\tformat\tanswer\ttolerance";
+  const row = (id, { options = ["A", "B", "C", "D"], correctIndex = "", format = "", answer = "", tolerance = "", type = "property" } = {}) =>
+    [id, "Q?", ...options, correctIndex, "Exp", "Topic", "Mod", "T1", "T1-a", type, "", format, answer, tolerance].join("\t");
+  const base = makeTsv().split("\n").slice(1).map((l) => `${l}\t\t\t`);
+  const run = (...rows) => validate([H, ...base, ...rows].join("\n"));
+
+  it("accepts valid rows of every format", () => {
+    const r = run(
+      row("mu1", { format: "multi", correctIndex: "1,3" }),
+      row("n1", { format: "numeric", options: ["", "", "", ""], answer: "1,500", tolerance: "10%" }),
+      row("o1", { format: "order" }),
+      row("t1", { format: "text", options: ["", "", "", ""], answer: "beta|beta diversity" }),
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("reports invalid format-specific fields", () => {
+    const e = run(
+      row("m1", { format: "multi", correctIndex: "1,7" }),
+      row("n1", { format: "numeric", answer: "lots" }),
+      row("n2", { format: "numeric", answer: "3", tolerance: "abc" }),
+      row("t1", { format: "text", answer: "" }),
+      row("x1", { format: "essay" }),
+    ).errors.join("\n");
+    expect(e).toMatch(/Multi-select.*"m1"/);
+    expect(e).toMatch(/Numeric.*"n1"/);
+    expect(e).toMatch(/Invalid tolerance.*"n2"/);
+    expect(e).toMatch(/Short-text.*"t1"/);
+    expect(e).toMatch(/Unknown format.*"x1" \(essay\)/);
+  });
+
+  it("warns about mishaps without an explicit amount", () => {
+    const w = run(["mm", "Something broke", "", "", "", "", "", "Fact", "Topic", "Mod", "", "", "mishap", "", "", "", ""].join("\t")).warnings.join("\n");
+    expect(w).toMatch(/Mishap without an explicit amount.*"mm"/);
+  });
+});

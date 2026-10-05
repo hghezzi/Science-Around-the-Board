@@ -14,6 +14,7 @@
 
 import { getAllTopics, getModulesForTopic } from "./tsvParser.js";
 import { matchesTopicAndModule } from "./tsvBoardBuilder.js";
+import { FORMATS, parseFormat, parseIndexList, parseNumber, parseTolerance, hasExplicitMishapAmount } from "./questionFormats.js";
 
 export const KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence"];
 const QUIZ_TYPES = ["property", "milestone", "core", "survey"];
@@ -21,6 +22,7 @@ const REQUIRED_HEADERS = ["id", "question", "type"];
 const QUIZ_HEADERS = ["option1", "option2", "option3", "option4", "correctIndex", "explanation"];
 const BOARD_HEADERS = ["theme", "subtheme"];
 const FILTER_HEADERS = ["bigTopic", "module"];
+const OPTIONAL_HEADERS = ["imageFile", "format", "answer", "tolerance"];
 
 const BOARD_SIDES = 4;
 const SUBTHEMES_PER_SIDE = 2;
@@ -60,7 +62,7 @@ export function validateQuestionRows(rows, headers) {
     warnings.push(`Missing column(s): ${missingOther.join(", ")}. Column names are case-sensitive.`);
   }
   const unknownCols = cols.filter(
-    (h) => h && ![...REQUIRED_HEADERS, ...QUIZ_HEADERS, ...BOARD_HEADERS, ...FILTER_HEADERS, "imageFile"].includes(h)
+    (h) => h && ![...REQUIRED_HEADERS, ...QUIZ_HEADERS, ...BOARD_HEADERS, ...FILTER_HEADERS, ...OPTIONAL_HEADERS].includes(h)
   );
   if (unknownCols.length) {
     warnings.push(`Unrecognised column(s) will be ignored: ${unknownCols.join(", ")}.`);
@@ -74,6 +76,12 @@ export function validateQuestionRows(rows, headers) {
   const fewOptions = [];
   const noExplanation = [];
   const noQuestion = [];
+  const badFormat = [];
+  const badMulti = [];
+  const badNumeric = [];
+  const badTolerance = [];
+  const badText = [];
+  const vagueMishap = [];
   const images = new Set();
 
   rows.forEach((row, i) => {
@@ -91,11 +99,31 @@ export function validateQuestionRows(rows, headers) {
     if (rawType !== type) caseType.push(label);
     if (!(row.question || "").trim()) noQuestion.push(label);
 
+    if (type === "mishap" && !hasExplicitMishapAmount(row.question)) vagueMishap.push(label);
+
     if (QUIZ_TYPES.includes(type)) {
+      const format = parseFormat(row.format);
+      if (!format) {
+        badFormat.push(`${label} (${row.format})`);
+        return;
+      }
       const options = [row.option1, row.option2, row.option3, row.option4].filter((o) => o && o.length > 0);
-      if (options.length < 2) fewOptions.push(label);
-      const idx = parseInt(row.correctIndex, 10);
-      if (Number.isNaN(idx) || idx < 1 || idx > options.length) badAnswer.push(label);
+      if (format === "mcq") {
+        if (options.length < 2) fewOptions.push(label);
+        const idx = parseInt(row.correctIndex, 10);
+        if (Number.isNaN(idx) || idx < 1 || idx > options.length) badAnswer.push(label);
+      } else if (format === "multi") {
+        if (options.length < 2) fewOptions.push(label);
+        const idxs = parseIndexList(row.correctIndex);
+        if (!idxs.length || idxs.some((i) => Number.isNaN(i) || i < 0 || i >= options.length)) badMulti.push(label);
+      } else if (format === "order") {
+        if (options.length < 2) fewOptions.push(label);
+      } else if (format === "numeric") {
+        if (Number.isNaN(parseNumber(row.answer))) badNumeric.push(label);
+        if (!parseTolerance(row.tolerance)) badTolerance.push(label);
+      } else if (format === "text") {
+        if (!String(row.answer || "").split("|").some((a) => a.trim())) badText.push(label);
+      }
       if (type !== "survey" && !(row.explanation || "").trim()) noExplanation.push(label);
     }
   });
@@ -107,6 +135,12 @@ export function validateQuestionRows(rows, headers) {
   if (noQuestion.length) errors.push(`Empty question text: ${summarizeLabels(noQuestion)}.`);
   if (fewOptions.length) errors.push(`Fewer than 2 answer options: ${summarizeLabels(fewOptions)}.`);
   if (badAnswer.length) errors.push(`correctIndex is missing or does not point to a filled option (use 1-4): ${summarizeLabels(badAnswer)}. These questions can never be answered correctly.`);
+  if (badFormat.length) errors.push(`Unknown format: ${summarizeLabels(badFormat)}. Valid formats: ${FORMATS.join(", ")} (blank = mcq). These rows are skipped by this check.`);
+  if (badMulti.length) errors.push(`Multi-select correctIndex must list filled options, e.g. "1,3": ${summarizeLabels(badMulti)}.`);
+  if (badNumeric.length) errors.push(`Numeric questions need a number in the "answer" column: ${summarizeLabels(badNumeric)}.`);
+  if (badTolerance.length) errors.push(`Invalid tolerance (use a number like 0.5 or a percentage like 5%): ${summarizeLabels(badTolerance)}.`);
+  if (badText.length) errors.push(`Short-text questions need accepted answers in the "answer" column, separated by | : ${summarizeLabels(badText)}.`);
+  if (vagueMishap.length) warnings.push(`Mishap without an explicit amount such as (+$100) or (-$50): ${summarizeLabels(vagueMishap)}. The default +$50 / -$100 will be used.`);
   if (noExplanation.length) warnings.push(`No explanation: ${summarizeLabels(noExplanation)}. Explanations are shown after every answer and are the main teaching moment.`);
 
   // ---------- Per-game (bigTopic + module) checks ----------

@@ -17,6 +17,10 @@ describe("parseTsv", () => {
     expect(parseTsv("a\tb\tc\n1")[0]).toEqual({ a: "1", b: "", c: "" });
   });
 
+  it("keeps column alignment when the first cell is empty", () => {
+    expect(parseTsv("a\tb\tc\n\t2\t3")[0]).toEqual({ a: "", b: "2", c: "3" });
+  });
+
   it("returns [] when there is no data row", () => {
     expect(parseTsv("a\tb")).toEqual([]);
     expect(parseTsv("")).toEqual([]);
@@ -24,7 +28,7 @@ describe("parseTsv", () => {
 
   it("parses the demo file", () => {
     const rows = parseTsv(DEMO_TSV);
-    expect(rows.length).toBe(164);
+    expect(rows.length).toBe(170);
     expect(parseTsvHeaders(DEMO_TSV)).toContain("correctIndex");
   });
 });

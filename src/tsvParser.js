@@ -7,7 +7,8 @@
  */
 export function parseTsv(text) {
   const cleanText = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const lines = cleanText.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  // Don't trim tabs: a leading tab means the first cell is empty.
+  const lines = cleanText.split("\n").filter((l) => l.trim() && !l.trim().startsWith("#"));
   if (lines.length < 2) return [];
   const headers = lines[0].split("\t").map((h) => h.trim());
   return lines.slice(1).map((ln) => {

@@ -13,11 +13,14 @@ import {
   Collapse,
   Divider,
   Alert,
-  AlertTitle,
-  Paper,
 } from '@mui/material';
 import { LAB_MISHAPS } from './questionBank';
-import { getSubgroupTiles, getRentMultiplier, computeRent } from './gameRules';
+import {
+  getSubgroupTiles, getRentMultiplier, computeRent, rankPlayers, nextActivePlayer, activePlayers,
+} from './gameRules';
+import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
+import { resolveImage } from './images';
+import QuestionInput from './QuestionInput';
 
 const THEME = {
   bg: '#f0f2f5',
@@ -34,7 +37,9 @@ const modalStyle = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: 700,
+  width: 'min(700px, 94vw)',
+  maxHeight: '92vh',
+  overflowY: 'auto',
   bgcolor: 'background.paper',
   boxShadow: 24,
   p: 4,
@@ -42,48 +47,6 @@ const modalStyle = {
   outline: 'none',
   borderTop: `6px solid ${THEME.accent}`,
 };
-
-const CODE_CHALLENGE_BANK = [
-  {
-    prompt:
-      'You receive a QIIME2 artifact with feature table data. Which command would you use to summarize feature counts per sample?',
-    options: [
-      'qiime tools view table.qza',
-      'qiime feature-table summarize --i-table table.qza --o-visualization table.qzv',
-      'qiime taxa barplot --i-table table.qza',
-      'qiime demux summarize --i-data demux.qza',
-    ],
-    answer: 1,
-    explanation:
-      'feature-table summarize generates counts per-sample and per-feature, with sampling depth summaries; this is typically the first command after denoising.',
-  },
-  {
-    prompt:
-      'You want to compute a Bray–Curtis distance matrix from an ASV table in R using phyloseq. Which function is appropriate?',
-    options: [
-      'ordinate(ps, method = "PCoA", distance = "unifrac")',
-      'vegdist(otu_table(ps), method = "bray")',
-      'distance(ps, method = "bray")',
-      'adonis(ps ~ treatment)',
-    ],
-    answer: 2,
-    explanation:
-      'In phyloseq, distance(ps, method = "bray") computes a Bray–Curtis distance matrix directly from the phyloseq object.',
-  },
-  {
-    prompt:
-      'You have paired-end 16S reads with primers still attached. In QIIME2, where do you normally remove primers before denoising with DADA2?',
-    options: [
-      'Use cutadapt trim-paired before qiime dada2 denoise-paired',
-      'Use qiime feature-table filter-samples',
-      'Use qiime phylogeny align-to-tree-mafft-fasttree',
-      'Primers do not need to be removed for 16S analysis',
-    ],
-    answer: 0,
-    explanation:
-      'Primer removal should be done before denoising. cutadapt trim-paired is commonly used to trim primers from both forward and reverse reads.',
-  },
-];
 
 // ------------------------------------------------------------------
 //  HELPER FUNCTIONS
@@ -145,6 +108,7 @@ export default function MicrobiopolyGame({
   onEndGame,
   imageMap = {},
   tsvRows = [],
+  sessionMinutes = 0,
 }) {
   const generatePlayers = (count) => {
     const colors = ['#e57373', '#64b5f6', '#81c784', '#ffb74d'];
@@ -159,7 +123,8 @@ export default function MicrobiopolyGame({
         money: 2500,
         jailed: false,
         chaosTokens: 0,
-        hasBailedOut: false,
+        rescueUsed: false,
+        eliminated: false,
       });
     }
     if (count === 1) p[0].name = 'Candidate';
@@ -168,20 +133,16 @@ export default function MicrobiopolyGame({
 
   const [board, setBoard] = useState(boardData);
   const [players, setPlayers] = useState(generatePlayers(playerCount));
-  // Helper to look up image source (Local vs URL vs Default)
-  const getImgSrc = (imgName) => {
-    if (!imgName) return null;
-    if (imageMap[imgName]) return imageMap[imgName]; // Check upload map first
-    if (imgName.startsWith("http") || imgName.startsWith("data:")) return imgName;
-    return `./question_images/${imgName}`; // Fallback
-  };
+  const getImgSrc = (imgName) => resolveImage(imgName, imageMap);
   const [turn, setTurn] = useState(startingPlayerIndex || 0);
   const turnRef = useRef(startingPlayerIndex || 0);
 
   const [totalTurns, setTotalTurns] = useState(0);
   const [isMoving, setIsMoving] = useState(false);
   const [dice, setDice] = useState([1, 1]);
-  const [logs, setLogs] = useState(['System initialized.']);
+  const [logs, setLogs] = useState(() => [
+    playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.',
+  ]);
 
   // Modal + flow state
   const [modalOpen, setModalOpen] = useState(false);
@@ -214,6 +175,18 @@ export default function MicrobiopolyGame({
   const [chaosTargetTile, setChaosTargetTile] = useState(null);
   const [logRows, setLogRows] = useState([]);
 
+  // Optional session timer: when it runs out, the game ends on net worth.
+  const [endsAt] = useState(() => (sessionMinutes > 0 ? Date.now() + sessionMinutes * 60000 : null));
+  const [now, setNow] = useState(() => Date.now());
+  const standingsShownRef = useRef(false);
+  useEffect(() => {
+    if (!endsAt) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+  const timeLeftMs = endsAt ? Math.max(0, endsAt - now) : null;
+  const timeUp = endsAt != null && timeLeftMs === 0;
+
   useEffect(() => {
     turnRef.current = turn;
   }, [turn]);
@@ -221,8 +194,8 @@ export default function MicrobiopolyGame({
   // BANKRUPTCY CHECK
   useEffect(() => {
     const p = players[turnRef.current];
-    if (!p) return;
-    if (p.money < 0 && modalStage !== 'LIQUIDATION' && modalStage !== 'GRANT_INTRO' && modalStage !== 'GRANT_QUIZ' && modalStage !== 'GRANT_RESULT') {
+    if (!p || p.eliminated) return;
+    if (p.money < 0 && !['LIQUIDATION', 'GRANT_INTRO', 'GRANT_QUIZ', 'GRANT_RESULT', 'ELIMINATED', 'STANDINGS', 'WIN'].includes(modalStage)) {
         checkBankruptcyStatus(p);
     }
   }, [players, turn, modalStage]);
@@ -238,10 +211,37 @@ export default function MicrobiopolyGame({
         setActiveCard({ type: 'LIQUIDATION', debt: Math.abs(player.money), assets: ownedTiles });
         setModalStage('LIQUIDATION');
         setModalOpen(true);
+    } else if (player.rescueUsed) {
+        eliminatePlayer(player.id, 'Insolvent after using Emergency Grant');
     } else {
         setActiveCard({ type: 'GRANT', debt: Math.abs(player.money) });
         setModalStage('GRANT_INTRO');
         setModalOpen(true);
+    }
+  };
+
+  // A team that cannot pay its debts leaves the game; its tiles return to the bank.
+  const eliminatePlayer = (playerId, reason) => {
+    const name = players[playerId]?.name || 'Team';
+    setBoard((prev) => prev.map((t) => (t.owner === playerId ? { ...t, owner: null, level: 0 } : t)));
+    setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, eliminated: true, eliminatedAt: totalTurns, money: 0 } : p)));
+    addLog(`${name} has been eliminated.`);
+    addCSVEvent({ eventType: 'ELIMINATED', turn: totalTurns, playerIndex: playerId, playerName: name, notes: reason, timestamp: new Date().toISOString() });
+    setActiveCard({ type: 'ELIMINATED', playerId, name, reason });
+    setModalStage('ELIMINATED');
+    setModalOpen(true);
+  };
+
+  const continueAfterElimination = () => {
+    const remaining = activePlayers(players);
+    if (players.length > 1 && remaining.length === 1) {
+      setActiveCard({ type: 'WIN', msg: `${remaining[0].name} is the last team standing!` });
+      setModalStage('WIN');
+      addLog(`VICTORY: ${remaining[0].name} is the last team standing.`);
+    } else if (remaining.length === 0) {
+      openStandings(true, 'eliminated');
+    } else {
+      passTurn();
     }
   };
 
@@ -255,6 +255,27 @@ export default function MicrobiopolyGame({
   const addCSVEvent = (event) => {
     setLogRows((prev) => [...prev, event]);
   };
+
+  // One row per answered question, whatever the format.
+  const logAnswer = (eventType, q, result, meta = {}) => {
+    addCSVEvent({
+      eventType,
+      turn: totalTurns,
+      playerIndex: turnRef.current,
+      playerName: players[turnRef.current]?.name || '',
+      questionId: q?.id || '',
+      format: q?.format || 'mcq',
+      prompt: q?.prompt || '',
+      response: result.responseText,
+      correctAnswer: result.correctText,
+      correct: result.correct,
+      timestamp: new Date().toISOString(),
+      ...meta,
+    });
+  };
+
+  // Unique questions across the board (property tiles share question arrays).
+  const allBoardQuestions = () => [...new Set(board.flatMap((t) => t.questions || []))];
 
   const currentPlayer = players[turnRef.current];
 
@@ -369,9 +390,11 @@ export default function MicrobiopolyGame({
   //  GRANT & CHAOS LOGIC
   // ------------------------------------------------------------------
   const startGrantExam = () => {
-    const allQuestions = board.flatMap(t => t.questions || []);
-    let pool = allQuestions.length > 0 ? allQuestions : CODE_CHALLENGE_BANK;
-    pool = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+    const allQuestions = allBoardQuestions();
+    if (allQuestions.length === 0) { handleGrantResult(true); return; }
+    let pool = [...allQuestions].sort(() => 0.5 - Math.random());
+    while (pool.length < 3) pool = [...pool, ...allQuestions];
+    pool = pool.slice(0, 3).map((q) => prepareQuestion(q));
 
     setQuizState({
         active: true, mode: 'GRANT', qIndex: 0, score: 0, questions: pool,
@@ -381,18 +404,14 @@ export default function MicrobiopolyGame({
   };
 
   const handleGrantResult = (passed) => {
+    if (!passed) {
+        eliminatePlayer(currentPlayer.id, 'Emergency Grant denied');
+        return;
+    }
     const debt = Math.abs(currentPlayer.money);
-    const grantAmount = debt + 500;
-    
-    handleTransaction(currentPlayer.id, grantAmount, {
-        action: 'EMERGENCY_GRANT',
-        notes: passed ? 'Grant Approved' : 'Grant Failed (Bailed Out)'
-    });
-
-    setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, hasBailedOut: true } : p));
-    setFeedback(passed 
-        ? "Grant Approved! You received emergency funding ($500). Ineligible for Victory." 
-        : "Grant Denied. Bailed out ($500). Ineligible for Victory.");
+    handleTransaction(currentPlayer.id, debt + 500, { action: 'EMERGENCY_GRANT', notes: 'Grant Approved' });
+    setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, rescueUsed: true } : p));
+    setFeedback(`Grant Approved! Your $${debt} debt is cleared and you receive $500 in emergency funding. This was your team's only rescue: if you go bankrupt again, you are out.`);
     setModalStage('GRANT_RESULT');
   };
 
@@ -434,17 +453,6 @@ export default function MicrobiopolyGame({
     return style;
   };
 
-  const checkForWin = (currentBoard, playerId) => {
-    if (players[playerId].hasBailedOut) return;
-    const milestones = currentBoard.filter((t) => t.type === 'milestone');
-    const allOwned = milestones.every((m) => m.owner === playerId);
-    if (allOwned) {
-      setActiveCard({ type: 'WIN', data: { name: 'GAME OVER' }, msg: `${players[playerId].name} has unified all milestones! VICTORY!` });
-      setModalStage('WIN');
-      setModalOpen(true);
-    }
-  };
-
   const toggleManual = () => {
     if (manualUnlocked) setShowManual((prev) => !prev);
     else {
@@ -471,7 +479,7 @@ export default function MicrobiopolyGame({
     const target = isMilestone ? 5 : 9;
 
     setQuizState({
-      active: true, mode, qIndex: 0, score: 0, questions: pool.slice(0, qCount), tile,
+      active: true, mode, qIndex: 0, score: 0, questions: pool.slice(0, qCount).map((q) => prepareQuestion(q)), tile,
       wrongAnswers: 0, waiting: false, selected: null, isCorrect: null,
       targetScore: target, mistakes: 0, maxMistakes: 2, // maxMistakes 2 means you fail on the 2nd error
     });
@@ -479,10 +487,14 @@ export default function MicrobiopolyGame({
     setModalOpen(true);
   };
 
-  const handleQuizAnswer = (idx) => {
+  const handleQuizAnswer = (response) => {
     if (quizState.waiting) return;
     const currentQ = quizState.questions[quizState.qIndex];
-    const isCorrect = idx === currentQ.answer;
+    const result = checkAnswer(currentQ, response);
+    const isCorrect = result.correct;
+    logAnswer(quizState.mode === 'GRANT' ? 'GRANT_Q' : 'MILESTONE_Q', currentQ, result, {
+      tileId: quizState.tile?.id ?? '', tileName: quizState.tile?.name ?? '', questionNumber: quizState.qIndex + 1,
+    });
 
     // Calculate score updates immediately
     let newScore = quizState.score;
@@ -494,7 +506,8 @@ export default function MicrobiopolyGame({
     setQuizState((prev) => ({ 
       ...prev, 
       waiting: true, 
-      selected: idx, 
+      selected: response, 
+      result,
       isCorrect, 
       score: newScore, 
       mistakes: newMistakes 
@@ -543,7 +556,6 @@ export default function MicrobiopolyGame({
         setBoard(newBoard);
         setPlayers((prev) => prev.map((p) => p.id === turnRef.current ? { ...p, chaosTokens: p.chaosTokens + 1 } : p));
         addLog(`MASTERY: ${players[turnRef.current].name} captured ${tile.name}!`);
-        checkForWin(newBoard, turnRef.current);
         setModalStage('MILESTONE_SUCCESS');
       } else {
         setModalStage('MILESTONE_FAIL');
@@ -612,13 +624,13 @@ export default function MicrobiopolyGame({
         if (tile.owner != null && tile.owner !== p.id) {
           const rentBase = tile.type === 'sequencing_core' ? tile.baseRent : computeRent(board, tile);
           const qPool = tile.questions || [];
-          const randomQ = qPool.length > 0 ? qPool[Math.floor(Math.random() * qPool.length)] : { prompt: 'Error', options: [], answer: 0 };
+          const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
           setActiveCard({ type: 'RENT_DEFENSE', data: tile, rent: rentBase, ownerName: players[tile.owner]?.name || 'Rival Lab', ownerId: tile.owner, payerId: p.id, payerName: p.name, q: randomQ });
           setModalStage('QUESTION');
           setModalOpen(true);
         } else {
           const qPool = tile.questions || [];
-          const randomQ = qPool.length > 0 ? qPool[Math.floor(Math.random() * qPool.length)] : { prompt: 'Error', options: [], answer: 0 };
+          const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
           setActiveCard({ type: 'QUESTION', data: tile, q: randomQ });
           setModalStage('QUESTION');
           setModalOpen(true);
@@ -637,11 +649,10 @@ export default function MicrobiopolyGame({
           const mishapPool = tsvMishaps.length > 0 ? tsvMishaps : (LAB_MISHAPS || []);
           
           const randomMishap = mishapPool.length > 0 ? mishapPool[Math.floor(Math.random() * mishapPool.length)] : { msg: 'Equipment Malfunction (-$100)', fact: null };
-          const isPositive = randomMishap.msg.includes('+');
-          amount = isPositive ? 50 : -100;
+          amount = parseMishapAmount(randomMishap.msg);
           msg = randomMishap.msg;
           fact = randomMishap.fact || null;
-          if (amount !== 0) handleTransaction(currentTurnIndex, amount, { action: 'LAB_MISHAP', tileId: tile.id, tileName: tile.name });
+          if (amount !== 0) handleTransaction(currentTurnIndex, amount, { action: 'LAB_MISHAP', tileId: tile.id, tileName: tile.name, notes: msg });
           setActiveCard({ type: 'MISHAP', data: { ...tile, fact }, msg });
           setModalStage('MISHAP');
           setModalOpen(true);
@@ -656,7 +667,7 @@ export default function MicrobiopolyGame({
   };
 
   const handleRoll = () => {
-    if (isMoving) return;
+    if (isMoving || timeUp || players[turn].eliminated) return;
     if (players[turn].money < 0) {
         alert("You are in debt! You must resolve your funding crisis before continuing.");
         return;
@@ -683,16 +694,17 @@ export default function MicrobiopolyGame({
     }, 200);
   };
 
-  const handleAnswer = (idx) => {
-    const isCorrect = idx === activeCard.q.answer;
-    setFeedback(activeCard.q.explanation || '');
-    if (isCorrect) {
+  const handleAnswer = (response) => {
+    const q = activeCard.q;
+    const result = checkAnswer(q, response);
+    logAnswer('PROPERTY_Q', q, result, { tileId: activeCard.data.id, tileName: activeCard.data.name });
+    if (result.correct) {
+      setFeedback(q.explanation || '');
       setModalStage('DECISION');
-      addCSVEvent({ eventType: 'PROPERTY_Q', turn: totalTurns, playerIndex: turnRef.current, playerName: currentPlayer?.name, tileId: activeCard.data.id, correct: true, timestamp: new Date().toISOString() });
     } else {
+      setFeedback(`Incorrect (-$20). Correct answer: ${result.correctText}${q.explanation ? `\n\n${q.explanation}` : ''}`);
       handleTransaction(turnRef.current, -20, { action: 'QUESTION_PENALTY', tileId: activeCard.data.id, notes: 'Incorrect on acquisition question' });
       setModalStage('FEEDBACK_INCORRECT');
-      addCSVEvent({ eventType: 'PROPERTY_Q', turn: totalTurns, playerIndex: turnRef.current, playerName: currentPlayer?.name, tileId: activeCard.data.id, correct: false, timestamp: new Date().toISOString() });
     }
   };
 
@@ -701,21 +713,22 @@ export default function MicrobiopolyGame({
     if (currentPlayer.money < tile.price) { alert("Insufficient funds!"); return; }
     handleTransaction(turnRef.current, -tile.price, { action: 'BUY_PROPERTY', tileId: tile.id, tileName: tile.name });
     setBoard((prev) => prev.map((t) => t.id === tile.id ? { ...t, owner: turnRef.current } : t));
-    setModalOpen(false);
-    setTurn((prev) => (prev + 1) % players.length);
+    passTurn();
   };
 
   const passTurn = () => {
     setModalOpen(false);
-    setTurn((prev) => (prev + 1) % players.length);
+    setTurn((prev) => nextActivePlayer(players, prev));
   };
 
-  const handleRentChallengeAnswer = (idx) => {
+  const handleRentChallengeAnswer = (response) => {
     const tile = activeCard.data;
-    const isCorrect = idx === activeCard.q.answer;
+    const result = checkAnswer(activeCard.q, response);
+    const isCorrect = result.correct;
+    logAnswer('RENT_Q', activeCard.q, result, { tileId: tile.id, tileName: tile.name });
     const rentBase = tile.type === 'sequencing_core' ? tile.baseRent : computeRent(board, tile);
     const rentToPay = isCorrect ? Math.floor(rentBase / 2) : rentBase;
-    setFeedback((isCorrect ? 'Correct! Rent discounted.' : 'Incorrect. Paying full rent.') + `\n\n${activeCard.q.explanation || ''}`);
+    setFeedback((isCorrect ? 'Correct! Rent discounted.' : `Incorrect. Paying full rent. Correct answer: ${result.correctText}`) + `\n\n${activeCard.q.explanation || ''}`);
     handleTransaction(activeCard.payerId, -rentToPay, { action: 'RENT_PAYMENT', tileId: tile.id, tileName: tile.name, rentPaid: rentToPay, correct: isCorrect });
     if (activeCard.ownerId !== 99 && activeCard.ownerId != null) handleTransaction(activeCard.ownerId, rentToPay, { action: 'RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
     setModalStage('FEEDBACK_INCORRECT');
@@ -730,17 +743,22 @@ export default function MicrobiopolyGame({
 
   const handleSelectChaosTarget = (tile) => {
     if (currentPlayer.chaosTokens <= 0) { alert('No chaos tokens available.'); return; }
+    // Duel on the target tile's own questions (fallback: any board question).
+    const pool = tile.questions?.length ? tile.questions : allBoardQuestions();
+    if (pool.length === 0) { alert('This question file has no questions for a Chaos challenge.'); return; }
     setChaosTargetTile(tile);
-    const q = CODE_CHALLENGE_BANK[Math.floor(Math.random() * CODE_CHALLENGE_BANK.length)];
+    const q = prepareQuestion(pool[Math.floor(Math.random() * pool.length)]);
     setActiveCard({ type: 'CHAOS_CHALLENGE', data: tile, q, ownerId: tile.owner });
     setChaosMode('CHALLENGE');
     setModalStage('CHAOS_QUESTION');
   };
 
-  const handleChaosAnswer = (idx) => {
+  const handleChaosAnswer = (response) => {
     const q = activeCard.q;
     const tile = chaosTargetTile;
-    const isCorrect = idx === q.answer;
+    const result = checkAnswer(q, response);
+    const isCorrect = result.correct;
+    logAnswer('CHAOS_Q', q, result, { tileId: tile?.id ?? '', tileName: tile?.name ?? '' });
     if (!tile) { setModalStage('FEEDBACK_INCORRECT'); setFeedback('Error: no target tile.'); return; }
     setPlayers((prev) => prev.map((p) => p.id === currentPlayer.id ? { ...p, chaosTokens: Math.max(0, p.chaosTokens - 1) } : p));
 
@@ -755,7 +773,7 @@ export default function MicrobiopolyGame({
     } else {
       const penalty = Math.floor((tile.baseRent || 20) * 0.5) || 20;
       handleTransaction(currentPlayer.id, -penalty, { action: 'CHAOS_FAIL', tileId: tile.id, tileName: tile.name });
-      setFeedback(`Chaos failed. Penalty: $${penalty}.\n\n${q.explanation}`);
+      setFeedback(`Chaos failed. Penalty: $${penalty}. Correct answer: ${result.correctText}${q.explanation ? `\n\n${q.explanation}` : ''}`);
       setModalStage('FEEDBACK_INCORRECT');
     }
   };
@@ -819,37 +837,75 @@ export default function MicrobiopolyGame({
   };
   const clearHover = () => setHoverTile(null);
 
-  const renderOptions = (options, handler, quizMode = false) => (
-    <Grid container spacing={2}>
-      {options.map((opt, i) => {
-        let borderColor = '#999'; let bgColor = 'transparent'; let textColor = '#333';
-        if (quizMode && quizState.selected !== null) {
-          if (i === quizState.selected) {
-            if (quizState.isCorrect) { borderColor = THEME.success; bgColor = '#e8f5e9'; textColor = THEME.success; } 
-            else { borderColor = THEME.danger; bgColor = '#ffebee'; textColor = THEME.danger; }
-          } else if (i === quizState.questions[quizState.qIndex].answer && !quizState.isCorrect) { borderColor = THEME.success; }
-        }
-        return (
-          <Grid item xs={12} key={i}>
-            <Button variant="outlined" fullWidth disabled={quizMode && quizState.waiting} onClick={() => handler(i)}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 1.5, px: 2, textTransform: 'none', borderColor, backgroundColor: bgColor, color: textColor, borderWidth: quizMode && quizState.selected === i ? '2px' : '1px', whiteSpace: 'normal' }}>
-              <span style={{ fontWeight: 'bold', marginRight: '10px', minWidth: '20px' }}>{String.fromCharCode(65 + i)}.</span> {opt}
-            </Button>
-          </Grid>
-        );
-      })}
-    </Grid>
-  );
-
   const handleExportCSV = () => { if (!logRows.length) { alert('No logged events.'); return; } downloadCSV(logRows); };
-  const handleEndGame = () => { if (typeof onEndGame === 'function') onEndGame(logRows); };
+  // Final standings: opened by END GAME, by the timer, or after a last-standing win.
+  const openStandings = (forced, reason) => {
+    setActiveCard({ type: 'STANDINGS', forced, reason });
+    setModalStage('STANDINGS');
+    setModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (timeUp && !standingsShownRef.current && !modalOpen && !isMoving && !manageOpen) {
+      standingsShownRef.current = true;
+      addLog("Time's up!");
+      openStandings(true, 'time');
+    }
+  });
+
+  const handleEndGame = (reason = 'ended') => {
+    const standings = rankPlayers(players, board);
+    const resultRows = standings.map((r) => ({
+      eventType: 'GAME_RESULT',
+      turn: totalTurns,
+      playerIndex: r.id,
+      playerName: r.name,
+      rank: r.rank,
+      netWorth: r.netWorth,
+      cash: r.cash,
+      assets: r.assets,
+      eliminated: r.eliminated,
+      endReason: reason,
+      timestamp: new Date().toISOString(),
+    }));
+    if (typeof onEndGame === 'function') onEndGame([...logRows, ...resultRows]);
+  };
+
+  const formatClock = (ms) => {
+    const total = Math.ceil(ms / 1000);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  };
+
+  // Shared question renderer (prompt + image + any answer format).
+  const renderQuestion = (q, onSubmit, opts = {}) => (
+    <>
+      <Typography variant={opts.variant || 'body1'} sx={{ mb: 2, fontWeight: 'bold', whiteSpace: 'pre-wrap' }}>{q.prompt}</Typography>
+      <QuestionInput
+        key={opts.key || q.id || q.prompt}
+        question={q}
+        onSubmit={onSubmit}
+        reveal={opts.reveal || null}
+        resolveImage={getImgSrc}
+        imageMaxHeight={opts.imageMaxHeight || 250}
+      />
+    </>
+  );
 
   return (
     <div style={{ backgroundColor: THEME.bg, minHeight: '100vh', width: '100vw', padding: '20px', fontFamily: 'sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '1400px', margin: '0 auto 20px auto', alignItems: 'center' }}>
-        <Typography variant="h4" sx={{ color: THEME.text, fontWeight: 'bold' }}>THE SEQUENCING RUN <Chip label={`TURN ${totalTurns}`} size="small" sx={{ ml: 2, bgcolor: THEME.accent, color: '#fff' }} /></Typography>
+        <Typography variant="h4" sx={{ color: THEME.text, fontWeight: 'bold' }}>THE SEQUENCING RUN <Chip label={`TURN ${totalTurns}`} size="small" sx={{ ml: 2, bgcolor: THEME.accent, color: '#fff' }} />
+          {endsAt && (
+            <Chip
+              label={timeUp ? "TIME'S UP" : `⏱ ${formatClock(timeLeftMs)}`}
+              size="small"
+              color={timeUp ? 'error' : timeLeftMs <= 5 * 60000 ? 'warning' : 'default'}
+              sx={{ ml: 1, fontWeight: 'bold' }}
+              aria-label="Time remaining"
+            />
+          )}</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="outlined" color="warning" onClick={handleEndGame}>END GAME</Button>
+          <Button variant="outlined" color="warning" onClick={() => openStandings(false, 'ended')}>END GAME</Button>
           <Button variant="outlined" color="secondary" onClick={handleExportCSV}>Export CSV</Button>
           <Button color="error" variant="outlined" onClick={onExit}>EXIT SESSION</Button>
         </Box>
@@ -874,7 +930,7 @@ export default function MicrobiopolyGame({
                   {tile.sub && <div style={{ fontSize: '10px', fontWeight: 'bold', color: THEME.danger, marginTop: 2 }}>{tile.sub}</div>}
                   {tile.price > 0 && !tile.sub && <div style={{ fontSize: '10px', marginTop: 2 }}>${tile.price}</div>}
                   <div style={{ display: 'flex', gap: 1, position: 'absolute', bottom: 4 }}>
-                    {players.map((p) => p.position === index && <motion.div key={p.id} layoutId={`p-${p.id}`} transition={{ duration: 0.2, ease: 'linear' }} style={{ width: 14, height: 14, borderRadius: '50%', background: p.color, border: '2px solid white', zIndex: 10 }} />)}
+                    {players.map((p) => p.position === index && !p.eliminated && <motion.div key={p.id} layoutId={`p-${p.id}`} transition={{ duration: 0.2, ease: 'linear' }} style={{ width: 14, height: 14, borderRadius: '50%', background: p.color, border: '2px solid white', zIndex: 10 }} />)}
                   </div>
                 </div>
               );
@@ -890,7 +946,7 @@ export default function MicrobiopolyGame({
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 1, marginBottom: 2, position: 'absolute', bottom: -6, zIndex: 10 }}>
-                  {players.map((p) => p.position === index && <motion.div key={p.id} layoutId={`p-${p.id}`} transition={{ duration: 0.2, ease: 'linear' }} style={{ width: 14, height: 14, borderRadius: '50%', background: p.color, border: '2px solid white', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }} />)}
+                  {players.map((p) => p.position === index && !p.eliminated && <motion.div key={p.id} layoutId={`p-${p.id}`} transition={{ duration: 0.2, ease: 'linear' }} style={{ width: 14, height: 14, borderRadius: '50%', background: p.color, border: '2px solid white', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }} />)}
                 </div>
               </div>
             );
@@ -902,8 +958,10 @@ export default function MicrobiopolyGame({
             <Typography variant="subtitle2" color="textSecondary" gutterBottom>RESEARCH GROUPS</Typography>
             {players.map((p, i) => (
               <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, p: 1, borderRadius: 1, bgcolor: turn === i ? `${p.color}22` : 'transparent', borderLeft: `4px solid ${p.color}`, position: 'relative' }}>
-                <span style={{ fontWeight: turn === i ? 'bold' : 'normal' }}>{p.name} {p.hasBailedOut && '⚠️'}</span>
-                <span style={{ color: p.money < 0 ? 'red' : 'inherit' }}>${p.money}</span>
+                <span style={{ fontWeight: turn === i ? 'bold' : 'normal', textDecoration: p.eliminated ? 'line-through' : 'none', opacity: p.eliminated ? 0.5 : 1 }}>
+                  {p.name} {p.rescueUsed && !p.eliminated && <span title="Emergency Grant used">🛟</span>}
+                </span>
+                <span style={{ color: p.money < 0 ? 'red' : 'inherit' }}>{p.eliminated ? 'OUT' : `$${p.money}`}</span>
                 <AnimatePresence>
                   {moneyFloats[p.id]?.visible && (
                     <motion.span key={moneyFloats[p.id].id} initial={{ opacity: 0, y: 10, scale: 0.5 }} animate={{ opacity: 1, y: -20, scale: 1.2 }} exit={{ opacity: 0 }}
@@ -922,8 +980,8 @@ export default function MicrobiopolyGame({
               <DiceBox num={dice[0]} />
               <DiceBox num={dice[1]} />
             </div>
-            <Button variant="contained" size="large" fullWidth onClick={handleRoll} disabled={isMoving || currentPlayer.money < 0} sx={{ bgcolor: currentPlayer?.color || '#555', color: '#fff', mb: 1 }}>
-              {isMoving ? 'PROCESSING...' : (currentPlayer.money < 0 ? 'IN DEBT' : 'ROLL')}
+            <Button variant="contained" size="large" fullWidth onClick={handleRoll} disabled={isMoving || timeUp || currentPlayer.money < 0} sx={{ bgcolor: currentPlayer?.color || '#555', color: '#fff', mb: 1 }}>
+              {timeUp ? "TIME'S UP" : isMoving ? 'PROCESSING...' : (currentPlayer.money < 0 ? 'IN DEBT' : 'ROLL')}
             </Button>
             <Grid container spacing={1}>
               <Grid item xs={6}><Button variant="outlined" fullWidth onClick={openLabManager}>LAB MANAGER</Button></Grid>
@@ -990,10 +1048,11 @@ export default function MicrobiopolyGame({
                     Your lab is on the verge of shutdown.
                 </Typography>
                 <Typography variant="body1" paragraph>
-                    You may apply for an <strong>Emergency Grant</strong>. This involves a rigorous 3-question review by the NIH board.
+                    You may apply for an <strong>Emergency Grant</strong>: a 3-question review. Answer at least 2 correctly to be rescued.
                 </Typography>
                 <Alert severity="warning" sx={{ mb: 3 }}>
-                    Warning: Receiving this grant will bail you out ($500 funding), but you will be ineligible for the Nobel Prize (Victory).
+                    Each team gets <strong>one</strong> rescue per game. If approved, your debt is cleared and you receive $500.
+                    If denied, or if you go bankrupt again later, your team is eliminated and its properties return to the bank.
                 </Alert>
                 <Button fullWidth variant="contained" onClick={startGrantExam}>APPLY FOR EMERGENCY GRANT</Button>
             </>
@@ -1003,14 +1062,29 @@ export default function MicrobiopolyGame({
             <>
               <Typography variant="overline">Grant Review: Question {quizState.qIndex + 1} of 3</Typography>
               <LinearProgress variant="determinate" value={(quizState.qIndex / 3) * 100} sx={{ mb: 3 }} />
-              <Typography variant="h6" gutterBottom>{quizState.questions[quizState.qIndex].prompt}</Typography>
-              {renderOptions(quizState.questions[quizState.qIndex].options, handleQuizAnswer, true)}
+              {renderQuestion(quizState.questions[quizState.qIndex], handleQuizAnswer, {
+                variant: 'h6', key: `grant-${quizState.qIndex}`,
+                reveal: quizState.waiting ? { ...quizState.result, response: quizState.selected } : null,
+              })}
+              {quizState.waiting && (
+                <Box sx={{ mt: 3, p: 2, bgcolor: '#f9f9f9', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
+                  <Typography variant="subtitle2" fontWeight="bold" color={quizState.isCorrect ? 'success.main' : 'error.main'}>
+                    {quizState.isCorrect ? 'Correct!' : 'Incorrect'}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 2 }}>{quizState.questions[quizState.qIndex].explanation || 'No explanation provided.'}</Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button variant="contained" onClick={handleNextQuestion}>
+                      {quizState.qIndex < quizState.questions.length - 1 ? 'NEXT QUESTION' : 'SUBMIT APPLICATION'}
+                    </Button>
+                  </Box>
+                </Box>
+              )}
             </>
           )}
 
           {modalStage === 'GRANT_RESULT' && (
             <>
-                <Typography variant="h5" color={feedback.includes("Approved") ? "success.main" : "warning.main"}>{feedback.includes("Approved") ? "Application Successful" : "Application Denied"}</Typography>
+                <Typography variant="h5" color="success.main">Application Successful</Typography>
                 <Typography variant="body1" paragraph>{feedback}</Typography>
                 <Button fullWidth variant="contained" onClick={passTurn}>RESUME OPERATIONS</Button>
             </>
@@ -1021,9 +1095,62 @@ export default function MicrobiopolyGame({
               <Typography variant="h3" align="center">🏆</Typography>
               <Typography variant="h4" align="center" color="primary">VICTORY!</Typography>
               <Typography variant="h6" align="center">{activeCard.msg}</Typography>
-              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={onExit}>RETURN TO MENU</Button>
+              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={() => openStandings(true, 'last_standing')}>SEE FINAL STANDINGS</Button>
             </>
           )}
+
+          {activeCard?.type === 'ELIMINATED' && modalStage === 'ELIMINATED' && (
+            <>
+              <Typography variant="h4" color="error" gutterBottom>Lab Closed</Typography>
+              <Typography variant="body1" paragraph>
+                <strong>{activeCard.name}</strong> could not cover its debts and has been <strong>eliminated</strong>. Its properties return to the bank.
+              </Typography>
+              <Typography variant="body2" color="textSecondary" paragraph>Reason: {activeCard.reason}</Typography>
+              <Button fullWidth variant="contained" onClick={continueAfterElimination}>CONTINUE</Button>
+            </>
+          )}
+
+          {activeCard?.type === 'STANDINGS' && modalStage === 'STANDINGS' && (() => {
+            const standings = rankPlayers(players, board);
+            const leader = standings[0];
+            const tied = standings.filter((r) => !r.eliminated && r.netWorth === leader?.netWorth);
+            const reasonText = {
+              time: "Time's up! The team with the highest net worth (cash + property value) wins.",
+              last_standing: 'Last team standing!',
+              eliminated: 'No teams remain.',
+              ended: 'Ending the game now ranks teams by net worth (cash + property value).',
+            }[activeCard.reason];
+            return (
+              <>
+                <Typography variant="h4" gutterBottom>Final Standings</Typography>
+                <Typography variant="body1" paragraph>{reasonText}</Typography>
+                {players.length > 1 && leader && !leader.eliminated && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    🏆 {tied.length > 1 ? `Tie: ${tied.map((t) => t.name).join(' & ')}` : `${leader.name} wins`} with a net worth of ${leader.netWorth}.
+                  </Alert>
+                )}
+                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 2, '& td, & th': { p: 1, borderBottom: '1px solid #eee', textAlign: 'right' }, '& td:nth-of-type(2), & th:nth-of-type(2)': { textAlign: 'left' } }}>
+                  <thead><tr><th>#</th><th>Team</th><th>Cash</th><th>Property</th><th>Net worth</th></tr></thead>
+                  <tbody>
+                    {standings.map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.rank}</td>
+                        <td><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: r.color, marginRight: 6 }} />{r.name}{r.eliminated ? ' (eliminated)' : ''}</td>
+                        <td>${r.cash}</td>
+                        <td>${r.assets}</td>
+                        <td><strong>${r.netWorth}</strong></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Box>
+                <Alert severity="info" sx={{ mb: 2 }}>Next: the post-game survey. Then export your CSV from the summary screen.</Alert>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {!activeCard.forced && <Button fullWidth variant="outlined" onClick={() => setModalOpen(false)}>BACK TO GAME</Button>}
+                  <Button fullWidth variant="contained" color="success" onClick={() => handleEndGame(activeCard.reason)}>CONTINUE TO POST-SURVEY</Button>
+                </Box>
+              </>
+            );
+          })()}
 
           {activeCard?.type === 'MILESTONE' && modalStage === 'MILESTONE_INTRO' && (
             <>
@@ -1061,20 +1188,10 @@ export default function MicrobiopolyGame({
               </Box>
               <LinearProgress variant="determinate" value={(quizState.qIndex / quizState.questions.length) * 100} sx={{ mb: 3 }} />
               
-              <Typography variant="h6" gutterBottom>{quizState.questions[quizState.qIndex].prompt}</Typography>
-
-              {/* IMAGE FIX: Check for .image OR .imageFile + Moved Below Text */}
-              {(quizState.questions[quizState.qIndex].image || quizState.questions[quizState.qIndex].imageFile) && (
-                <Box sx={{ textAlign: 'center', mb: 2, mt: 2 }}>
-                  <img 
-                    src={getImgSrc(quizState.questions[quizState.qIndex].image || quizState.questions[quizState.qIndex].imageFile)} 
-                    alt="Quiz Diagram" 
-                    style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: 4 }} 
-                  />
-                </Box>
-              )}
-
-              {renderOptions(quizState.questions[quizState.qIndex].options, handleQuizAnswer, true)}
+              {renderQuestion(quizState.questions[quizState.qIndex], handleQuizAnswer, {
+                variant: 'h6', key: `quiz-${quizState.qIndex}`,
+                reveal: quizState.waiting ? { ...quizState.result, response: quizState.selected } : null,
+              })}
 
               {/* NEW: EXPLANATION + NEXT BUTTON */}
               {quizState.waiting && (
@@ -1118,20 +1235,7 @@ export default function MicrobiopolyGame({
               <Collapse in={showManual}><Alert severity="info" sx={{ mb: 3 }}><Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{activeCard.data.manual}</Typography></Alert></Collapse>
               <Divider sx={{ my: 2 }} />
               
-              <Typography variant="body1" sx={{ mb: 3, fontWeight: 'bold' }}>{activeCard.q.prompt}</Typography>
-
-              {/* IMAGE FIX & MOVED BELOW TEXT */}
-              {(activeCard.q.image || activeCard.q.imageFile) && (
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  <img 
-                    src={getImgSrc(activeCard.q.image || activeCard.q.imageFile)}
-                    alt="Data Validation" 
-                    style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: 4 }} 
-                  />
-                </Box>
-              )}
-
-              {renderOptions(activeCard.q.options, handleAnswer)}
+              {renderQuestion(activeCard.q, handleAnswer)}
             </>
           )}
 
@@ -1177,7 +1281,7 @@ export default function MicrobiopolyGame({
             <>
               <Typography variant="h5">Upgrade Infrastructure</Typography>
               <Button fullWidth variant="contained" onClick={handleUpgrade} sx={{ mt: 2 }}>UPGRADE SUB-THEME</Button>
-              <Button fullWidth onClick={passTurn} sx={{ mt: 1 }}>CANCEL</Button>
+              <Button fullWidth onClick={() => setModalOpen(false)} sx={{ mt: 1 }}>CANCEL</Button>
             </>
           )}
 
@@ -1193,20 +1297,7 @@ export default function MicrobiopolyGame({
               <Collapse in={showManual}><Alert severity="info" sx={{ mb: 3 }}><Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{activeCard.data.manual}</Typography></Alert></Collapse>
               <Divider sx={{ my: 2 }} />
               
-              <Typography variant="body1" sx={{ fontStyle: 'italic', mb: 2 }}>{activeCard.q.prompt}</Typography>
-
-              {/* IMAGE FIX & MOVED BELOW TEXT */}
-              {(activeCard.q.image || activeCard.q.imageFile) && (
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  <img 
-                    src={getImgSrc(activeCard.q.image || activeCard.q.imageFile)} 
-                    alt="Rent Defense" 
-                    style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: 4 }} 
-                  />
-                </Box>
-              )}
-
-              {renderOptions(activeCard.q.options, handleRentChallengeAnswer)}
+              {renderQuestion(activeCard.q, handleRentChallengeAnswer, { imageMaxHeight: 200 })}
             </>
           )}
 
@@ -1233,8 +1324,7 @@ export default function MicrobiopolyGame({
             <>
               <Typography variant="h6">Chaos Challenge</Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>Target: {chaosTargetTile?.name}</Typography>
-              <Typography variant="body1" sx={{ mb: 2, fontWeight: 'bold' }}>{activeCard.q.prompt}</Typography>
-              {renderOptions(activeCard.q.options, handleChaosAnswer)}
+              {renderQuestion(activeCard.q, handleChaosAnswer)}
             </>
           )}
         </Box>
