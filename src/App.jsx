@@ -3,15 +3,17 @@ import React, { useState, useEffect, useMemo } from "react";
 import CryptoJS from "crypto-js"; 
 import { buildBoardFromTsv } from "./gameData"; 
 import MicrobiopolyGame from "./MicrobiopolyGame";
-import { parseTsv, parseList, getAllTopics, getModulesForTopic } from "./tsvParser";
+import { parseTsv, getAllTopics, getModulesForTopic } from "./tsvParser";
 import { validateQuestionRows } from "./tsvValidator";
-import { normalizeQuestion, prepareQuestion, checkAnswer } from "./questionFormats";
+import { checkAnswer } from "./questionFormats";
+import { buildSurveySets, buildConfidenceQuestions } from "./surveys";
 import { bestPreSurveyPlayer } from "./gameRules";
 import { resolveImage } from "./images";
 import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
 import ConsentBanner from "./ConsentBanner";
-import { TEAM_COLORS, TEAM_NAMES, TEAM_SYMBOLS } from "./theme";
+import { TEAM_COLORS, TEAM_SYMBOLS } from "./theme";
+import { teamDisplayName } from "./labels";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
@@ -27,23 +29,6 @@ async function fetchDefaultQuestions(url = "./SAB_questions_Jan22_Filtered.tsv")
   if (!res.ok) throw new Error(`Could not load default questions (${res.status})`);
   const text = await res.text();
   return parseTsv(text);
-}
-
-function filterSurveyRows(all, { bigTopic, module, type }) {
-  return all.filter((r) => {
-    if (!r.type || r.type.trim().toLowerCase() !== type) return false;
-    const rowTopicStr = (r.bigTopic || "").trim();
-    if (bigTopic && rowTopicStr) {
-      const topics = parseList(rowTopicStr);
-      if (!topics.includes(bigTopic)) return false;
-    }
-    const rowModuleStr = (r.module || "").trim();
-    if (module && rowModuleStr) {
-      const modules = parseList(rowModuleStr);
-      if (!modules.includes(module)) return false;
-    }
-    return true;
-  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -107,7 +92,7 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
         <Typography variant="h4" gutterBottom>{isPre ? "Pre-Game Survey" : "Post-Game Survey"}</Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Box aria-hidden sx={{ width: 22, height: 22, borderRadius: "50%", bgcolor: TEAM_COLORS[currentPlayer], color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", textShadow: "0 0 2px rgba(0,0,0,.7)" }}>{TEAM_SYMBOLS[currentPlayer]}</Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{TEAM_NAMES[currentPlayer]} · player {currentPlayer + 1} of {playerCount}</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{teamDisplayName(currentPlayer, playerCount)} · player {currentPlayer + 1} of {playerCount}</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           {isPre ? "Answer on your own; this is your starting point, not a test. The best score goes first." : "Same questions as before the game. How much have you learned?"}
@@ -161,10 +146,27 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
   );
 }
 
-function ValidationReport({ validation, imageMap }) {
+function ValidationReport({ validation, imageMap, imageBase = "" }) {
+  const [missingImages, setMissingImages] = useState([]);
+  const images = validation ? validation.images : [];
+  const imagesKey = images.join("|");
+  // Only warn about images that can't be found anywhere (uploads, links, hosted copies).
+  useEffect(() => {
+    let cancelled = false;
+    const candidates = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/i.test(img));
+    Promise.all(candidates.map(async (img) => {
+      try {
+        const res = await fetch(resolveImage(img, {}, imageBase), { method: "HEAD" });
+        return res.ok && (res.headers.get("content-type") || "").startsWith("image/") ? null : img;
+      } catch {
+        return img;
+      }
+    })).then((found) => { if (!cancelled) setMissingImages(found.filter(Boolean)); });
+    return () => { cancelled = true; };
+  }, [imagesKey, imageMap, imageBase]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!validation) return null;
-  const { errors, warnings, images } = validation;
-  const missingImages = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/.test(img));
+  const { errors, warnings } = validation;
   if (!errors.length && !warnings.length && !missingImages.length) return null;
   return (
     <Box sx={{ mb: 3, textAlign: "left" }}>
@@ -193,7 +195,8 @@ function ValidationReport({ validation, imageMap }) {
       {missingImages.length > 0 && (
         <Alert severity="info">
           <Typography variant="body2">
-            This file references {missingImages.length} image{missingImages.length > 1 ? "s" : ""} not uploaded yet: {missingImages.join(", ")}
+            {missingImages.length} image{missingImages.length > 1 ? "s" : ""} couldn't be found: {missingImages.join(", ")}.
+            Those questions still work, just without the picture. If you have the files, add them with "Optional: upload images".
           </Typography>
         </Alert>
       )}
@@ -325,18 +328,15 @@ export default function App() {
   };
 
   const confirmModule = () => {
-    const poolRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "survey" });
-    const poolQuestions = poolRows.map(normalizeQuestion);
-    const newSets = [];
-    for (let i = 0; i < playerCount; i++) {
-      const shuffled = [...poolQuestions].sort(() => 0.5 - Math.random());
-      newSets.push(shuffled.slice(0, 10).map((q) => prepareQuestion(q)));
-    }
-    setPlayerQuestionSets(newSets);
-    const confRows = filterSurveyRows(allTsvRows, { bigTopic: gameMode, module: selectedModule, type: "confidence" });
-    const cQuestions = confRows.map((r, i) => ({ key: r.id || `conf_${i}`, label: r.question }));
-    setConfQ(cQuestions);
     setModuleModalOpen(false);
+  };
+
+  // Survey sets are built here (not when the module is confirmed) so they always
+  // match the final team count.
+  const startGame = () => {
+    setPlayerQuestionSets(buildSurveySets(allTsvRows, { topic: gameMode, module: selectedModule, playerCount }));
+    setConfQ(buildConfidenceQuestions(allTsvRows, { topic: gameMode, module: selectedModule }));
+    setPhase("PRE_SURVEY");
   };
 
   const handleExport = () => {
@@ -499,7 +499,7 @@ export default function App() {
 
         <Paper elevation={6} sx={{ p: 2, position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 2, zIndex: 100, borderRadius: 0 }}>
           <Button size="small" color="inherit" onClick={() => setAllTsvRows([])}>Change file</Button>
-          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={() => setPhase("PRE_SURVEY")} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game →</Button>
+          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game →</Button>
         </Paper>
 
         <Modal open={moduleModalOpen} onClose={() => setModuleModalOpen(false)}>

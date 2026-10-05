@@ -35,3 +35,10 @@ export const LABELS = {
     chance: "Chance (random event)",
   },
 };
+
+export const TEAM_NAMES = ["Red Team", "Blue Team", "Green Team", "Orange Team"];
+
+/** Display name for team `index` when `count` teams play (a single team is "Solo Team"). */
+export function teamDisplayName(index, count) {
+  return count === 1 ? LABELS.soloTeam : TEAM_NAMES[index];
+}

@@ -16,7 +16,8 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "a11y": "node scripts/a11y-check.mjs",
-    "guide": "vite build && node scripts/guide-screenshots.mjs && node scripts/build-guide.mjs"
+    "guide": "vite build && node scripts/guide-screenshots.mjs && node scripts/build-guide.mjs",
+    "smoke": "vite build && node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

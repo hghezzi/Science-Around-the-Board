@@ -18,7 +18,7 @@ import "@fontsource/fredoka/600.css";
 
 export const TEAM_SYMBOLS = ["●", "▲", "■", "◆"];
 export const TEAM_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f97316"];
-export const TEAM_NAMES = ["Red Team", "Blue Team", "Green Team", "Orange Team"];
+export { TEAM_NAMES } from "./labels";
 
 const display = '"Fredoka", "Nunito", system-ui, sans-serif';
 
