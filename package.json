@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/package-skill.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "validate-tsv": "node scripts/validate-tsv.mjs",
+    "package-skill": "node scripts/package-skill.mjs",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"

@@ -10,6 +10,7 @@ import { bestPreSurveyPlayer } from "./gameRules";
 import { resolveImage } from "./images";
 import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
+import ConsentBanner from "./ConsentBanner";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
@@ -254,10 +255,10 @@ export default function App() {
 
   // --- Handlers ---
 
-  const handleLoadDefault = async () => {
+  const handleLoadDefault = async (url) => {
     setLoadingError(null);
     try {
-      const rows = await fetchDefaultQuestions();
+      const rows = await fetchDefaultQuestions(url);
       if (rows.length > 0) setAllTsvRows(rows);
       else setLoadingError("Default file is empty.");
     } catch (e) { setLoadingError(e.message); }
@@ -355,7 +356,10 @@ export default function App() {
              // --- STATE 1: NO DATA LOADED ---
              <>
                 <Typography color="textSecondary" sx={{ mb: 3 }}>Select a question source to begin the session.</Typography>
-                <Button variant="contained" fullWidth size="large" onClick={handleLoadDefault} sx={{ mb: 2 }}>Load Demo Game</Button>
+                <Button variant="contained" fullWidth size="large" onClick={() => handleLoadDefault()} sx={{ mb: 1 }}>Load Demo Game</Button>
+                <Button size="small" fullWidth onClick={() => handleLoadDefault("./examples/intro_statistics.tsv")} sx={{ mb: 2 }}>
+                  Or try a non-biology example: Intro Statistics
+                </Button>
                 <Divider sx={{ my: 2 }}>OR</Divider>
                 <Button variant="outlined" component="label" fullWidth size="large">
                     Upload Custom Questions (TSV)
@@ -408,6 +412,7 @@ export default function App() {
           <a href="./privacy.html" target="_blank" rel="noopener" style={{ color: '#888' }}>Privacy</a> ·{" "}
           <a href="#" onClick={(e) => { e.preventDefault(); resetConsent(); }} style={{ color: '#888' }}>Analytics settings</a>
         </Typography>
+        <ConsentBanner />
       </Container>
     );
   }

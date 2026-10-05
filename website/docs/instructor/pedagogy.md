@@ -19,7 +19,7 @@ Before the game board loads, students complete a mandatory survey.
 ### Phase 2: The Intervention (Gameplay)
 The game uses **Active Recall** and **Spaced Repetition**:
 * **Rent Defense (Formative):** When landing on a rival tile, students are forced to answer a question. This is high-frequency, low-stakes testing. Getting it wrong costs in-game money, creating an emotional anchor for the memory.
-* **Milestone Exams (Summative):** To capture a corner Milestone, students must pass a 6-question "Exam" with 83% accuracy (5/6). This prevents students from "lucking" their way to victory; they must demonstrate mastery.
+* **Milestone Exams (Summative):** To capture a corner Milestone, students must pass a 6-question "Exam" with 83% accuracy (5/6). Milestones earn Chaos Tokens and add to net worth, so mastery is rewarded beyond luck.
 
 ### Phase 3: The Post-Assessment (Growth)
 After the game, the survey repeats.
@@ -27,7 +27,7 @@ After the game, the survey repeats.
 * **Confidence Delta:** We often see confidence *drop* initially as students realize the complexity of the topic (the "Valley of Despair"), followed by a rise as they master it.
 
 ### Phase 4: The Data Log (Submission)
-The game generates a `microbiopoly_data.csv` file. This is your "Lab Notebook." It contains every click, answer, and transaction.
+The game generates a `microbiopoly_data.csv` file. This is your "Lab Notebook." It contains every answer (question id, format, response, correct answer, right/wrong), every transaction, and the final standings.
 * **Grading:** You can grade based on *Participation* (file submitted) or *Performance* (final score).
 * **Analytics:** You can open this file in Excel to see exactly which questions were missed most often by the class, allowing you to target your next lecture.
 
@@ -70,6 +70,6 @@ While the default metaphor is a "Research Lab," the engine is **subject-agnostic
 | **0-10** | **Setup** | Students form teams (2-4 per laptop). Load the game URL and upload the `questions.tsv` file. |
 | **10-15** | **Pre-Survey** | **Critical:** Ensure students take this seriously. This sets their baseline. |
 | **15-50** | **Gameplay** | The Instructor acts as "Game Master," walking around to clarify rules. Encourage teams to read explanations out loud. |
-| **50-55** | **The End** | Give a 5-minute warning. Students click "End Game." |
+| **50-55** | **The End** | Set the session timer at setup (it warns at 5 minutes), or ask students to click "End Game." The highest net worth wins. |
 | **55-60** | **Post-Survey** | Students complete the final check. |
 | **60+** | **Debrief** | **Homework:** Students upload their `.csv` file to the LMS. Instructor reviews the "Chaos" moments and hardest questions. |

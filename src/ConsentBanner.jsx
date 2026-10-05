@@ -1,14 +1,11 @@
 // src/ConsentBanner.jsx
 import React, { useEffect, useState } from "react";
 import { Paper, Typography, Button, Box, Link } from "@mui/material";
-import { getConsent, setConsent, loadAnalytics, CONSENT_RESET_EVENT } from "./consent";
+import { getConsent, setConsent, CONSENT_RESET_EVENT } from "./consent";
 
+// Shown on the start page only, so it never covers in-game controls.
 export default function ConsentBanner() {
   const [choice, setChoice] = useState(() => getConsent());
-
-  useEffect(() => {
-    if (choice === "granted") loadAnalytics();
-  }, [choice]);
 
   useEffect(() => {
     const onReset = () => setChoice(null);

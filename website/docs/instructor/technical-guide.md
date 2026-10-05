@@ -29,6 +29,9 @@ The game requires a **Tab-Separated Values** file. We recommend using Excel or G
 | `bigTopic` | No | Used for Menu Filtering. | `Biology` |
 | `module` | No | Used for Sub-Menu Filtering. | `Week 1` |
 | `imageFile` | No | Filename for images. | `diagram_a.png` |
+| `format` | No | Answer format (blank = multiple choice). | `multi`, `numeric`, `order`, `text` |
+| `answer` | For `numeric`/`text` | The number, or accepted text answers separated by `\|`. | `1500`, `beta\|beta diversity` |
+| `tolerance` | No (`numeric`) | Allowed error: absolute or percentage. Blank = exact. | `0.5`, `5%` |
 
 *\*Required for 'property' type questions.*
 
@@ -38,9 +41,21 @@ The game requires a **Tab-Separated Values** file. We recommend using Excel or G
 * **`core`**: Questions for Utility tiles (e.g., Sequencing Core).
 * **`mishap`**: Random events.
     * *Note:* For mishaps, `question` is the Event Text, `explanation` is the Fun Fact.
-    * *Money:* Include `+` in the text to give money (e.g., `Grant +$200`). Otherwise, it deducts money.
+    * *Money:* Write the amount in the text, e.g. `Freezer failure! (-$100)` or `Grant renewed! (+$200)`. The game charges or pays exactly that amount. Without an amount, rewards (text containing `+`) pay $50 and penalties cost $100.
 * **`survey`**: General knowledge questions for Pre/Post test.
 * **`confidence`**: Slider questions (1-10) for Pre/Post test.
+
+### Answer Formats (`format` column)
+Every format is marked simply right or wrong, so the game rules are the same for all of them. Options are shuffled each time a question appears.
+
+| `format` | Fill in | Students see | Correct when |
+| :--- | :--- | :--- | :--- |
+| *(blank)* or `mcq` | `option1`–`option4`, `correctIndex` | buttons | the right option is clicked |
+| true/false | `option1` = True, `option2` = False, `correctIndex` | two buttons | as above |
+| `multi` | options, `correctIndex` like `1,3` | checkboxes + Submit | the selection matches exactly |
+| `numeric` | `answer`, optional `tolerance` | number box | within tolerance |
+| `order` | options **in the correct order** | shuffled list with ↑/↓ | the order matches exactly |
+| `text` | `answer` with alternatives separated by `\|` | text box | it matches an alternative (ignores case, punctuation and one typo in longer answers) |
 
 ---
 
@@ -67,6 +82,8 @@ The game supports "Offline" image loading. This avoids copyright issues by never
 2.  Create a folder on your computer named `GameImages` (or similar).
 3.  Put `fig1.jpg` inside that folder.
 
+Images are always optional. The game looks for an image in this order: a file the students uploaded, a full `https://` link written in `imageFile`, then a file hosted with the game. If none is found, the question is shown without the image.
+
 ### Student Instructions
 1.  Students open the game.
 2.  They click **"Upload Images"**.
@@ -89,7 +106,15 @@ To prevent "cheating" (students reading the TSV answer key), you can encrypt the
 
 ---
 
-## 5. Troubleshooting Common Issues
+## 5. Checking Your File
+
+When a file is loaded, the game lists any problems it finds before you start: missing or misspelled columns, `correctIndex` values that don't match an option, fewer than 4 themes, themes without milestone questions, invalid numeric or multi-select answers, mishaps without an amount, and images that haven't been uploaded. Fix the red items before class; the yellow notes are suggestions.
+
+## 6. Generating Questions with Claude
+
+The `sab-question-writer` skill interviews you about your course and learning objectives, researches the topic, proposes a board layout for your approval, and writes a complete, validated question file (optionally with figures). Download it from the [project README](https://github.com/hghezzi/Science-Around-the-Board#readme) and upload it to Claude, then ask, for example: *"Make a Science Around the Board game reviewing enzyme kinetics for second-year biochemistry."* Always review generated questions before using them in class.
+
+## 7. Troubleshooting Common Issues
 
 * **"File contains no valid rows"**: Check that your TSV headers are spelled *exactly* as listed above (case-sensitive).
 * **Images not showing**:
