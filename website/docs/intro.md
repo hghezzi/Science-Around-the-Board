@@ -26,8 +26,9 @@ Traditional review sessions (like multiple-choice quizzes) are often passive. **
 
 * **Universal Content Engine:** The game is driven by a simple Excel/TSV file. If you can write a question, you can make a game.
 * **Zero-Install:** Runs entirely in the browser. No IT support or server setup required.
-* **Privacy-First:** No student data is stored. Custom images load locally from the instructor's computer.
+* **Privacy-First:** All game data (questions, answers, surveys, CSVs) stays in the browser. Optional, anonymous usage analytics load only if a visitor opts in.
 * **Assessment Ready:** Built-in Pre- and Post-game confidence surveys measure learning outcomes automatically.
+* **Many Question Types:** Multiple choice, true/false, select-all, numeric, ordering and short answer.
 
 ## Quick Start
 

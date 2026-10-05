@@ -25,53 +25,20 @@
 // - "core" rows -> CoreTech.questions
 // ------------------------------------------------------------
 
-// ✨ NEW: Helper to parse comma-separated lists (matches App.jsx logic)
-function parseList(str) {
-  if (!str) return [];
-  return str.split(",").map((item) => {
-    return item.trim().replace(/^"|"$/g, "");
-  });
-}
+import { parseList } from "./tsvParser.js";
+import { normalizeQuestion } from "./questionFormats.js";
 
 /**
- * Convert a TSV question row into the internal question format
- * used by the game engine.
+ * Convert a TSV question row into the internal question format.
+ * (Kept as a named export for compatibility; see questionFormats.js.)
  */
-export function rowToQuestion(row) {
-  const options = [
-    row.option1 || "",
-    row.option2 || "",
-    row.option3 || "",
-    row.option4 || "",
-  ].filter((o) => o && o.length > 0);
-
-  let idx = null;
-  if (
-    row.correctIndex !== undefined &&
-    row.correctIndex !== null &&
-    String(row.correctIndex).trim() !== ""
-  ) {
-    const parsed = parseInt(row.correctIndex, 10);
-    if (!Number.isNaN(parsed)) idx = parsed;
-  }
-
-  return {
-    prompt: row.question || "",
-    options,
-    answer: idx !== null ? idx - 1 : null,
-    explanation: row.explanation || "",
-    theme: row.theme || "",
-    subtheme: row.subtheme || "",
-    // FIX: Pass the image file through!
-    image: row.imageFile || null, 
-  };
-}
+export const rowToQuestion = normalizeQuestion;
 
 /**
  * 🔧 FIXED: Helper to check if row matches topic + module
  * Now uses comma-separated list logic (matches App.jsx)
  */
-function matchesTopicAndModule(row, bigTopic, module) {
+export function matchesTopicAndModule(row, bigTopic, module) {
   // 1. Check Topic Match
   const rowTopicStr = (row.bigTopic || "").trim();
   
@@ -112,10 +79,6 @@ export function buildBoardQuestionSet(
     matchesTopicAndModule(r, bigTopic, module)
   );
 
-  console.log(`[tsvBoardBuilder] Filtering for topic="${bigTopic}", module="${module}"`);
-  console.log(`[tsvBoardBuilder] Total TSV rows:`, tsvRows?.length || 0);
-  console.log(`[tsvBoardBuilder] Matched rows:`, rows.length);
-
   if (!rows.length) {
     console.warn("[tsvBoardBuilder] No matching rows found! Returning empty board.");
     // gameData.js will fall back to a very boring board
@@ -141,8 +104,6 @@ export function buildBoardQuestionSet(
     if (!themeOrder.includes(theme)) themeOrder.push(theme);
   });
 
-  console.log(`[tsvBoardBuilder] Themes found:`, themeOrder);
-
   // Only the first 4 themes can become sides on the board
   const chosenThemes = themeOrder.slice(0, 4);
 
@@ -162,8 +123,6 @@ export function buildBoardQuestionSet(
     const milestoneRows = themeRows.filter(
       (r) => (r.type || "").trim().toLowerCase() === "milestone"
     );
-
-    console.log(`[tsvBoardBuilder] Theme "${themeName}": ${propRows.length} properties, ${milestoneRows.length} milestones`);
 
     // --- find up to TWO subthemes in the order they appear ---
     const subOrder = [];
@@ -194,9 +153,6 @@ export function buildBoardQuestionSet(
 
     const quizQuestions = milestoneRows.map(rowToQuestion);
 
-    console.log(`[tsvBoardBuilder] - Sub1 "${sub1Name}": ${sub1Questions.length} questions`);
-    console.log(`[tsvBoardBuilder] - Sub2 "${sub2Name}": ${sub2Questions.length} questions`);
-
     sides[`Side${idx + 1}`] = {
       name: themeName,
       sub1: { name: sub1Name, questions: sub1Questions },
@@ -214,7 +170,6 @@ export function buildBoardQuestionSet(
   );
 
   const coreQuestions = coreRows.map(rowToQuestion);
-  console.log(`[tsvBoardBuilder] Core questions: ${coreQuestions.length}`);
 
   const coreName =
     (coreRows[0]?.subtheme || "").trim() ||
@@ -231,8 +186,6 @@ export function buildBoardQuestionSet(
     Side3: sides.Side3 || null,
     Side4: sides.Side4 || null,
   };
-
-  console.log("[tsvBoardBuilder] Final QS structure:", result);
 
   return result;
 }

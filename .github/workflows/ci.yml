@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - name: Validate example question files (game validator)
+        run: npm run validate-tsv -- public/SAB_questions_Jan22_Filtered.tsv public/examples/intro_statistics.tsv
+      - name: Validate example question files (skill's Python validator)
+        run: |
+          python3 .claude/skills/sab-question-writer/scripts/validate_tsv.py public/SAB_questions_Jan22_Filtered.tsv
+          python3 .claude/skills/sab-question-writer/scripts/validate_tsv.py public/examples/intro_statistics.tsv --images public/questionImages
+      - run: npm run build

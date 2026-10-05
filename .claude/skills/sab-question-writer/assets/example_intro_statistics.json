@@ -1,0 +1,1173 @@
+[
+ {
+  "id": "prop_t1a_01",
+  "type": "property",
+  "question": "Which measure of center is most resistant to a few extreme outliers?",
+  "options": [
+   "The midrange (average of min and max)",
+   "The mean",
+   "The standard deviation",
+   "The median"
+  ],
+  "correct": 4,
+  "explanation": "The median depends only on the middle of the ordered data, so extreme values barely move it. The mean is pulled toward outliers, and the standard deviation measures spread, not center.",
+  "theme": "Describing Data",
+  "subtheme": "Center & Spread"
+ },
+ {
+  "id": "prop_t1a_02",
+  "type": "property",
+  "format": "numeric",
+  "question": "What is the median of the data set 2, 4, 4, 5, 10?",
+  "answer": 4,
+  "tolerance": "",
+  "explanation": "Sorted, the middle (3rd of 5) value is 4. The mean is 5, because the 10 pulls it upward.",
+  "theme": "Describing Data",
+  "subtheme": "Center & Spread"
+ },
+ {
+  "id": "prop_t1a_03",
+  "type": "property",
+  "question": "You add 10 points to every student's exam score. Which statistic changes?",
+  "options": [
+   "The standard deviation",
+   "The range",
+   "The mean",
+   "The interquartile range (IQR)"
+  ],
+  "correct": 3,
+  "explanation": "Shifting every value by a constant moves the center by that constant but leaves every distance between values, and therefore every measure of spread, unchanged.",
+  "theme": "Describing Data",
+  "subtheme": "Center & Spread"
+ },
+ {
+  "id": "prop_t1a_04",
+  "type": "property",
+  "format": "multi",
+  "question": "Which of these are measures of spread? (Select all that apply)",
+  "options": [
+   "Interquartile range (IQR)",
+   "Standard deviation",
+   "Median",
+   "Mode"
+  ],
+  "correct": [
+   1,
+   2
+  ],
+  "explanation": "IQR and standard deviation describe how spread out values are. Median and mode describe the center (typical value).",
+  "theme": "Describing Data",
+  "subtheme": "Center & Spread"
+ },
+ {
+  "id": "prop_t1b_01",
+  "type": "property",
+  "question": "In a strongly right-skewed distribution, how do the mean and median usually compare?",
+  "options": [
+   "A skewed distribution has no median",
+   "The mean is greater than the median",
+   "The mean is less than the median",
+   "They are always equal"
+  ],
+  "correct": 2,
+  "explanation": "The long right tail pulls the mean upward, while the median stays near the bulk of the data. In left-skewed data the mean is usually below the median.",
+  "theme": "Describing Data",
+  "subtheme": "Distributions & Graphs"
+ },
+ {
+  "id": "prop_t1b_02",
+  "type": "property",
+  "question": "Which graph is best for showing the distribution of a single quantitative variable, such as reaction times?",
+  "options": [
+   "Scatterplot",
+   "Bar chart of category counts",
+   "Pie chart",
+   "Histogram"
+  ],
+  "correct": 4,
+  "explanation": "A histogram bins a quantitative variable to show its shape, center and spread. Scatterplots need two quantitative variables; pie and bar charts are for categories.",
+  "theme": "Describing Data",
+  "subtheme": "Distributions & Graphs"
+ },
+ {
+  "id": "prop_t1b_03",
+  "type": "property",
+  "format": "text",
+  "question": "In a boxplot, the box spans from Q1 to Q3. What is this distance called?",
+  "answer": [
+   "interquartile range",
+   "IQR",
+   "inter-quartile range"
+  ],
+  "explanation": "The interquartile range (IQR = Q3 − Q1) covers the middle 50% of the data and is resistant to outliers.",
+  "theme": "Describing Data",
+  "subtheme": "Distributions & Graphs"
+ },
+ {
+  "id": "prop_t1b_04",
+  "type": "property",
+  "question": "For a normal distribution, about what percentage of values lie within 2 standard deviations of the mean?",
+  "options": [
+   "About 95%",
+   "About 50%",
+   "About 68%",
+   "About 99.7%"
+  ],
+  "correct": 1,
+  "explanation": "The 68–95–99.7 rule: about 68% within 1 SD, about 95% within 2 SD and about 99.7% within 3 SD.",
+  "theme": "Describing Data",
+  "subtheme": "Distributions & Graphs"
+ },
+ {
+  "id": "prop_t1b_05",
+  "type": "property",
+  "question": "What is the shape of the distribution shown in the histogram?",
+  "options": [
+   "Left-skewed",
+   "Uniform",
+   "Symmetric",
+   "Right-skewed"
+  ],
+  "correct": 4,
+  "explanation": "Most values sit on the left with a long tail stretching to the right, which is right (positive) skew, typical of waiting times and incomes.",
+  "theme": "Describing Data",
+  "subtheme": "Distributions & Graphs",
+  "imageFile": "stats_hist_right_skew.png"
+ },
+ {
+  "id": "mile_t1_01",
+  "type": "milestone",
+  "question": "A town reports a mean household income of $95,000 but a median of $52,000. What best explains the gap?",
+  "options": [
+   "A few very high incomes skew the distribution to the right",
+   "One of the two numbers must be a calculation error",
+   "Most households earn more than $95,000",
+   "The distribution must be symmetric"
+  ],
+  "correct": 1,
+  "explanation": "When the mean sits far above the median, a long right tail of very large values is pulling the mean up. This is why median income is usually reported.",
+  "theme": "Describing Data",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t1_02",
+  "type": "milestone",
+  "question": "A data set of exam scores has a standard deviation of 0. What can you conclude?",
+  "options": [
+   "The sample size is too small to compute an SD",
+   "The mean score is 0",
+   "The scores are normally distributed",
+   "Every score is identical"
+  ],
+  "correct": 4,
+  "explanation": "SD measures the typical distance from the mean; it is 0 only when every value equals the mean. It says nothing about the mean being 0.",
+  "theme": "Describing Data",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t1_03",
+  "type": "milestone",
+  "format": "order",
+  "question": "Put the steps for computing a sample standard deviation in order.",
+  "options": [
+   "Compute the sample mean",
+   "Subtract the mean from each value and square the result",
+   "Add the squared deviations and divide by n − 1",
+   "Take the square root"
+  ],
+  "explanation": "Deviations are squared so they don't cancel out, divided by n − 1 to get the sample variance, and square-rooted to return to the original units.",
+  "theme": "Describing Data",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t1_04",
+  "type": "milestone",
+  "question": "Heights are converted from centimetres to inches by dividing by 2.54. What happens to the standard deviation?",
+  "options": [
+   "It stays the same",
+   "It is divided by 2.54",
+   "It decreases by 2.54",
+   "It is multiplied by 2.54"
+  ],
+  "correct": 2,
+  "explanation": "Multiplying or dividing every value by a constant scales the spread by the same factor. Adding or subtracting a constant would leave the SD unchanged.",
+  "theme": "Describing Data",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t1_05",
+  "type": "milestone",
+  "format": "numeric",
+  "question": "IQ scores have mean 100 and SD 15. What is the z-score of an IQ of 130?",
+  "answer": 2,
+  "tolerance": "",
+  "explanation": "z = (130 − 100) / 15 = 2, so the score is 2 standard deviations above the mean.",
+  "theme": "Describing Data",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t1_06",
+  "type": "milestone",
+  "question": "Which pair of summaries is most appropriate for a strongly skewed variable such as hospital length of stay?",
+  "options": [
+   "Median and IQR",
+   "Mode and range",
+   "Mean and range",
+   "Mean and standard deviation"
+  ],
+  "correct": 1,
+  "explanation": "Median and IQR are resistant to the long tail; the mean and SD are both distorted by extreme stays.",
+  "theme": "Describing Data",
+  "subtheme": ""
+ },
+ {
+  "id": "prop_t2a_01",
+  "type": "property",
+  "format": "numeric",
+  "question": "Events A and B are independent, with P(A) = 0.3 and P(B) = 0.5. What is P(A and B)?",
+  "answer": 0.15,
+  "tolerance": "0.001",
+  "explanation": "For independent events, P(A and B) = P(A) × P(B) = 0.3 × 0.5 = 0.15. Adding them (0.8) would be wrong.",
+  "theme": "Probability",
+  "subtheme": "Probability Rules"
+ },
+ {
+  "id": "prop_t2a_02",
+  "type": "property",
+  "question": "A and B are mutually exclusive, with P(A) = 0.2 and P(B) = 0.3. What is P(A or B)?",
+  "options": [
+   "0.1",
+   "0.06",
+   "0.44",
+   "0.5"
+  ],
+  "correct": 4,
+  "explanation": "Mutually exclusive events can't happen together, so P(A or B) = 0.2 + 0.3 = 0.5. 0.44 would apply to independent events (0.2 + 0.3 − 0.06).",
+  "theme": "Probability",
+  "subtheme": "Probability Rules"
+ },
+ {
+  "id": "prop_t2a_03",
+  "type": "property",
+  "question": "The probability of rain tomorrow is 0.35. What is the probability of no rain?",
+  "options": [
+   "1.35",
+   "0.65",
+   "It cannot be determined",
+   "0.35"
+  ],
+  "correct": 2,
+  "explanation": "Complement rule: P(not A) = 1 − P(A) = 1 − 0.35 = 0.65.",
+  "theme": "Probability",
+  "subtheme": "Probability Rules"
+ },
+ {
+  "id": "prop_t2a_04",
+  "type": "property",
+  "question": "True or false: two mutually exclusive events, each with probability above 0, are also independent.",
+  "options": [
+   "True",
+   "False"
+  ],
+  "correct": 2,
+  "explanation": "False. If A happens, B cannot, so knowing A changes the probability of B to 0. That is dependence.",
+  "theme": "Probability",
+  "subtheme": "Probability Rules"
+ },
+ {
+  "id": "prop_t2b_01",
+  "type": "property",
+  "format": "numeric",
+  "question": "What is the expected value of one roll of a fair six-sided die?",
+  "answer": 3.5,
+  "tolerance": "",
+  "explanation": "E(X) = (1 + 2 + 3 + 4 + 5 + 6) / 6 = 3.5. An expected value need not be a possible outcome.",
+  "theme": "Probability",
+  "subtheme": "Random Variables"
+ },
+ {
+  "id": "prop_t2b_02",
+  "type": "property",
+  "question": "Which of these is a discrete random variable?",
+  "options": [
+   "The time it takes to run a mile",
+   "A person's height",
+   "The number of heads in 10 coin flips",
+   "Tomorrow's high temperature"
+  ],
+  "correct": 3,
+  "explanation": "Discrete variables take countable values (0, 1, …, 10 heads). Time, height and temperature are measured on a continuum.",
+  "theme": "Probability",
+  "subtheme": "Random Variables"
+ },
+ {
+  "id": "prop_t2b_03",
+  "type": "property",
+  "question": "Which situation fits a binomial distribution?",
+  "options": [
+   "Counting trials until the first success",
+   "Measuring a continuous outcome on each trial",
+   "A fixed number of independent trials, each with the same probability of success",
+   "Trials whose success probability changes each time"
+  ],
+  "correct": 3,
+  "explanation": "Binomial requires fixed n, independent trials, two outcomes and constant p. Counting until the first success is a geometric setting.",
+  "theme": "Probability",
+  "subtheme": "Random Variables"
+ },
+ {
+  "id": "prop_t2b_04",
+  "type": "property",
+  "format": "numeric",
+  "question": "X is binomial with n = 10 and p = 0.5. What is the mean of X?",
+  "answer": 5,
+  "tolerance": "",
+  "explanation": "For a binomial, the mean is n × p = 10 × 0.5 = 5.",
+  "theme": "Probability",
+  "subtheme": "Random Variables"
+ },
+ {
+  "id": "mile_t2_01",
+  "type": "milestone",
+  "question": "A disease affects 1% of people. A test detects 90% of true cases but also gives a positive result for 5% of healthy people. Someone tests positive. About how likely are they to have the disease?",
+  "options": [
+   "About 95%",
+   "About 15%",
+   "About 90%",
+   "About 1%"
+  ],
+  "correct": 2,
+  "explanation": "Out of 10,000 people: 90 true positives and about 495 false positives. 90 / 585 ≈ 15%. With a rare disease, most positives are false (base-rate neglect).",
+  "theme": "Probability",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t2_02",
+  "type": "milestone",
+  "question": "A fair coin has landed heads 5 times in a row. What is the probability that the next flip is heads?",
+  "options": [
+   "About 0.03",
+   "More than 0.5, because heads is on a streak",
+   "0.5",
+   "Less than 0.5, because tails is due"
+  ],
+  "correct": 3,
+  "explanation": "Flips are independent, so the coin has no memory: P(heads) is still 0.5. 0.03 ≈ (1/2)^5 is the chance of the streak itself (gambler's fallacy).",
+  "theme": "Probability",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t2_03",
+  "type": "milestone",
+  "format": "multi",
+  "question": "X takes the values 0, 1 and 2. Which lists of probabilities for (0, 1, 2) form valid probability distributions? (Select all that apply)",
+  "options": [
+   "0.2, 0.5, 0.3",
+   "0.4, 0.4, 0.2",
+   "0.5, 0.6, −0.1",
+   "0.3, 0.3, 0.3"
+  ],
+  "correct": [
+   1,
+   2
+  ],
+  "explanation": "A valid distribution needs every probability between 0 and 1 and a total of exactly 1. Option C has a negative value, and option D sums to 0.9.",
+  "theme": "Probability",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t2_04",
+  "type": "milestone",
+  "format": "numeric",
+  "question": "X and Y are independent with Var(X) = 4 and Var(Y) = 9. What is SD(X + Y)? (2 decimal places)",
+  "answer": 3.61,
+  "tolerance": "0.01",
+  "explanation": "Variances add for independent variables: Var(X + Y) = 13, so SD = √13 ≈ 3.61. Adding the SDs (2 + 3 = 5) is a common mistake.",
+  "theme": "Probability",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t2_05",
+  "type": "milestone",
+  "question": "What is the probability of rolling at least one six in four rolls of a fair die?",
+  "options": [
+   "(1/6)⁴ ≈ 0.0008",
+   "1/6 ≈ 0.17",
+   "1 − (5/6)⁴ ≈ 0.52",
+   "4 × 1/6 ≈ 0.67"
+  ],
+  "correct": 3,
+  "explanation": "\"At least one\" is easiest through the complement: 1 − P(no sixes) = 1 − (5/6)⁴ ≈ 0.52. Multiplying 4 × 1/6 double-counts overlaps.",
+  "theme": "Probability",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t2_06",
+  "type": "milestone",
+  "question": "Which statement best describes the law of large numbers?",
+  "options": [
+   "As the number of trials grows, the sample proportion tends to get closer to the true probability",
+   "In short runs, outcomes quickly balance out",
+   "Large samples are always normally distributed",
+   "After many tails, heads becomes more likely"
+  ],
+  "correct": 1,
+  "explanation": "The LLN is about long-run averages converging. It does not make short runs balance out, and it is not the Central Limit Theorem.",
+  "theme": "Probability",
+  "subtheme": ""
+ },
+ {
+  "id": "prop_t3a_01",
+  "type": "property",
+  "question": "What is the standard error of the sample mean, with population SD σ and sample size n?",
+  "options": [
+   "σ × √n",
+   "σ / √n",
+   "σ / n",
+   "σ² / n"
+  ],
+  "correct": 2,
+  "explanation": "SE = σ / √n. σ² / n is the variance of the sample mean, not its standard error.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Sampling Distributions"
+ },
+ {
+  "id": "prop_t3a_02",
+  "type": "property",
+  "question": "What does the Central Limit Theorem state?",
+  "options": [
+   "The sample SD always equals the population SD",
+   "Individual observations become normal for large samples",
+   "The population becomes normal when n is large",
+   "The sampling distribution of the sample mean approaches a normal distribution as n grows"
+  ],
+  "correct": 4,
+  "explanation": "The CLT is about the distribution of the sample mean across many samples, not the shape of the population or of individual data.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Sampling Distributions"
+ },
+ {
+  "id": "prop_t3a_03",
+  "type": "property",
+  "format": "numeric",
+  "question": "The population SD is 20 and the sample size is 100. What is the standard error of the mean?",
+  "answer": 2,
+  "tolerance": "",
+  "explanation": "SE = 20 / √100 = 20 / 10 = 2.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Sampling Distributions"
+ },
+ {
+  "id": "prop_t3a_04",
+  "type": "property",
+  "format": "numeric",
+  "question": "By what factor must you multiply the sample size to halve the standard error?",
+  "answer": 4,
+  "tolerance": "",
+  "explanation": "SE is proportional to 1/√n, so halving it requires √n to double, which means n × 4.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Sampling Distributions"
+ },
+ {
+  "id": "prop_t3b_01",
+  "type": "property",
+  "question": "Which is a correct interpretation of a 95% confidence interval?",
+  "options": [
+   "The true parameter changes 95% of the time",
+   "95% of the data values lie in the interval",
+   "If we repeated the sampling many times, about 95% of such intervals would contain the true parameter",
+   "There is a 95% chance the sample mean lies in the interval"
+  ],
+  "correct": 3,
+  "explanation": "The 95% describes the method's long-run success rate. The sample mean is always in its own interval, and the interval is not about individual data values.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Confidence Intervals"
+ },
+ {
+  "id": "prop_t3b_02",
+  "type": "property",
+  "question": "Using the same data, you switch from a 95% to a 99% confidence interval. What happens to the interval?",
+  "options": [
+   "It becomes narrower",
+   "It depends on the sample mean",
+   "It stays the same width",
+   "It becomes wider"
+  ],
+  "correct": 4,
+  "explanation": "More confidence needs a larger critical value (2.576 instead of 1.96), so the interval widens.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Confidence Intervals"
+ },
+ {
+  "id": "prop_t3b_03",
+  "type": "property",
+  "format": "multi",
+  "question": "Which changes make a confidence interval for a mean narrower, all else equal? (Select all that apply)",
+  "options": [
+   "A larger sample size",
+   "A lower confidence level",
+   "A larger sample standard deviation",
+   "A higher confidence level"
+  ],
+  "correct": [
+   1,
+   2
+  ],
+  "explanation": "Width = critical value × s/√n. A larger n and a smaller critical value (lower confidence) shrink it; more variability or more confidence widen it.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Confidence Intervals"
+ },
+ {
+  "id": "prop_t3b_04",
+  "type": "property",
+  "format": "numeric",
+  "question": "What is the critical z value for a 95% confidence interval? (2 decimal places)",
+  "answer": 1.96,
+  "tolerance": "0.01",
+  "explanation": "95% of the standard normal lies between −1.96 and 1.96.",
+  "theme": "Sampling & Inference",
+  "subtheme": "Confidence Intervals"
+ },
+ {
+  "id": "mile_t3_01",
+  "type": "milestone",
+  "question": "A volunteer online poll of 1,000 people finds that 60% support a policy. What is the biggest problem with generalising this result?",
+  "options": [
+   "The sample is too small",
+   "Selection bias from voluntary response",
+   "The CLT does not apply to proportions",
+   "The margin of error cannot be computed for proportions"
+  ],
+  "correct": 2,
+  "explanation": "People who choose to respond differ from those who don't. A large biased sample is still biased, and more data doesn't fix it.",
+  "theme": "Sampling & Inference",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t3_02",
+  "type": "milestone",
+  "question": "A 95% CI for mean weight loss is (−0.5, 4.2) kg. What can you conclude about H0: μ = 0 at α = 0.05 (two-sided)?",
+  "options": [
+   "Reject H0, because most of the interval is positive",
+   "Fail to reject H0, because the interval contains 0",
+   "Reject H0, because the upper bound is above 4",
+   "A confidence interval tells you nothing about hypothesis tests"
+  ],
+  "correct": 2,
+  "explanation": "A two-sided test at α = 0.05 rejects μ = 0 only if 0 lies outside the 95% CI. Here 0 is inside, so the data are consistent with no change.",
+  "theme": "Sampling & Inference",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t3_03",
+  "type": "milestone",
+  "format": "order",
+  "question": "Put the steps for building a large-sample confidence interval for a mean in order.",
+  "options": [
+   "Compute the sample mean and standard deviation",
+   "Compute the standard error s / √n",
+   "Find the critical value for the chosen confidence level",
+   "Report: mean ± critical value × standard error"
+  ],
+  "explanation": "Summarise the sample, measure the sampling variability (SE), choose how confident to be (critical value), then combine them into the interval.",
+  "theme": "Sampling & Inference",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t3_04",
+  "type": "milestone",
+  "format": "numeric",
+  "question": "A poll of n = 400 has a margin of error of 3 points. About what sample size gives a margin of error of 1.5 points?",
+  "answer": 1600,
+  "tolerance": "1%",
+  "explanation": "The margin of error is proportional to 1/√n: halving it needs 4 times the sample, 4 × 400 = 1,600.",
+  "theme": "Sampling & Inference",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t3_05",
+  "type": "milestone",
+  "question": "Which statement describes bootstrapping?",
+  "options": [
+   "Resampling with replacement from the observed sample to approximate a sampling distribution",
+   "Resampling without replacement to recreate the original sample",
+   "Removing outliers before computing a confidence interval",
+   "Collecting many new samples from the population"
+  ],
+  "correct": 1,
+  "explanation": "The bootstrap treats the sample as a stand-in for the population and resamples it with replacement. Without replacement you just get the same data back in a different order.",
+  "theme": "Sampling & Inference",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t3_06",
+  "type": "milestone",
+  "question": "How do the standard deviation (SD) and the standard error (SE) differ?",
+  "options": [
+   "SE gets larger as the sample size increases",
+   "SD describes variability of individual observations; SE describes variability of a statistic across samples",
+   "They are two names for the same thing",
+   "SD shrinks toward zero as the sample size increases"
+  ],
+  "correct": 2,
+  "explanation": "SD describes spread in the data and doesn't systematically shrink with n. SE = SD / √n describes how much the sample mean varies and does shrink.",
+  "theme": "Sampling & Inference",
+  "subtheme": ""
+ },
+ {
+  "id": "prop_t4a_01",
+  "type": "property",
+  "question": "What is a p-value?",
+  "options": [
+   "The probability that H0 is true",
+   "The probability that the result will replicate",
+   "The probability that the alternative hypothesis is true",
+   "The probability of data at least as extreme as observed, assuming H0 is true"
+  ],
+  "correct": 4,
+  "explanation": "The p-value is computed assuming H0 is true; it is not the probability that H0 (or H1) is true.",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Tests & p-values"
+ },
+ {
+  "id": "prop_t4a_02",
+  "type": "property",
+  "question": "A test gives p = 0.03 with α = 0.05. What is the conclusion?",
+  "options": [
+   "Increase α and retest",
+   "H0 is proven true",
+   "Reject H0",
+   "Fail to reject H0"
+  ],
+  "correct": 3,
+  "explanation": "Because p < α, the result is statistically significant and we reject H0. Changing α after seeing the data is not legitimate.",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Tests & p-values"
+ },
+ {
+  "id": "prop_t4a_03",
+  "type": "property",
+  "format": "text",
+  "question": "The hypothesis of \"no effect\" or \"no difference\" is called the ______ hypothesis.",
+  "answer": [
+   "null",
+   "null hypothesis",
+   "H0",
+   "H₀"
+  ],
+  "explanation": "The null hypothesis (H0) is the default claim of no effect; the alternative (H1) is what the researcher hopes to show.",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Tests & p-values"
+ },
+ {
+  "id": "prop_t4a_04",
+  "type": "property",
+  "question": "Which test compares the means of two independent groups?",
+  "options": [
+   "Two-sample t-test",
+   "Chi-square test of independence",
+   "Correlation test",
+   "Paired t-test"
+  ],
+  "correct": 1,
+  "explanation": "A two-sample t-test compares means of independent groups. A paired t-test is for matched or repeated measurements, and chi-square is for categorical counts.",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Tests & p-values"
+ },
+ {
+  "id": "prop_t4b_01",
+  "type": "property",
+  "question": "What is a Type I error?",
+  "options": [
+   "Rejecting H0 when it is actually true",
+   "Using the wrong statistical test",
+   "Failing to reject H0 when it is false",
+   "Collecting a biased sample"
+  ],
+  "correct": 1,
+  "explanation": "A Type I error is a false positive, and its probability is α. Failing to reject a false H0 is a Type II error (a false negative).",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Errors & Power"
+ },
+ {
+  "id": "prop_t4b_02",
+  "type": "property",
+  "question": "What is the statistical power of a test?",
+  "options": [
+   "The probability of a Type I error",
+   "The significance level α",
+   "The probability of rejecting H0 when it is false",
+   "The p-value"
+  ],
+  "correct": 3,
+  "explanation": "Power = 1 − β, the chance of detecting a real effect. α is the Type I error rate.",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Errors & Power"
+ },
+ {
+  "id": "prop_t4b_03",
+  "type": "property",
+  "format": "multi",
+  "question": "Which changes increase the power of a test, all else equal? (Select all that apply)",
+  "options": [
+   "A larger sample size",
+   "A larger true effect size",
+   "Using α = 0.01 instead of 0.05",
+   "More variability in the data"
+  ],
+  "correct": [
+   1,
+   2
+  ],
+  "explanation": "More data and bigger effects make real differences easier to detect. A stricter α and noisier data both reduce power.",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Errors & Power"
+ },
+ {
+  "id": "prop_t4b_04",
+  "type": "property",
+  "format": "numeric",
+  "question": "You run 20 independent tests at α = 0.05, and every null hypothesis is true. How many false positives do you expect?",
+  "answer": 1,
+  "tolerance": "",
+  "explanation": "Expected false positives = 20 × 0.05 = 1. This is why multiple comparisons need correction.",
+  "theme": "Hypothesis Testing",
+  "subtheme": "Errors & Power"
+ },
+ {
+  "id": "mile_t4_01",
+  "type": "milestone",
+  "question": "A study of 50,000 people finds a blood-pressure difference of 0.1 mmHg with p < 0.001. What is the best interpretation?",
+  "options": [
+   "It must be a Type I error",
+   "Statistically significant, but probably not practically important",
+   "The p-value proves the treatment causes the difference",
+   "A large, clinically important effect"
+  ],
+  "correct": 2,
+  "explanation": "With huge samples, tiny effects become significant. Always look at the effect size and its real-world meaning, not only the p-value.",
+  "theme": "Hypothesis Testing",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t4_02",
+  "type": "milestone",
+  "question": "A researcher tests 10 different outcomes and reports only the one with p = 0.04. What is the main problem?",
+  "options": [
+   "Nothing, because p < 0.05",
+   "A one-sided test should have been used",
+   "Multiple comparisons inflate the false-positive rate (p-hacking)",
+   "The sample size was too large"
+  ],
+  "correct": 3,
+  "explanation": "With 10 tests, the chance of at least one false positive is about 40%. Selective reporting makes a chance finding look real.",
+  "theme": "Hypothesis Testing",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t4_03",
+  "type": "milestone",
+  "question": "The same patients are measured before and after a treatment. Which test is appropriate?",
+  "options": [
+   "Two-sample t-test",
+   "Chi-square goodness-of-fit test",
+   "Paired t-test",
+   "One-way ANOVA with three groups"
+  ],
+  "correct": 3,
+  "explanation": "Before and after measurements on the same people are dependent, so analyse the within-person differences with a paired t-test.",
+  "theme": "Hypothesis Testing",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t4_04",
+  "type": "milestone",
+  "question": "A test fails to reject H0. What does this mean?",
+  "options": [
+   "H0 has been proven true",
+   "The true effect is exactly zero",
+   "The data do not provide enough evidence against H0",
+   "The study made a Type I error"
+  ],
+  "correct": 3,
+  "explanation": "Absence of evidence is not evidence of absence: the study may simply have had too little power to detect an effect.",
+  "theme": "Hypothesis Testing",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t4_05",
+  "type": "milestone",
+  "format": "order",
+  "question": "Put the steps of a hypothesis test in order.",
+  "options": [
+   "State the null and alternative hypotheses",
+   "Choose α and an appropriate test",
+   "Compute the test statistic and p-value",
+   "Compare the p-value with α and state a conclusion in context"
+  ],
+  "explanation": "Hypotheses and α must be fixed before looking at the result. Choosing them afterwards invalidates the test.",
+  "theme": "Hypothesis Testing",
+  "subtheme": ""
+ },
+ {
+  "id": "mile_t4_06",
+  "type": "milestone",
+  "question": "An observational study finds that coffee drinkers live longer (p = 0.01). What is the most important caveat?",
+  "options": [
+   "The sample must be biased",
+   "α = 0.10 should have been used",
+   "The p-value is too small to trust",
+   "Confounding variables may explain the association, so causation can't be concluded"
+  ],
+  "correct": 4,
+  "explanation": "Without random assignment, other factors such as income or health habits could drive both coffee drinking and longevity.",
+  "theme": "Hypothesis Testing",
+  "subtheme": ""
+ },
+ {
+  "id": "core_01",
+  "type": "core",
+  "question": "Which R function returns the arithmetic mean of a numeric vector x?",
+  "options": [
+   "sum(x)",
+   "mean(x)",
+   "avg(x)",
+   "median(x)"
+  ],
+  "correct": 2,
+  "explanation": "mean(x) computes the average. Base R has no avg() function, and sum(x) is the total, not the mean.",
+  "theme": "Core",
+  "subtheme": "R Basics"
+ },
+ {
+  "id": "core_02",
+  "type": "core",
+  "format": "numeric",
+  "question": "What does length(c(3, 7, 9)) return in R?",
+  "answer": 3,
+  "tolerance": "",
+  "explanation": "length() counts elements; c(3, 7, 9) has three.",
+  "theme": "Core",
+  "subtheme": "R Basics"
+ },
+ {
+  "id": "core_03",
+  "type": "core",
+  "question": "Which R code creates a numeric vector containing 1, 2 and 3?",
+  "options": [
+   "list(1:3)",
+   "[1, 2, 3]",
+   "vector(1, 2, 3)",
+   "c(1, 2, 3)"
+  ],
+  "correct": 4,
+  "explanation": "c() combines values into a vector. Square brackets are for indexing, and list() creates a list, not a numeric vector.",
+  "theme": "Core",
+  "subtheme": "R Basics"
+ },
+ {
+  "id": "core_04",
+  "type": "core",
+  "question": "For a numeric vector x, what does summary(x) report?",
+  "options": [
+   "Minimum, quartiles, median, mean and maximum",
+   "A histogram of x",
+   "Only the standard deviation",
+   "Only the mean"
+  ],
+  "correct": 1,
+  "explanation": "summary() gives the five-number summary plus the mean. Use sd(x) for the standard deviation and hist(x) for a histogram.",
+  "theme": "Core",
+  "subtheme": "R Basics"
+ },
+ {
+  "id": "core_05",
+  "type": "core",
+  "format": "text",
+  "question": "Which base R function computes the sample standard deviation of x? (function name only)",
+  "answer": [
+   "sd",
+   "sd()",
+   "sd(x)"
+  ],
+  "explanation": "sd(x) returns the sample SD, using n − 1; var(x) returns the variance.",
+  "theme": "Core",
+  "subtheme": "R Basics"
+ },
+ {
+  "id": "core_06",
+  "type": "core",
+  "question": "Why call set.seed(42) before running a simulation in R?",
+  "options": [
+   "To make the simulation run faster",
+   "To make the random numbers truly random",
+   "To remove outliers from the data",
+   "So the random numbers, and therefore the results, are reproducible"
+  ],
+  "correct": 4,
+  "explanation": "set.seed() fixes the starting point of the pseudo-random number generator, so the same code gives the same results every time.",
+  "theme": "Core",
+  "subtheme": "R Basics"
+ },
+ {
+  "id": "mis_01",
+  "type": "mishap",
+  "question": "Your laptop crashed and your unsaved analysis is gone! (-$100)",
+  "explanation": "Save often and keep your analysis in scripts, not just the console. Version control (e.g. Git) makes work recoverable."
+ },
+ {
+  "id": "mis_02",
+  "type": "mishap",
+  "question": "A reviewer praised your clearly labelled graphs! (+$100)",
+  "explanation": "Good graphs label axes with units, start bar charts at zero, and show the data honestly."
+ },
+ {
+  "id": "mis_03",
+  "type": "mishap",
+  "question": "You forgot set.seed() and can't reproduce your simulation. (-$75)",
+  "explanation": "Reproducibility starts with recording random seeds, software versions and every analysis step."
+ },
+ {
+  "id": "mis_04",
+  "type": "mishap",
+  "question": "Free statistical consulting saved your project! (+$150)",
+  "explanation": "Many universities offer free statistics consulting. Asking early, before collecting data, saves the most trouble."
+ },
+ {
+  "id": "mis_05",
+  "type": "mishap",
+  "question": "You mixed up rows while sorting one column in a spreadsheet. (-$150)",
+  "explanation": "Sorting a single column breaks the link between variables. Sort whole rows, or work in code."
+ },
+ {
+  "id": "mis_06",
+  "type": "mishap",
+  "question": "Your pre-registered study got accepted! (+$100)",
+  "explanation": "Pre-registration fixes hypotheses and analyses in advance, protecting against p-hacking."
+ },
+ {
+  "id": "surv_01",
+  "type": "survey",
+  "question": "Which statistic is most affected by a single extreme outlier?",
+  "options": [
+   "The median",
+   "The mode",
+   "The mean",
+   "The IQR"
+  ],
+  "correct": 3,
+  "explanation": "Means use every value's magnitude, so one extreme value can move them a lot.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_02",
+  "type": "survey",
+  "question": "The data 1, 2, 3, 4, 100 are best described as:",
+  "options": [
+   "Uniform",
+   "Left-skewed",
+   "Symmetric",
+   "Right-skewed"
+  ],
+  "correct": 4,
+  "explanation": "One very large value creates a long right tail.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_03",
+  "type": "survey",
+  "question": "P(A) = 0.4. What is P(not A)?",
+  "options": [
+   "0.4",
+   "0.6",
+   "0.16",
+   "1.4"
+  ],
+  "correct": 2,
+  "explanation": "Complement rule: 1 − 0.4 = 0.6.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_04",
+  "type": "survey",
+  "question": "Two fair coins are flipped. What is P(both heads)?",
+  "options": [
+   "0.75",
+   "0.25",
+   "0.5",
+   "1"
+  ],
+  "correct": 2,
+  "explanation": "Independent events: 0.5 × 0.5 = 0.25.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_05",
+  "type": "survey",
+  "question": "As the sample size increases, the standard error of the mean:",
+  "options": [
+   "Becomes equal to the population SD",
+   "Increases",
+   "Stays the same",
+   "Decreases"
+  ],
+  "correct": 4,
+  "explanation": "SE = σ/√n shrinks as n grows.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_06",
+  "type": "survey",
+  "question": "Using the same data, how does a 90% confidence interval compare with a 95% interval?",
+  "options": [
+   "The 90% interval is narrower",
+   "The 90% interval always contains the true value",
+   "The 90% interval is wider",
+   "They have the same width"
+  ],
+  "correct": 1,
+  "explanation": "Lower confidence uses a smaller critical value, giving a narrower interval.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_07",
+  "type": "survey",
+  "question": "A p-value of 0.20 means:",
+  "options": [
+   "The effect size is 0.20",
+   "Data like these would not be unusual if H0 were true",
+   "There is a 20% chance H0 is true",
+   "There is an 80% chance the alternative is true"
+  ],
+  "correct": 2,
+  "explanation": "A large p-value means the data are consistent with H0; it is not the probability that H0 is true.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_08",
+  "type": "survey",
+  "question": "Rejecting a null hypothesis that is actually true is called a:",
+  "options": [
+   "Power failure",
+   "Confidence error",
+   "Type II error",
+   "Type I error"
+  ],
+  "correct": 4,
+  "explanation": "A Type I error is a false positive.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_09",
+  "type": "survey",
+  "question": "What is the main purpose of random assignment in an experiment?",
+  "options": [
+   "To balance confounding variables between groups, allowing causal conclusions",
+   "To make the sample representative of the population",
+   "To guarantee a significant result",
+   "To reduce the sample size needed"
+  ],
+  "correct": 1,
+  "explanation": "Random assignment supports causation; random sampling supports generalisation.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_10",
+  "type": "survey",
+  "question": "Which sample size gives the smallest margin of error, all else equal?",
+  "options": [
+   "n = 50",
+   "n = 500",
+   "n = 100",
+   "n = 1000"
+  ],
+  "correct": 4,
+  "explanation": "The margin of error shrinks as n grows (in proportion to 1/√n).",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_11",
+  "type": "survey",
+  "question": "Which graph best shows the relationship between two quantitative variables?",
+  "options": [
+   "Histogram",
+   "Boxplot of one variable",
+   "Scatterplot",
+   "Pie chart"
+  ],
+  "correct": 3,
+  "explanation": "A scatterplot shows how two quantitative variables vary together.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_12",
+  "type": "survey",
+  "question": "What is the median of 8, 1, 6, 3, 10?",
+  "options": [
+   "5.6",
+   "3",
+   "6",
+   "10"
+  ],
+  "correct": 3,
+  "explanation": "Sorted: 1, 3, 6, 8, 10, so the middle value is 6. 5.6 is the mean.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_13",
+  "type": "survey",
+  "question": "Which describes statistical power?",
+  "options": [
+   "The chance of a false positive",
+   "The confidence level",
+   "The chance of detecting an effect that really exists",
+   "The size of the p-value"
+  ],
+  "correct": 3,
+  "explanation": "Power = P(reject H0 | H0 false).",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "surv_14",
+  "type": "survey",
+  "question": "Variances of independent random variables:",
+  "options": [
+   "Multiply when you sum the variables",
+   "Only add if the variables are normal",
+   "Cancel out when you sum the variables",
+   "Add when you sum the variables"
+  ],
+  "correct": 4,
+  "explanation": "Var(X + Y) = Var(X) + Var(Y) for independent X and Y, whatever their distributions.",
+  "theme": "",
+  "subtheme": ""
+ },
+ {
+  "id": "conf_01",
+  "type": "confidence",
+  "question": "I am confident I can choose and interpret appropriate summaries (center and spread) for a data set."
+ },
+ {
+  "id": "conf_02",
+  "type": "confidence",
+  "question": "I am confident I can apply basic probability rules and reason about random variables."
+ },
+ {
+  "id": "conf_03",
+  "type": "confidence",
+  "question": "I am confident I can interpret confidence intervals and p-values correctly."
+ }
+]

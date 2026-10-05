@@ -9,14 +9,38 @@ A customizable, open-source board game engine for education.
 🎮 **[Play the Game](https://hghezzi.github.io/Science-Around-the-Board/)**
 📚 **[Read the Instructor Manual](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf)**
 
-## 🛠️ Instructor Tools:
-* **[Password Encryptor Tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html)** – Use this to create encrypted question files to share with your students.
+Student teams roll dice around a 36-tile board and answer **your** questions to buy, defend and upgrade tiles, capture milestone exams and steal rival properties. A pre- and post-game survey measures learning, and every answer is exported to a CSV for grading and analysis. Everything is driven by one spreadsheet (TSV) file, so it works for any subject. Try the built-in 16S/QIIME2 demo, or the Intro Statistics example.
 
-## Requirements:
-* A **computer** to run the game
-* **Internet connection** to access the game on github, although a stable connection is not required once you start a gaming session.
-* A **TSV question file** (or simply start with the demo option to test the gameplay!)
-  
+## 🛠️ Instructor Tools
+* **[Password Encryptor Tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html)**: create encrypted question files to share with your students.
+* **Question checker**: when you load a file, the game lists any problems, such as missing columns, a wrong `correctIndex` or fewer than 4 themes. Developers can also run `npm run validate-tsv -- my_questions.tsv`.
+* **✨ Generate questions with Claude**: the [`sab-question-writer`](.claude/skills/sab-question-writer/) skill interviews you about your course and learning objectives, researches the topic, proposes a board layout, then writes a complete, validated question file (with optional figures).
+  * **Claude.ai:** download the [skill zip](https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip) and upload it in Claude's skills settings. Then ask, for example: *"Make a Science Around the Board game reviewing cellular respiration for first-year biology."*
+  * **Claude Code:** open this repository; the skill loads automatically.
+
+## Question file at a glance
+One row per question. The columns are `id, question, option1–option4, correctIndex, explanation, bigTopic, module, theme, subtheme, type, imageFile`, plus the optional `format, answer, tolerance`.
+
+* **`type`**: `property`, `milestone`, `core`, `mishap`, `survey` or `confidence`.
+* **`format`**: multiple choice (default), true/false (2 options), `multi` (select all that apply), `numeric` (with tolerance), `order` (put steps in order) or `text` (short answer, accepting alternatives).
+* The first 4 `theme`s become the 4 board sides, each with 2 `subtheme` groups.
+* Full specification: [Technical Guide](website/docs/instructor/technical-guide.md) and [format reference](.claude/skills/sab-question-writer/references/format.md).
+
+## How a game ends
+* **Last team standing.** A bankrupt team gets one Emergency Grant review; if it fails, or goes bankrupt again, it is eliminated.
+* **Time's up / End Game.** The highest net worth (cash + property value) wins. Set an optional session timer on the setup screen.
+
+## Requirements
+* A **computer** with a modern browser. Nothing to install.
+* An **internet connection** to open the game. Once a session starts, a stable connection is not required.
+* A **TSV question file**, or start with one of the built-in examples.
+
+## Privacy
+The game runs entirely in the browser: question files, answers, surveys and exported CSVs never leave the players' computer. Anonymous usage analytics (Google Analytics) load **only if a visitor opts in**. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+
+## For developers
+React + Vite single-page app with no backend. `npm install`, then `npm run dev`. Before pushing, run `npm test`, `npm run lint` and `npm run build`; CI runs the same checks. Deploy with `npm run deploy` (GitHub Pages). See [CLAUDE.md](CLAUDE.md) for an architecture overview.
+
 ## License
 This project is licensed under a **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.
 
