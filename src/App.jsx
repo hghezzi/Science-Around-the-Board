@@ -16,6 +16,7 @@ import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
 import ConsentBanner from "./ConsentBanner";
 import PasswordDialog from "./components/PasswordDialog";
+import InstallButton from "./components/InstallButton";
 import { DECK_SHORTCUTS, buildShareLink, isUnpublishedSheet, normalizeDeckUrl, normalizeImagesBase, readDeckParams } from "./deckLinks";
 import { TEAM_COLORS, TEAM_SYMBOLS } from "./theme";
 import { teamDisplayName } from "./labels";
@@ -145,6 +146,7 @@ function ValidationReport({ validation, imageMap, imageBase = "" }) {
   const images = validation ? validation.images : [];
   const imagesKey = images.join("|");
   // Only warn about images that can't be found anywhere (uploads, links, hosted copies).
+  // A failed check (offline, or a host without CORS headers) is not proof that an image is missing.
   useEffect(() => {
     let cancelled = false;
     const candidates = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/i.test(img));
@@ -153,7 +155,7 @@ function ValidationReport({ validation, imageMap, imageBase = "" }) {
         const res = await fetch(resolveImage(img, {}, imageBase), { method: "HEAD" });
         return res.ok && (res.headers.get("content-type") || "").startsWith("image/") ? null : img;
       } catch {
-        return img;
+        return null;
       }
     })).then((found) => { if (!cancelled) setMissingImages(found.filter(Boolean)); });
     return () => { cancelled = true; };
@@ -612,6 +614,7 @@ export default function App() {
 
           {loadingError && <Alert severity="error" sx={{ mt: 2, textAlign: "left" }}>{loadingError}</Alert>}
           {!hasData && <ShareLinkBuilder />}
+          <InstallButton />
 
           <Typography variant="body2" sx={{ mt: 4 }}>
             <a href="./guide/" target="_blank" rel="noopener">Instructor guide</a> ·{" "}

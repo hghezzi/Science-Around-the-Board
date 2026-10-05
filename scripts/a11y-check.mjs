@@ -26,7 +26,7 @@ async function audit(page, label) {
 }
 
 for (const scheme of ["light", "dark"]) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme, serviceWorkers: "block" });
   const page = await context.newPage();
   await page.goto(BASE);
   await page.getByText(/share your questions as a link/).click();
@@ -50,6 +50,13 @@ for (const scheme of ["light", "dark"]) {
   await page.click('button:has-text("Start Game")');
   await page.waitForTimeout(400);
   await audit(page, `${scheme} board`);
+  // A refresh mid-game offers to resume the autosaved game.
+  page.on("dialog", (d) => d.accept().catch(() => {}));
+  await page.reload();
+  await page.getByText("Resume your game?").waitFor();
+  await audit(page, `${scheme} resume`);
+  await page.click('button:has-text("Resume")');
+  await page.getByText("Game log").waitFor();
   for (let i = 0; i < 12; i++) {
     await page.click('button:has-text("Roll")');
     await page.waitForTimeout(3300);

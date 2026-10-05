@@ -20,8 +20,10 @@ const DIALOG_BUTTONS = [/^Next question/i, /^Finish exam/i, /^Finish quiz/i, /^S
   /^Start the rescue quiz/i, /^Keep playing/i, /^See final standings/i, /^Sell deed/i, /^Downgrade/i,
   /^Buy$/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full$/i, /^Cancel$/i];
 
-async function newPage(colorScheme = "light") {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme, acceptDownloads: true });
+// Service workers are blocked except in the offline scenario: requests they answer
+// from their cache would bypass page.route() mocks.
+async function newPage(colorScheme = "light", { serviceWorkers = "block" } = {}) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme, acceptDownloads: true, serviceWorkers });
   const page = await context.newPage();
   page.on("pageerror", (e) => fail(`page error: ${e.message}`));
   page.on("dialog", (d) => d.accept().catch(() => {}));
@@ -217,6 +219,16 @@ async function filesScenario() {
   await dialog.getByLabel(/Class password/).fill("Class-Pass");
   await dialog.getByRole("button", { name: "Unlock" }).click();
   await page.getByText(/Loaded 177 questions/).waitFor({ timeout: 10000 });
+  await page.waitForTimeout(1500); // image checks run in the background
+  if (await page.getByText(/couldn't be found/).count()) fail("files: the demo reports missing images, but all its images are hosted");
+  await page.getByRole("button", { name: /Use a different file/ }).click();
+  // A question whose image exists nowhere is listed, and only that one.
+  const stats = readFileSync("public/examples/intro_statistics.tsv", "utf8").replace(/\s+$/, "");
+  const header = stats.split(/\r?\n/)[0].split("\t");
+  const extra = header.map((h) => ({ id: "img_missing_1", question: "What does this figure show?", option1: "A", option2: "B", correctIndex: "1",
+    explanation: "Because.", type: "survey", imageFile: "missing_figure.png" }[h] ?? "")).join("\t");
+  await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "q.tsv", mimeType: "text/tab-separated-values", buffer: Buffer.from(`${stats}\n${extra}\n`) });
+  await page.getByText(/1 image couldn't be found: missing_figure\.png\./).waitFor({ timeout: 10000 });
   await page.getByRole("button", { name: /Use a different file/ }).click();
   await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("just some notes") });
   await page.getByText(/This isn't a question file/).waitFor();
@@ -262,12 +274,43 @@ async function resumeScenario() {
   await context.close();
 }
 
+// After one online visit the app (and the demo) must work with no network.
+async function offlineScenario() {
+  console.log("▶ offline after first visit");
+  const { context, page } = await newPage("light", { serviceWorkers: "allow" });
+  await page.goto(BASE);
+  // The browser's install offer (Chrome/Edge) shows "Install as an app"; simulate it.
+  await page.evaluate(() => {
+    const offer = new Event("beforeinstallprompt");
+    offer.prompt = () => { window.__installPrompted = true; };
+    offer.userChoice = Promise.resolve({ outcome: "accepted" });
+    window.dispatchEvent(offer);
+  });
+  await page.getByRole("button", { name: /Install as an app/ }).click();
+  if (!(await page.evaluate(() => window.__installPrompted))) fail("offline: Install as an app didn't open the browser's install prompt");
+  await page.getByRole("button", { name: /Install as an app/ }).waitFor({ state: "detached" });
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  await page.reload(); // let the service worker control the page
+  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) fail("offline: the service worker isn't controlling the page");
+  await context.setOffline(true);
+  await page.reload();
+  const noThanks = page.getByRole("button", { name: "No thanks" });
+  if (await noThanks.count()) await noThanks.click();
+  await page.getByRole("button", { name: /Play the demo/ }).click();
+  await page.getByText(/Loaded \d+ questions/).waitFor({ timeout: 10000 });
+  await setupGame(page, 1);
+  await doSurvey(page, 1, "offline pre");
+  await page.getByText("Game log").waitFor();
+  await context.close();
+}
+
 const SCENARIOS = {
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),
   results: resultsScenario,
   files: filesScenario,
   resume: resumeScenario,
+  offline: offlineScenario,
 };
 const selected = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
 for (const name of selected) {

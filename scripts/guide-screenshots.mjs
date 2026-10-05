@@ -12,7 +12,7 @@ mkdirSync(OUT, { recursive: true });
 const server = await preview({ preview: { port: 4180, strictPort: false }, logLevel: "error" });
 const base = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", deviceScaleFactor: 1.5 });
+const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", deviceScaleFactor: 1.5, serviceWorkers: "block" });
 const page = await context.newPage();
 const shot = async (name, opts = {}) => {
   await page.waitForTimeout(450);
