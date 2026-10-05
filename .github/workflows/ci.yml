@@ -21,6 +21,6 @@ jobs:
         run: npm run validate-tsv -- public/SAB_questions_Jan22_Filtered.tsv public/examples/intro_statistics.tsv
       - name: Validate example question files (skill's Python validator)
         run: |
-          python3 .claude/skills/sab-question-writer/scripts/validate_tsv.py public/SAB_questions_Jan22_Filtered.tsv
+          python3 .claude/skills/sab-question-writer/scripts/validate_tsv.py public/SAB_questions_Jan22_Filtered.tsv --images public/questionImages
           python3 .claude/skills/sab-question-writer/scripts/validate_tsv.py public/examples/intro_statistics.tsv --images public/questionImages
       - run: npm run build

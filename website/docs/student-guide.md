@@ -85,14 +85,16 @@ If you run out of money (Negative Balance):
 ---
 
 ## 5. Submission (Mandatory)
-This game generates a Grade Report.
+This game generates a results report.
 1.  To end the game, click on **"End Game"** in the top-right (or wait for the timer). Check the **Final Standings**, then continue.
-    * IMPORTANT: Do **NOT** click on "Exit Session" unless you want to exit your current game without saved files.
-2.  Complete the **Post-Survey**, which include Confidence sliders and 10 questions.
-3.  On the Summary Screen, click **"Export CSV"**.
-4.  Save the file as `TeamName_Session.csv`.
-5.  Upload this file to your course page.
+    * IMPORTANT: Do **NOT** click on "Exit Session" unless you want to leave your current game; its results will be lost.
+2.  Complete the **Post-Survey**, which includes confidence sliders and 10 questions.
+3.  On the end screen, type the **names or student IDs** of everyone on your team.
+4.  Hand in your results the way your instructor asked:
+    * **Send results to instructor:** sends them straight to your instructor's results sheet. Wait for "Sent!".
+    * **Email results to instructor:** downloads the results file and opens your email app. Attach the file before sending.
+    * **Download results (CSV):** saves the file (`sab_results_…csv`) so you can upload it to your course page.
 
-:::danger Do Not Close the Tab!
-Your game data lives in the browser's temporary memory. If you close the tab or refresh the page before downloading the CSV, **your data is lost forever** and cannot be recovered.
+:::warning Before you close the tab
+The game saves your session in this browser, so an accidental refresh offers **Resume your game?** on the start page. Still, send or download your results before closing the tab: the saved copy stays on this computer and expires after 12 hours.
 :::
