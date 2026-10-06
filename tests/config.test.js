@@ -34,4 +34,13 @@ describe("readConfig", () => {
     expect(config.course).toBe("Stats 200");
     expect(config.instructorEmail).toBe("");
   });
+
+  it("refuses email addresses that would add recipients or headers to the mailto: link", () => {
+    for (const bad of ["x@y.edu?bcc=evil@e.com", "a@b.edu&cc=x@y.com", "a,b@c.edu", "a b@c.edu", "a@b", "a@b.edu#x"]) {
+      expect(readConfig([cfg("instructor_email", bad)]).instructorEmail).toBe("");
+    }
+    for (const good of ["prof@ubc.ca", "first.last+sab@mail.uni.edu", "jose@universidad.es"]) {
+      expect(readConfig([cfg("instructor_email", good)]).instructorEmail).toBe(good);
+    }
+  });
 });

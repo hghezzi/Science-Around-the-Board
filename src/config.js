@@ -3,7 +3,9 @@
 //   type = config, id = setting name, question = value (other columns blank).
 export const CONFIG_KEYS = ["results_url", "instructor_email", "course", "ask_names"];
 
-export const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+// No spaces, and none of the characters that could add headers or recipients to a
+// mailto: link (?, &, #, %, commas, semicolons...).
+export const EMAIL_PATTERN = /^[^@\s?&#%,;:<>"'()[\]\\/]+@[^@\s?&#%,;:<>"'()[\]\\/]+\.[^@\s?&#%,;:<>"'()[\]\\/]+$/;
 
 export function readConfig(rows) {
   const raw = {};

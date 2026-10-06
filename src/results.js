@@ -3,8 +3,9 @@
 // to the instructor's results sheet (a Google Apps Script web app).
 import { teamDisplayName } from "./labels.js";
 
-// Stop spreadsheet apps from treating typed text such as "=SUM(...)" as a formula.
-const safeCell = (v) => (typeof v === "string" && /^[=+\-@]/.test(v) ? `'${v}` : v);
+// Stop spreadsheet apps from treating typed text such as "=SUM(...)" as a formula
+// (OWASP CSV injection list: also a leading tab or carriage return).
+const safeCell = (v) => (typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
 
 export function toCsv(rows) {
   const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));

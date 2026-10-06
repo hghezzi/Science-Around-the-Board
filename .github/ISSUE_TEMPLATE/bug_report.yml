@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in the game, the encryptor or the results collector doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Please don't include student names, IDs or real results.** For a security problem, use Security → Report a vulnerability instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the demo / my game link
+        2. Choose 3 teams
+        3. ...
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      options:
+        - Start page or loading a question file
+        - Setup or surveys
+        - On the board (a turn, a question, a tile)
+        - End screen, results or CSV
+        - Encryptor (.lock files)
+        - Results collector (Google Sheet)
+        - Instructor Guide
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: e.g. Chrome 141 on Windows 11, dark mode, installed as an app
+  - type: textarea
+    id: file
+    attributes:
+      label: Question file or screenshot (optional)
+      description: Attach a small question file that shows the problem, or a screenshot. Remove anything private first.

@@ -1,0 +1,25 @@
+name: Feature idea
+description: Suggest an improvement for students or instructors.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What teaching need is behind it?
+      description: Who is it for (students, instructors, TAs), and what problem in class would it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+    validations:
+      required: true
+  - type: checkboxes
+    id: fit
+    attributes:
+      label: Fit with the project
+      description: SAB stays free, zero-install and privacy-preserving, and works for any subject.
+      options:
+        - label: It works without accounts or a server.
+        - label: It isn't specific to one subject (or it can come from the question file).

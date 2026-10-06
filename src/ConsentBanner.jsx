@@ -28,7 +28,7 @@ export default function ConsentBanner() {
       sx={{ position: "fixed", bottom: 16, left: 16, right: 16, maxWidth: 720, mx: "auto", p: 2, zIndex: 2000, borderRadius: 2 }}
     >
       <Typography variant="body2" sx={{ mb: 1.5 }}>
-        May we use Google Analytics to count anonymous visits? It helps us see how the game is used.
+        May we use Google Analytics (with cookies) to count visits? It helps us see how the game is used, and never sees names or answers.
         Your answers, surveys and files never leave this browser.{" "}
         <Link href="./privacy.html" target="_blank" rel="noopener">Privacy notice</Link>
       </Typography>

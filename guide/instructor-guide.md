@@ -14,6 +14,13 @@ updated: October 2026
 
 ## What’s new
 
+**October 2026 (update 3)**
+
+- **Stronger `.lock` files.** The encryptor now uses modern browser encryption (PBKDF2 and AES-256-GCM) and asks for a password of at least 8 characters. Your existing `.lock` files still open; re-encrypt them to benefit.
+- **Everyone gets fixes promptly.** An open game checks for a new version regularly. On an empty start page it reloads by itself; during a session it shows a **Reload** notice and never interrupts the game.
+- **Results collector, version 2.** The Google Sheet script now rejects oversized or malformed submissions. If you set it up before, paste in the [new script](https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs) and create a new version of the deployment (the URL stays the same).
+- **Privacy:** changing your mind about analytics switches it off at once and deletes its cookies.
+
 **October 2026 (update 2)**
 
 - **Results can go straight to you.** Students type their names or student IDs on the end screen, then click **Send results to instructor** (an optional Google Sheet you set up once), **Email results to instructor**, or **Download results**. See *Collecting results*.
@@ -223,7 +230,7 @@ To use it, download the [skill zip](https://hghezzi.github.io/Science-Around-the
 
 #### Optional: encrypting your questions file
 
-Since the question file you distribute to students also contains the answers, I created an encryptor tool. Upload your `.tsv` file, choose a password to share with students, and you will receive an encrypted `.lock` file. Share that file together with the password; when students open it, the game asks for the class password. Encryption keeps casual eyes off the answer key; it is not meant as strong security, since every student knows the password.
+Since the question file you distribute to students also contains the answers, I created an encryptor tool. Upload your `.tsv` file, choose a password to share with students, and you will receive an encrypted `.lock` file. Share that file together with the password; when students open it, the game asks for the class password. Encryption keeps casual eyes off the answer key; it is not meant as strong security, since every student knows the password. Choose a short phrase (at least 8 characters) rather than the course code; the file is encrypted in your browser and never uploaded.
 
 ### Sharing the game with students
 

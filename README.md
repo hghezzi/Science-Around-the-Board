@@ -3,7 +3,7 @@
 A customizable, open-source board game engine for education.
 
 <p align="center">
-  <img src="./images/ScienceAroundTheBoardIMAGE.png" width="1000" />
+  <img src="./guide/images/06-board.png" width="1000" alt="The Science Around the Board game board" />
 </p>
 
 🎮 **[Play the Game](https://hghezzi.github.io/Science-Around-the-Board/)**
@@ -43,9 +43,10 @@ The game runs entirely in the browser: question files, answers and surveys stay 
 ## For developers
 React + Vite single-page app with no backend. `npm install`, then `npm run dev`. Before pushing, run `npm test`, `npm run lint` and `npm run build`; CI runs the same checks.
 * `npm run smoke`: end-to-end test (Playwright): plays the demo with 1–4 teams and in dark mode, checks the exported results, a mocked Google Sheet send, `.lock` uploads and links, resume after a refresh, and offline use. Run it before every deploy.
+* `npm run privacy`: checks that nothing loads before analytics opt-in, that unsafe share links are refused and that the Content-Security-Policy blocks nothing.
 * `npm run a11y`: accessibility checks (axe-core) on the main screens in light and dark mode, against `npm run preview`.
 * `npm run guide`: rebuilds the Instructor Guide (fresh screenshots, web page and PDF). It needs Playwright's Chromium.
-* `npm run deploy`: deploys to GitHub Pages. See [CLAUDE.md](CLAUDE.md) for an architecture overview.
+* `npm run deploy`: deploys to GitHub Pages. See [CLAUDE.md](CLAUDE.md) for an architecture overview, [CONTRIBUTING.md](CONTRIBUTING.md) to get involved and [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## License
 This project is licensed under a **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.

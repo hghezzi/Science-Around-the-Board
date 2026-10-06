@@ -17,7 +17,8 @@ from collections import Counter
 
 KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence", "config"]
 CONFIG_KEYS = ["results_url", "instructor_email", "course", "ask_names"]
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_EMAIL_CHAR = r"[^@\s?&#%,;:<>\"'()\[\]\\/]"  # mirrors EMAIL_PATTERN in src/config.js
+EMAIL_RE = re.compile(rf"^{_EMAIL_CHAR}+@{_EMAIL_CHAR}+\.{_EMAIL_CHAR}+$")
 QUIZ_TYPES = ["property", "milestone", "core", "survey"]
 REQUIRED = ["id", "question", "type"]
 QUIZ_HEADERS = ["option1", "option2", "option3", "option4", "correctIndex", "explanation"]
