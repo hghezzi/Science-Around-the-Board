@@ -28,10 +28,7 @@ public/downloads
 
 # Build output and caches that must never be committed
 coverage
-website/build
-website/.docusaurus
-website/node_modules
-.cache-loader
+website/
 
 # Old code backups: use git history instead
 BackupCode/
