@@ -1,19 +1,29 @@
 /**
  * Science Around the Board – results collector (Google Apps Script).
  *
- * Collects the results students send from the game's end screen into this Google Sheet.
- * 1. In a Google Sheet: Extensions → Apps Script, replace the code with this file, Save.
- * 2. Deploy → New deployment → Web app. Execute as: Me. Who has access: Anyone. Deploy, authorize.
- * 3. Copy the Web app URL (ends in /exec) into your question file as a config row:
- *      id = results_url, type = config, question = <the URL>
- * Each "Send results" click adds one row per team to "Summary" and every answer/transaction to "Details".
- * Visiting the URL in a browser shows a short "running" message.
- * After editing this script, use Deploy → Manage deployments → Edit → Version: New version, so the URL stays the same.
+ * Collects the results students send from the game's end screen ("Send results to instructor")
+ * into the Google Sheet this script is attached to. Setup takes about 5 minutes:
+ * 1. In a new Google Sheet: Extensions → Apps Script. Replace the sample code with this file and click Save.
+ * 2. Deploy → New deployment → type "Web app". Execute as: Me. Who has access: Anyone.
+ *    Click Deploy and authorize the script with your Google account.
+ * 3. Copy the Web app URL (it ends in /exec) into your question file as a config row:
+ *      id = results_url, type = config, question = <the URL>   (leave the other columns blank)
+ * 4. Test it: play a quick solo game with that file and click "Send results to instructor".
  *
- * Safety: anyone who has the URL can send to it (it is in the question file), but only you can
- * read the Sheet. The script accepts only game submissions of a sensible size, keeps column names
- * simple, shortens very long text, stops typed text from becoming a formula and limits how many
- * submissions it takes per minute. Version 2 (October 2026).
+ * Each submission adds one row per team to the "Summary" tab (names or IDs, survey scores, rank)
+ * and every answer, survey response and transaction to the "Details" tab. Both tabs are created
+ * automatically. Every row carries a sessionId, so a result sent twice is easy to spot.
+ * Visiting the URL in a browser only shows a short "running" message.
+ *
+ * Safety and privacy: "Anyone" lets anyone with the link send a submission, but only you can read
+ * the Sheet. The script accepts only Science Around the Board submissions of a sensible size, keeps
+ * column names simple, shortens very long text, stores typed text as plain text (never as formulas),
+ * limits how many submissions it takes per minute and sends nothing anywhere else.
+ * Version 2 (October 2026).
+ *
+ * After editing this script, use Deploy → Manage deployments → Edit → Version: New version,
+ * so the URL stays the same.
+ * Full instructions: https://hghezzi.github.io/Science-Around-the-Board/guide/#collecting-results
  */
 const SUMMARY_SHEET = "Summary";
 const DETAIL_SHEET = "Details";

@@ -67,6 +67,9 @@
     summary { cursor: pointer; font-weight: 600; }
     a { color: var(--link); }
     footer { margin-top: 1.5rem; text-align: center; font-size: 0.9rem; }
+    .tips { text-align: left; font-size: 0.9rem; line-height: 1.5; padding-left: 1.2rem; }
+    .tips li { margin-bottom: 0.35rem; }
+    code { font-size: 0.9em; }
   </style>
 </head>
 <body>
@@ -87,6 +90,12 @@
 
     <p id="status" role="status" aria-live="polite"></p>
 
+    <ul class="tips">
+      <li>Load the plain <code>.tsv</code> in the game first to check it, then encrypt it.</li>
+      <li>Passwords are case-sensitive. Keep your original <code>.tsv</code>: a <code>.lock</code> file can't be opened without its password.</li>
+      <li>Give students the <code>.lock</code> file and the password; the game asks for the password when they open it.</li>
+    </ul>
+
     <details>
       <summary>How secure is this?</summary>
       <ul>
@@ -97,7 +106,7 @@
       </ul>
     </details>
 
-    <footer><a href="./">← Back to the game</a> · <a href="./guide/">Instructor guide</a></footer>
+    <footer><a href="./">← Back to the game</a> · <a href="./guide/#optional-encrypting-your-questions-file">Instructor guide</a></footer>
   </main>
   <script type="module" src="/src/encryptor.js"></script>
 </body>

@@ -118,4 +118,6 @@ export default defineConfig({
       },
     }),
   ],
+  // Only the project's own tests (not copies under .claude/worktrees).
+  test: { include: ['tests/**/*.test.js'] },
 })
