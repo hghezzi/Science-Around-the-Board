@@ -19,7 +19,7 @@ Notable changes to Science Around the Board. The live site is updated by hand fr
 - `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CITATION.cff`, issue and pull-request templates, and Dependabot.
 
 ### Removed
-- Old code backups (`BackupCode/`), the unused Docusaurus site (`website/`) and an outdated README image. They held the last traces of the project's old Monopoly-era name.
+- Old code backups (`BackupCode/`), the unused Docusaurus site (`website/`) and an outdated README image. They held the last traces of the project's old name.
 
 ## 2026-10-05
 Results to the instructor (Google Sheet, email, download), shareable game links, autosave and resume, install as an app and offline play, demo fixes, subject-neutral wording, dark mode, the redesigned board, new question formats, the file checker, the question-writer skill and the Intro Statistics example. See the guide's *What's new*.
