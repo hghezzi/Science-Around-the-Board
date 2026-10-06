@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
   <title>Privacy Notice – Science Around the Board</title>
   <style>
     :root { --bg: #f7f8fa; --card: #ffffff; --text: #2c3e50; --muted: #5f6b7a; --accent: #1976d2; --border: #e3e6ea; }
@@ -36,23 +38,36 @@
       <li>The results file (CSV) you download. It is created on your computer and only goes where you choose to send it, for example your course page or your instructor's email.</li>
     </ul>
 
-    <h2>Autosave</h2>
-    <p>While a session is running, the game saves it in this browser only (its local storage), so it can be resumed after an accidental refresh. The save is deleted when you return to the main menu or exit the game, and it expires after 12 hours. It is never sent anywhere. Uploaded images are not saved.</p>
+    <h2>What the game stores in your browser</h2>
+    <ul>
+      <li><strong>Autosave.</strong> While a session is running, the game saves it in this browser only (its local storage), so it can be resumed after an accidental refresh. The save, which includes the names typed on the end screen, is deleted when you return to the main menu or exit the game, and it expires after 12 hours. It is never sent anywhere. Uploaded images are not saved.</li>
+      <li><strong>Your analytics choice</strong> (allow or no thanks), so the question isn't asked on every visit.</li>
+      <li><strong>An offline copy of the game</strong> (its code, fonts, example questions and images, through a service worker), so it works without internet after the first visit. It contains no personal data. Clearing this site's data in your browser removes all of the above.</li>
+    </ul>
+
+    <h2>Who else sees a request</h2>
+    <ul>
+      <li>The game is hosted on <strong>GitHub Pages</strong>. Like any web host, GitHub receives your IP address and browser details when the page loads (see <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>).</li>
+      <li>If you open a <strong>game link</strong> from your instructor, your browser downloads the question file and any images from wherever the instructor keeps them (for example Google Sheets or GitHub). That host sees an ordinary web request, but nothing about your answers.</li>
+    </ul>
 
     <h2>Sending results to your instructor</h2>
     <p>Only when your instructor's question file includes a results link does the end screen offer <strong>Send results to instructor</strong>. Clicking it sends your team's answers, scores and the names or student IDs typed on that screen directly to a Google Sheet that belongs to your instructor; Google processes this data for your instructor. Nothing is sent unless you click Send, and it is never sent to the game's authors.</p>
     <p>The <strong>Email results to instructor</strong> button only downloads the results file and opens your own email app with a draft. You choose whether to send it.</p>
 
     <h2>Optional analytics</h2>
-    <p>If you click <strong>Allow analytics</strong>, the site loads Google Analytics to count anonymous visits: pages viewed, approximate location (country/region), browser and device type. This helps us understand how widely the game is used. We ask Google to anonymize IP addresses and we turn off advertising features. Analytics never receives question content, answers, survey responses, file contents or names.</p>
+    <p>If you click <strong>Allow analytics</strong>, the site loads Google Analytics 4 to count visits: pages viewed (without the link's settings, such as a game link's question-file address), approximate location (country/region, which Google derives from your IP address; Google Analytics 4 does not store IP addresses), browser and device type. This helps us understand how widely the game is used. Google signals, advertising and personalisation features are turned off. Google Analytics sets first-party cookies (<code>_ga</code>, <code>_ga_…</code>) that let it recognise a returning browser; we limit them to about 13 months. Analytics never receives question content, answers, survey responses, file contents or names.</p>
     <p>If you click <strong>No thanks</strong>, Google Analytics is not loaded at all. The game works the same either way.</p>
-    <p>Your choice is saved in your browser. To change it, click <strong>Analytics settings</strong> at the bottom of the game's start page, or clear this site's data in your browser. Google's handling of analytics data is described in <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>. Analytics data may be processed on servers outside your country.</p>
+    <p>Your choice is saved in your browser. To change it, click <strong>Analytics settings</strong> at the bottom of the game's start page, or clear this site's data in your browser. Choosing <strong>No thanks</strong> after allowing switches analytics off straight away and deletes its cookies. Google's handling of analytics data is described in <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>. Analytics data may be processed on servers outside your country.</p>
 
     <h2>For instructors</h2>
     <p>If your institution has rules about student data (for example, privacy impact assessments or data-residency requirements), you can ask students to choose <strong>No thanks</strong>. Game data leaves students' computers only when they click <strong>Send results</strong> (to your own Google Sheet) or send the results file themselves. If Google services aren't allowed for student data, use the email option or a course-page upload instead, and ask students to type student numbers or initials rather than full names if your rules require it.</p>
 
+    <h2>Who is responsible</h2>
+    <p>Science Around the Board is a free, non-commercial project by Hans Ghezzi. The project only ever receives the anonymous analytics described above. Results sent with <strong>Send results</strong> go to your instructor's own Google Sheet, so your instructor (and their institution) is responsible for them; ask them about access, correction or deletion.</p>
+
     <h2>Contact</h2>
-    <p>Questions about this notice? Open an issue on the <a href="https://github.com/hghezzi/Science-Around-the-Board/issues" target="_blank" rel="noopener">project's GitHub page</a>.</p>
+    <p>Questions about this notice? Open an issue on the <a href="https://github.com/hghezzi/Science-Around-the-Board/issues" target="_blank" rel="noopener">project's GitHub page</a>. Please don't include personal information in a public issue.</p>
 
     <p class="muted"><a href="./">← Back to the game</a></p>
   </div>

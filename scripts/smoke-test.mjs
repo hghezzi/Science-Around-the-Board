@@ -5,11 +5,12 @@
 // Pick scenarios with SCENARIOS=teams,dark and the number of rolls with ROLLS=10.
 import { preview } from "vite";
 import { chromium } from "playwright";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import CryptoJS from "crypto-js";
+import { encryptLockFile } from "../src/lockFile.js";
 
 const ROLLS = Number(process.env.ROLLS || 10);
-const server = await preview({ preview: { port: 4181, strictPort: false }, logLevel: "error" });
+const server = await preview({ preview: { port: Number(process.env.PORT || 4181), strictPort: false }, logLevel: "error" });
 const BASE = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const failures = [];
@@ -26,6 +27,8 @@ async function newPage(colorScheme = "light", { serviceWorkers = "block" } = {})
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme, acceptDownloads: true, serviceWorkers });
   const page = await context.newPage();
   page.on("pageerror", (e) => fail(`page error: ${e.message}`));
+  // The production Content-Security-Policy must never block anything the game needs.
+  page.on("console", (m) => { if (m.type() === "error" && /Content Security Policy/i.test(m.text())) fail(`CSP: ${m.text().slice(0, 160)}`); });
   page.on("dialog", (d) => d.accept().catch(() => {}));
   return { context, page };
 }
@@ -196,6 +199,11 @@ async function resultsScenario() {
     if (posted.app !== "science-around-the-board" || posted.course !== "Smoke Test 101") fail("results: payload is missing the app or course");
     if (posted.summary?.[0]?.members !== "Test Student") fail("results: summary is missing the student name");
     if (!(posted.rows?.length > 10)) fail("results: payload has too few rows");
+    // The Apps Script collector drops columns whose names aren't simple, and caps their number.
+    const keys = new Set([...(posted.summary || []), ...(posted.rows || [])].flatMap((r) => Object.keys(r)));
+    const odd = [...keys].filter((k) => !/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(k));
+    if (odd.length) fail(`results: the collector would drop these columns: ${odd.join(", ")}`);
+    if (keys.size + 5 > 80) fail(`results: ${keys.size} columns, more than the collector keeps`);
   }
   const email = page.getByRole("link", { name: /Email results to instructor/ });
   const href = (await email.count()) ? await email.getAttribute("href") : "";
@@ -217,6 +225,16 @@ async function filesScenario() {
   await dialog.getByRole("button", { name: "Unlock" }).click();
   await dialog.getByText(/password didn't work/).waitFor();
   await dialog.getByLabel(/Class password/).fill("Class-Pass");
+  await dialog.getByRole("button", { name: "Unlock" }).click();
+  await page.getByText(/Loaded 177 questions/).waitFor({ timeout: 10000 });
+  await page.getByRole("button", { name: /Use a different file/ }).click();
+  // Files from the current encryptor (PBKDF2 + AES-GCM).
+  const lock2 = await encryptLockFile(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "Class-Pass-2");
+  await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions2.lock", mimeType: "text/plain", buffer: Buffer.from(lock2) });
+  await dialog.getByLabel(/Class password/).fill("Class-Pass");
+  await dialog.getByRole("button", { name: "Unlock" }).click();
+  await dialog.getByText(/password didn't work/).waitFor({ timeout: 10000 });
+  await dialog.getByLabel(/Class password/).fill("Class-Pass-2");
   await dialog.getByRole("button", { name: "Unlock" }).click();
   await page.getByText(/Loaded 177 questions/).waitFor({ timeout: 10000 });
   await page.waitForTimeout(1500); // image checks run in the background
@@ -301,7 +319,43 @@ async function offlineScenario() {
   await setupGame(page, 1);
   await doSurvey(page, 1, "offline pre");
   await page.getByText("Game log").waitFor();
+  // The encryptor works offline too.
+  await page.goto(`${BASE}encryptor.html`);
+  if (!(await page.getByRole("heading", { name: "Question Encryptor" }).count())) fail("offline: the encryptor didn't open offline");
   await context.close();
+}
+
+// A new deploy: an idle start page reloads by itself; with a file loaded, a notice offers Reload.
+async function updateScenario() {
+  console.log("▶ new version available");
+  const swPath = "dist/sw.js";
+  const original = readFileSync(swPath, "utf8");
+  const { context, page } = await newPage("light", { serviceWorkers: "allow" });
+  try {
+    await page.goto(BASE);
+    await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+    await page.reload();
+    const deploy = (n) => writeFileSync(swPath, `${original}\n// smoke-test deploy ${n}\n`);
+    const checkForUpdate = () => page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
+    // 1. Nothing loaded yet: the page reloads into the new version without asking.
+    await page.evaluate(() => { window.__oldPage = true; });
+    deploy(1);
+    await checkForUpdate();
+    await page.waitForFunction(() => !window.__oldPage, null, { timeout: 20000 }).catch(() => fail("update: an idle start page didn't reload into the new version"));
+    // 2. A file is loaded: never reload by surprise, show the notice instead.
+    const noThanks = page.getByRole("button", { name: "No thanks" });
+    if (await noThanks.count()) await noThanks.click();
+    await page.getByRole("button", { name: /Play the demo/ }).click();
+    await page.getByText(/Loaded \d+ questions/).waitFor({ timeout: 10000 });
+    await page.evaluate(() => { window.__oldPage = true; });
+    deploy(2);
+    await checkForUpdate();
+    await page.getByText(/A new version of the game is ready/).waitFor({ timeout: 20000 }).catch(() => fail("update: no notice about the new version"));
+    if (!(await page.evaluate(() => window.__oldPage))) fail("update: the page reloaded while a file was loaded");
+  } finally {
+    writeFileSync(swPath, original);
+    await context.close();
+  }
 }
 
 const SCENARIOS = {
@@ -311,6 +365,7 @@ const SCENARIOS = {
   files: filesScenario,
   resume: resumeScenario,
   offline: offlineScenario,
+  update: updateScenario,
 };
 const selected = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
 for (const name of selected) {
