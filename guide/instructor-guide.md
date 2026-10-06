@@ -473,7 +473,7 @@ While this is only an example, you can certainly explore other lesson-design str
 
 ## Privacy and student data
 
-The game runs entirely in the students’ browsers. There is no account and no game server. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Anonymous usage analytics (Google Analytics: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs entirely in the students’ browsers. There is no account and no game server. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
 
 ## Conclusion
 

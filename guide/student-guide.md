@@ -132,6 +132,6 @@ The buttons you see depend on how your instructor set up the game. If **Send** f
 
 ## Your privacy
 
-The game runs in your browser. Your answers stay on this computer unless you send or hand in your results. The start page may ask whether you allow anonymous visit statistics: choosing **No thanks** changes nothing in the game. To learn more, read the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs in your browser. Your answers stay on this computer unless you send or hand in your results. The start page may ask whether you allow visit statistics (Google Analytics): choosing **No thanks** changes nothing in the game. To learn more, read the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
 
 *Instructors: see the [Instructor Guide](instructor-guide.md).*

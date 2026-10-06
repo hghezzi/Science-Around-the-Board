@@ -78,7 +78,7 @@ Always review generated questions before class.
 
 ## Privacy
 
-The game runs entirely in the browser. Question files, answers and surveys stay on the players' computer unless students click **Send results to instructor** (which sends them to the instructor's own Google Sheet) or hand in the results file themselves. Anonymous usage analytics (Google Analytics) load only if a visitor opts in. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs entirely in the browser. Question files, answers and surveys stay on the players' computer unless students click **Send results to instructor** (which sends them to the instructor's own Google Sheet) or hand in the results file themselves. Usage analytics (Google Analytics, which sets cookies) load only if a visitor opts in. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
 
 ## Requirements
 
