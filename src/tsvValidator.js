@@ -14,7 +14,7 @@
 
 import { getAllTopics, getModulesForTopic } from "./tsvParser.js";
 import { matchesTopicAndModule } from "./tsvBoardBuilder.js";
-import { FORMATS, parseFormat, parseIndexList, parseNumber, parseTolerance, hasExplicitMishapAmount } from "./questionFormats.js";
+import { FORMATS, parseFormat, parseIndexList, parseNumber, parseTolerance, hasExplicitMishapAmount, normalizeText } from "./questionFormats.js";
 import { CONFIG_KEYS, EMAIL_PATTERN } from "./config.js";
 
 export const KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence", "config"];
@@ -95,6 +95,7 @@ export function validateQuestionRows(rows, headers) {
   const badType = [];
   const caseType = [];
   const badAnswer = [];
+  const mcqManyAnswers = [];
   const fewOptions = [];
   const noExplanation = [];
   const noQuestion = [];
@@ -140,6 +141,7 @@ export function validateQuestionRows(rows, headers) {
         if (options.length < 2) fewOptions.push(label);
         const idx = parseInt(row.correctIndex, 10);
         if (Number.isNaN(idx) || idx < 1 || idx > options.length) badAnswer.push(label);
+        else if (parseIndexList(row.correctIndex).length > 1) mcqManyAnswers.push(label);
       } else if (format === "multi") {
         if (options.length < 2) fewOptions.push(label);
         const idxs = parseIndexList(row.correctIndex);
@@ -150,7 +152,7 @@ export function validateQuestionRows(rows, headers) {
         if (Number.isNaN(parseNumber(row.answer))) badNumeric.push(label);
         if (!parseTolerance(row.tolerance)) badTolerance.push(label);
       } else if (format === "text") {
-        if (!String(row.answer || "").split("|").some((a) => a.trim())) badText.push(label);
+        if (!String(row.answer || "").split("|").some((a) => normalizeText(a))) badText.push(label);
       }
       if (type !== "survey" && !(row.explanation || "").trim()) noExplanation.push(label);
     }
@@ -159,15 +161,16 @@ export function validateQuestionRows(rows, headers) {
   const dupIds = [...seenIds.entries()].filter(([, n]) => n > 1).map(([id]) => `"${id}"`);
   if (dupIds.length) warnings.push(`Duplicate id(s): ${summarizeLabels(dupIds)}. Ids should be unique so exported data can be traced back to questions.`);
   if (badType.length) warnings.push(`Unknown type, row will be ignored: ${summarizeLabels(badType)}. Valid types: ${KNOWN_TYPES.join(", ")}.`);
-  if (caseType.length) warnings.push(`Type is not lowercase: ${summarizeLabels(caseType)}. Board questions tolerate this, but survey/confidence rows must be lowercase to be found.`);
+  if (caseType.length) warnings.push(`Type is not lowercase: ${summarizeLabels(caseType)}. The game accepts it, but lowercase keeps the file consistent.`);
   if (noQuestion.length) errors.push(`Empty question text: ${summarizeLabels(noQuestion)}.`);
   if (fewOptions.length) errors.push(`Fewer than 2 answer options: ${summarizeLabels(fewOptions)}.`);
   if (badAnswer.length) errors.push(`correctIndex is missing or does not point to a filled option (use 1-4): ${summarizeLabels(badAnswer)}. These questions can never be answered correctly.`);
   if (badFormat.length) errors.push(`Unknown format: ${summarizeLabels(badFormat)}. Valid formats: ${FORMATS.join(", ")} (blank = mcq). These rows are skipped by this check.`);
+  if (mcqManyAnswers.length) warnings.push(`correctIndex lists several options but the format is multiple choice, so only the first counts: ${summarizeLabels(mcqManyAnswers)}. For select-all-that-apply, set format to multi.`);
   if (badMulti.length) errors.push(`Multi-select correctIndex must list filled options, e.g. "1,3": ${summarizeLabels(badMulti)}.`);
   if (badNumeric.length) errors.push(`Numeric questions need a number in the "answer" column: ${summarizeLabels(badNumeric)}.`);
   if (badTolerance.length) errors.push(`Invalid tolerance (use a number like 0.5 or a percentage like 5%): ${summarizeLabels(badTolerance)}.`);
-  if (badText.length) errors.push(`Short-text questions need accepted answers in the "answer" column, separated by | : ${summarizeLabels(badText)}.`);
+  if (badText.length) errors.push(`Short-text questions need accepted answers (with letters or digits) in the "answer" column, separated by | : ${summarizeLabels(badText)}.`);
   if (vagueMishap.length) warnings.push(`Mishap without an explicit amount such as (+$100) or (-$50): ${summarizeLabels(vagueMishap)}. The default +$50 / -$100 will be used.`);
   if (noExplanation.length) warnings.push(`No explanation: ${summarizeLabels(noExplanation)}. Explanations are shown after every answer and are the main teaching moment.`);
 

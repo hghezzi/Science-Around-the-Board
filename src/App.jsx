@@ -11,7 +11,7 @@ import { readConfig } from "./config";
 import { saveSnapshot, loadSnapshot, clearSnapshot } from "./autosave";
 import { toCsv, resultsFilename, summarizeTeams, teamInfoRows, makeSessionId, buildPayload, sendResults, buildMailto, downloadText } from "./results";
 import { bestPreSurveyPlayer } from "./gameRules";
-import { resolveImage } from "./images";
+import { resolveImage, isUploaded } from "./images";
 import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
 import ConsentBanner from "./ConsentBanner";
@@ -149,7 +149,7 @@ function ValidationReport({ validation, imageMap, imageBase = "" }) {
   // A failed check (offline, or a host without CORS headers) is not proof that an image is missing.
   useEffect(() => {
     let cancelled = false;
-    const candidates = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/i.test(img));
+    const candidates = images.filter((img) => !isUploaded(img, imageMap) && !/^(https?:|data:)/i.test(img));
     Promise.all(candidates.map(async (img) => {
       try {
         const res = await fetch(resolveImage(img, {}, imageBase), { method: "HEAD" });

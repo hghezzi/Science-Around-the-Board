@@ -16,7 +16,8 @@ export function parseTsv(text) {
     const obj = {};
     headers.forEach((h, i) => {
       let val = (cols[i] || "").trim();
-      if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1).replace(/""/g, '"');
+      // Spreadsheet apps wrap cells that contain quotes in "...", doubling the inner quotes.
+      if (val.length >= 2 && val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1).replace(/""/g, '"');
       obj[h.trim()] = val;
     });
     return obj;

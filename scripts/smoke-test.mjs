@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import CryptoJS from "crypto-js";
 
 const ROLLS = Number(process.env.ROLLS || 10);
-const server = await preview({ preview: { port: 4181, strictPort: false }, logLevel: "error" });
+const server = await preview({ preview: { port: Number(process.env.SMOKE_PORT || 4181), strictPort: false }, logLevel: "error" });
 const BASE = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const failures = [];

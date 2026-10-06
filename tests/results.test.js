@@ -12,6 +12,12 @@ describe("toCsv", () => {
   it("stops typed text from becoming a spreadsheet formula, but leaves numbers alone", () => {
     const csv = toCsv([{ text: "=SUM(A1:A9)", other: "+1", at: "@cmd", amount: -100 }]);
     expect(csv.split("\n")[1]).toBe(`"'=SUM(A1:A9)","'+1","'@cmd","-100"`);
+    expect(toCsv([{ a: "\t=1+1" }]).split("\n")[1]).toBe(`"'\t=1+1"`);
+  });
+
+  it("keeps a row per event even when events have different columns", () => {
+    const csv = toCsv([{ eventType: "TEAM_INFO", members: "Ana" }, { eventType: "TRANSACTION", amount: -20 }]);
+    expect(csv).toBe('eventType,members,amount\n"TEAM_INFO","Ana",""\n"TRANSACTION","","-20"');
   });
 });
 
@@ -19,6 +25,10 @@ describe("resultsFilename", () => {
   it("names the file after the topic, module, date and time", () => {
     const name = resultsFilename("16S", "QIIME 2 / Week 3", new Date(2026, 9, 5, 9, 7));
     expect(name).toBe("sab_results_16s_qiime-2-week-3_2026-10-05_0907.csv");
+  });
+
+  it("drops accents instead of mangling the topic name", () => {
+    expect(resultsFilename("Biología", "Célula", new Date(2026, 0, 2, 13, 45))).toBe("sab_results_biologia_celula_2026-01-02_1345.csv");
   });
 
   it("falls back to 'game' without a topic", () => {
