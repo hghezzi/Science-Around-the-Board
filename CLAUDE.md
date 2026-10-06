@@ -32,6 +32,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `npm run package-skill`: zip the question-writer skill to `public/downloads/` (also runs automatically before `build`; the output is gitignored).
 - `npm run guide`: rebuilds the Instructor Guide. It runs `vite build`, then `scripts/guide-screenshots.mjs` (Playwright screenshots into `guide/images/`), then `scripts/build-guide.mjs` (writes `public/guide/index.html` and `public/SAB_Instructor_Guide.pdf`). The outputs are committed.
 - `npm run smoke`: builds, then `scripts/smoke-test.mjs` plays the built app with Playwright (1–4 teams, dark mode, mocked Google Sheet send, `.lock` and link loading, resume after a refresh, offline). Pick scenarios with `SCENARIOS=teams,dark,results,files,resume,offline`. **Run it before every deploy.** It takes about 5 minutes.
+- `npm run privacy`: builds, then `scripts/privacy-check.mjs` checks with Playwright that nothing leaves the site before analytics opt-in or after "No thanks", that a change of mind deletes the GA cookies, that `javascript:`/`data:` share links are refused, that `404.html` redirects, and that the CSP blocks nothing. Smoke and privacy accept `PORT=`.
 - `npm run a11y`: axe-core checks on the main screens in light and dark mode (including the password dialog, resume notice and end screen). It needs `npm run preview` running on port 4173.
 - `python3 scripts/make-icons.py`: regenerates the install icons in `public/icons/` (Pillow).
 - `npm run deploy`: builds and pushes `dist/` to the `gh-pages` branch. This is a manual deploy (Vite `base` is `/Science-Around-the-Board/`), so only run it when asked.
@@ -40,7 +41,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 ## Code map
 - `src/App.jsx`:
   - Phase machine: landing, then `SETUP` (players, session length, topic/module), `PRE_SURVEY`, `GAME`, `POST_SURVEY`, `SUMMARY`.
-  - Landing: demo and Intro Statistics (`loadFromLink("demo"|"stats")`), upload a TSV or `.lock` (`PasswordDialog`; `.lock` files start with `U2FsdGVkX1`), `?deck=`/`?images=` links, optional images, the validation report (lists only images that can't be found), `ShareLinkBuilder`, the "Resume your game?" offer, `InstallButton` and the consent banner.
+  - Landing: demo and Intro Statistics (`loadFromLink("demo"|"stats")`), upload a TSV or `.lock` (`PasswordDialog`; formats in `lockFile.js`), `?deck=`/`?images=` links, optional images, the validation report (lists only images that can't be found), `ShareLinkBuilder`, the "Resume your game?" offer, `InstallButton` and the consent banner.
   - `startGame()` builds the survey sets with the final team count (`surveys.js`) and a new `sessionId`.
   - Autosave: while in `PRE_SURVEY`…`SUMMARY`, App saves a snapshot (`autosave.js`), including the game's state from `GameScreen`'s `onSnapshot`. It is cleared by `resetFile()`/main menu, Exit session and `startGame()`.
   - `SurveyView` serves both pre and post surveys. The best pre-survey scorer starts the game (`bestPreSurveyPlayer`).
@@ -91,13 +92,16 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/deckLinks.js` (pure): `?deck=`/`?images=` links. Shortcuts `demo`/`stats`; published Google Sheets become TSV exports and GitHub pages become raw links; `buildShareLink`, `isUnpublishedSheet`.
 - `src/autosave.js`: `saveSnapshot`/`loadSnapshot`/`clearSnapshot` in localStorage (`sab-autosave-v1`, 12-hour expiry, never throws).
 - `src/components/PasswordDialog.jsx` and `src/components/InstallButton.jsx` (`main.jsx` keeps the `beforeinstallprompt` event in `window.__sabInstallPrompt`).
-- `vite.config.js`: `vite-plugin-pwa` (manifest, service worker, precache of the app, demo files and hosted images; not the guide or PDFs).
-- `public/tools/sab-results-collector.gs`: the Google Apps Script instructors paste into their own Sheet (Summary and Details tabs). `tests/collector.test.js` runs it against a fake Sheet.
+- `vite.config.js`: two pages (`index.html`, `encryptor.html`); a production-only Content-Security-Policy `<meta>` (update it when the app loads something new; the smoke test fails on any CSP violation); a `vendor` chunk for React/MUI; `vite-plugin-pwa` (manifest, service worker with skipWaiting/clientsClaim, precache of the app, demo files, hosted images and Latin fonts; not the guide, PDFs or other font subsets).
+- `src/pwa.js` + `src/components/UpdateNotice.jsx`: registers the service worker, checks for a new deploy every 30 min and on tab focus; a new version reloads an empty start page by itself, otherwise shows a "new version is ready" notice (never reloads mid-session). `GameScreen` is lazy-loaded (`lazyLoad.js` reloads once if an old chunk is gone) and prefetched at idle. `ErrorBoundary.jsx` wraps the app.
+- `src/lockFile.js` (pure, Web Crypto): `.lock` files. Current format `SAB-LOCK-v2:` (PBKDF2-SHA256 600k + AES-256-GCM); legacy CryptoJS files (`U2FsdGVkX1…`) still open, loading `crypto-js` on demand.
+- `public/tools/sab-results-collector.gs`: the Google Apps Script instructors paste into their own Sheet (Summary and Details tabs). It enforces size, row, column and per-minute limits; column names must match `^[A-Za-z][A-Za-z0-9_]{0,39}$` (the smoke test checks the game's payload). `tests/collector.test.js` runs it against a fake Sheet.
 - `src/tsvValidator.js` (pure): instructor-facing checks that mirror what the engine needs. Shared by the UI, CLI and tests. **Update it, and its Python mirror in the skill, whenever engine assumptions change.**
 - `src/consent.js` and `src/ConsentBanner.jsx`: Google Analytics (`G-B2Z5WS4KQR`) loads only after opt-in. The banner appears on the start page only. `public/privacy.html` is the privacy notice.
 - `src/labels.js`: all player-facing game terms (Wildcard, Buy, Upgrades, Rescue Quiz…), kept subject-neutral, plus `TEAM_NAMES` and `teamDisplayName` (a single team is "Solo Team").
 - `src/questionBank.js`: `DEFAULT_CHANCE_CARDS`, the neutral fallback wildcards used when a file has no `mishap` rows.
-- `public/encryptor.html`: standalone tool that encrypts a TSV into a `.lock` file.
+- `encryptor.html` + `src/encryptor.js`: the encryptor page (a second Vite page, offline-capable), using `lockFile.js`.
+- `public/404.html`: GitHub Pages fallback; redirects unknown paths to the game, keeping `?deck=`. `public/og-image.png`: link preview, made by `scripts/make-og-image.py`.
 - `public/icons/`: install icons, generated by `scripts/make-icons.py`.
 - `public/SAB_questions_Jan22_Filtered.tsv`: demo file (`16S`/`QIIME2`, 177 rows, including rows in every format and 7 questions using the hosted images).
 - `public/examples/intro_statistics.tsv`: a non-biology example, generated with the skill.
@@ -106,7 +110,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `scripts/validate_tsv.py` is a stdlib Python mirror of the validator.
   - `references/` holds the format spec and the question-design guide.
 - `MICB_475_2026_Workshop/`: the real course's encrypted `.lock` and images. Don't modify it without asking.
-- Old code backups and the Docusaurus build output (`website/build`, `website/.docusaurus`) are gitignored; old code lives in the history. `website/` is ignored by lint.
+- Old code backups and the removed Docusaurus site (`website/`) are gitignored; old code lives in the history.
 
 ## Question file (TSV) format
 - Columns: `id, question, option1..option4, correctIndex (1-4), explanation, bigTopic, module, theme, subtheme, type, imageFile`, plus the optional `format, answer, tolerance`. The full spec is in `.claude/skills/sab-question-writer/references/format.md`.

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use Science Around the Board in teaching or research, please cite it as below."
+title: "Science Around the Board"
+abstract: "A browser-only, property-trading board game for classroom review. Instructors write the questions in one spreadsheet file; student teams answer them to buy, defend and upgrade tiles, with pre- and post-game surveys and exportable results."
+type: software
+authors:
+  - family-names: Ghezzi
+    given-names: Hans
+license: CC-BY-NC-SA-4.0
+repository-code: "https://github.com/hghezzi/Science-Around-the-Board"
+url: "https://hghezzi.github.io/Science-Around-the-Board/"
+keywords:
+  - game-based learning
+  - playful pedagogy
+  - active recall
+  - higher education
+  - review game
