@@ -67,7 +67,7 @@
    "A skewed distribution has no median",
    "The mean is greater than the median",
    "The mean is less than the median",
-   "They are always equal"
+   "They are equal, as in any distribution"
   ],
   "correct": 2,
   "explanation": "The long right tail pulls the mean upward, while the median stays near the bulk of the data. In left-skewed data the mean is usually below the median.",
@@ -139,10 +139,10 @@
   "type": "milestone",
   "question": "A town reports a mean household income of $95,000 but a median of $52,000. What best explains the gap?",
   "options": [
-   "A few very high incomes skew the distribution to the right",
+   "A few very high incomes pull the mean up",
    "One of the two numbers must be a calculation error",
-   "Most households earn more than $95,000",
-   "The distribution must be symmetric"
+   "Most households earn more than the $95,000 mean",
+   "The distribution is symmetric, so the gap is random"
   ],
   "correct": 1,
   "explanation": "When the mean sits far above the median, a long right tail of very large values is pulling the mean up. This is why median income is usually reported.",
@@ -213,7 +213,7 @@
    "Median and IQR",
    "Mode and range",
    "Mean and range",
-   "Mean and standard deviation"
+   "Mean and SD"
   ],
   "correct": 1,
   "explanation": "Median and IQR are resistant to the long tail; the mean and SD are both distorted by extreme stays.",
@@ -305,13 +305,13 @@
   "type": "property",
   "question": "Which situation fits a binomial distribution?",
   "options": [
-   "Counting trials until the first success",
-   "Measuring a continuous outcome on each trial",
-   "A fixed number of independent trials, each with the same probability of success",
-   "Trials whose success probability changes each time"
+   "Counting how many trials it takes to reach the first success",
+   "Measuring a continuous outcome, such as weight, on each trial",
+   "A fixed number of independent trials, each with the same success chance",
+   "Drawing cards without replacement, so the chance changes each time"
   ],
   "correct": 3,
-  "explanation": "Binomial requires fixed n, independent trials, two outcomes and constant p. Counting until the first success is a geometric setting.",
+  "explanation": "A binomial setting needs a fixed number n of independent trials, two outcomes and the same success probability p each time. Counting until the first success is geometric, and drawing without replacement (changing p) is hypergeometric.",
   "theme": "Probability",
   "subtheme": "Random Variables"
  },
@@ -371,7 +371,7 @@
    1,
    2
   ],
-  "explanation": "A valid distribution needs every probability between 0 and 1 and a total of exactly 1. Option C has a negative value, and option D sums to 0.9.",
+  "explanation": "A valid distribution needs every probability between 0 and 1 and a total of exactly 1. The list 0.5, 0.6, −0.1 contains a negative probability, and 0.3, 0.3, 0.3 adds up to only 0.9.",
   "theme": "Probability",
   "subtheme": ""
  },
@@ -406,10 +406,10 @@
   "type": "milestone",
   "question": "Which statement best describes the law of large numbers?",
   "options": [
-   "As the number of trials grows, the sample proportion tends to get closer to the true probability",
-   "In short runs, outcomes quickly balance out",
-   "Large samples are always normally distributed",
-   "After many tails, heads becomes more likely"
+   "With many trials, the proportion settles near the true probability",
+   "Short runs of outcomes quickly balance each other out",
+   "Large samples are always normally distributed, whatever the population",
+   "After many tails in a row, heads becomes more likely"
   ],
   "correct": 1,
   "explanation": "The LLN is about long-run averages converging. It does not make short runs balance out, and it is not the Central Limit Theorem.",
@@ -436,13 +436,13 @@
   "type": "property",
   "question": "What does the Central Limit Theorem state?",
   "options": [
-   "The sample SD always equals the population SD",
-   "Individual observations become normal for large samples",
-   "The population becomes normal when n is large",
-   "The sampling distribution of the sample mean approaches a normal distribution as n grows"
+   "Individual observations become normal when n is large",
+   "The population itself becomes normal when n is large",
+   "A sample's histogram looks more and more normal as n grows",
+   "The distribution of sample means approaches normal as n grows"
   ],
   "correct": 4,
-  "explanation": "The CLT is about the distribution of the sample mean across many samples, not the shape of the population or of individual data.",
+  "explanation": "The CLT is about the sampling distribution of the mean (the means of many samples), not about individual data. A large sample's histogram looks like the population, skewed or not.",
   "theme": "Sampling & Inference",
   "subtheme": "Sampling Distributions"
  },
@@ -473,13 +473,13 @@
   "type": "property",
   "question": "Which is a correct interpretation of a 95% confidence interval?",
   "options": [
-   "The true parameter changes 95% of the time",
-   "95% of the data values lie in the interval",
-   "If we repeated the sampling many times, about 95% of such intervals would contain the true parameter",
-   "There is a 95% chance the sample mean lies in the interval"
+   "There is a 95% chance the sample mean is in this interval",
+   "95% of the individual data values fall inside the interval",
+   "About 95% of such intervals capture the true value",
+   "The true value moves inside this interval 95% of the time"
   ],
   "correct": 3,
-  "explanation": "The 95% describes the method's long-run success rate. The sample mean is always in its own interval, and the interval is not about individual data values.",
+  "explanation": "The 95% describes the method: across many samples, about 95% of the intervals built this way contain the fixed true parameter. The sample mean is always at the centre of its own interval, and the interval is not about individual data values.",
   "theme": "Sampling & Inference",
   "subtheme": "Confidence Intervals"
  },
@@ -589,10 +589,10 @@
   "type": "milestone",
   "question": "Which statement describes bootstrapping?",
   "options": [
-   "Resampling with replacement from the observed sample to approximate a sampling distribution",
-   "Resampling without replacement to recreate the original sample",
-   "Removing outliers before computing a confidence interval",
-   "Collecting many new samples from the population"
+   "Resampling the data with replacement to mimic sampling variation",
+   "Resampling the data without replacement to mimic sampling variation",
+   "Removing outliers repeatedly until the interval is stable",
+   "Collecting many new samples from the population itself"
   ],
   "correct": 1,
   "explanation": "The bootstrap treats the sample as a stand-in for the population and resamples it with replacement. Without replacement you just get the same data back in a different order.",
@@ -604,9 +604,9 @@
   "type": "milestone",
   "question": "How do the standard deviation (SD) and the standard error (SE) differ?",
   "options": [
-   "SE gets larger as the sample size increases",
-   "SD describes variability of individual observations; SE describes variability of a statistic across samples",
-   "They are two names for the same thing",
+   "SE grows with n, because more data adds more variation",
+   "SD: spread of individual values; SE: spread of a statistic",
+   "They measure the same thing; SE is just the SD squared",
    "SD shrinks toward zero as the sample size increases"
   ],
   "correct": 2,
@@ -619,10 +619,10 @@
   "type": "property",
   "question": "What is a p-value?",
   "options": [
-   "The probability that H0 is true",
-   "The probability that the result will replicate",
-   "The probability that the alternative hypothesis is true",
-   "The probability of data at least as extreme as observed, assuming H0 is true"
+   "The chance that H0 is true, given the observed data",
+   "The chance that the result would replicate in a new study",
+   "The chance that the alternative hypothesis is true",
+   "The chance of data at least this extreme if H0 is true"
   ],
   "correct": 4,
   "explanation": "The p-value is computed assuming H0 is true; it is not the probability that H0 (or H1) is true.",
@@ -695,9 +695,9 @@
   "question": "What is the statistical power of a test?",
   "options": [
    "The probability of a Type I error",
-   "The significance level α",
-   "The probability of rejecting H0 when it is false",
-   "The p-value"
+   "The significance level α of the test",
+   "P(rejecting H0 when H0 is false)",
+   "The p-value observed in the study"
   ],
   "correct": 3,
   "explanation": "Power = 1 − β, the chance of detecting a real effect. α is the Type I error rate.",
@@ -739,10 +739,10 @@
   "type": "milestone",
   "question": "A study of 50,000 people finds a blood-pressure difference of 0.1 mmHg with p < 0.001. What is the best interpretation?",
   "options": [
-   "It must be a Type I error",
-   "Statistically significant, but probably not practically important",
+   "It must be a Type I error because the effect is so small",
+   "Significant, but too small to matter in practice",
    "The p-value proves the treatment causes the difference",
-   "A large, clinically important effect"
+   "A large, clinically important effect on blood pressure"
   ],
   "correct": 2,
   "explanation": "With huge samples, tiny effects become significant. Always look at the effect size and its real-world meaning, not only the p-value.",
@@ -754,10 +754,10 @@
   "type": "milestone",
   "question": "A researcher tests 10 different outcomes and reports only the one with p = 0.04. What is the main problem?",
   "options": [
-   "Nothing, because p < 0.05",
-   "A one-sided test should have been used",
-   "Multiple comparisons inflate the false-positive rate (p-hacking)",
-   "The sample size was too large"
+   "Nothing; p < 0.05 means the finding is real",
+   "A one-sided test should have been used instead",
+   "Many tests inflate the false-positive risk",
+   "The sample size was too large to trust the test"
   ],
   "correct": 3,
   "explanation": "With 10 tests, the chance of at least one false positive is about 40%. Selective reporting makes a chance finding look real.",
@@ -784,10 +784,10 @@
   "type": "milestone",
   "question": "A test fails to reject H0. What does this mean?",
   "options": [
-   "H0 has been proven true",
-   "The true effect is exactly zero",
-   "The data do not provide enough evidence against H0",
-   "The study made a Type I error"
+   "The data have shown that the null hypothesis is true",
+   "The true effect in the population is exactly zero",
+   "The data don't give strong enough evidence against H0",
+   "The study has made a Type I error (false positive)"
   ],
   "correct": 3,
   "explanation": "Absence of evidence is not evidence of absence: the study may simply have had too little power to detect an effect.",
@@ -814,10 +814,10 @@
   "type": "milestone",
   "question": "An observational study finds that coffee drinkers live longer (p = 0.01). What is the most important caveat?",
   "options": [
-   "The sample must be biased",
-   "α = 0.10 should have been used",
-   "The p-value is too small to trust",
-   "Confounding variables may explain the association, so causation can't be concluded"
+   "The sample must be biased because it is observational",
+   "A significance level of 0.10 should have been used",
+   "A p-value this small is too good to be trusted",
+   "Confounders may explain it, so causation isn't shown"
   ],
   "correct": 4,
   "explanation": "Without random assignment, other factors such as income or health habits could drive both coffee drinking and longevity.",
@@ -870,10 +870,10 @@
   "type": "core",
   "question": "For a numeric vector x, what does summary(x) report?",
   "options": [
-   "Minimum, quartiles, median, mean and maximum",
-   "A histogram of x",
-   "Only the standard deviation",
-   "Only the mean"
+   "Min, quartiles, median, mean and max",
+   "The mean and standard deviation",
+   "A histogram drawn in the plot window",
+   "The number of missing values only"
   ],
   "correct": 1,
   "explanation": "summary() gives the five-number summary plus the mean. Use sd(x) for the standard deviation and hist(x) for a histogram.",
@@ -899,10 +899,10 @@
   "type": "core",
   "question": "Why call set.seed(42) before running a simulation in R?",
   "options": [
-   "To make the simulation run faster",
-   "To make the random numbers truly random",
-   "To remove outliers from the data",
-   "So the random numbers, and therefore the results, are reproducible"
+   "So the simulation runs faster on later attempts",
+   "So the random numbers become truly random",
+   "So outliers are removed from the simulated data",
+   "So the random results can be reproduced exactly"
   ],
   "correct": 4,
   "explanation": "set.seed() fixes the starting point of the pseudo-random number generator, so the same code gives the same results every time.",
@@ -1008,15 +1008,15 @@
  {
   "id": "surv_05",
   "type": "survey",
-  "question": "As the sample size increases, the standard error of the mean:",
+  "question": "Two labs estimate the same population mean, one with n = 30 and one with n = 300. Whose sample means would vary less from sample to sample?",
   "options": [
-   "Becomes equal to the population SD",
-   "Increases",
-   "Stays the same",
-   "Decreases"
+   "The lab with n = 30",
+   "Both vary equally",
+   "It depends only on the population mean",
+   "The lab with n = 300"
   ],
   "correct": 4,
-  "explanation": "SE = σ/√n shrinks as n grows.",
+  "explanation": "The standard error of the mean, σ/√n, shrinks as n grows, so means from samples of 300 cluster more tightly around the true mean. The population mean doesn't affect how much sample means vary.",
   "theme": "",
   "subtheme": ""
  },
@@ -1040,10 +1040,10 @@
   "type": "survey",
   "question": "A p-value of 0.20 means:",
   "options": [
-   "The effect size is 0.20",
-   "Data like these would not be unusual if H0 were true",
-   "There is a 20% chance H0 is true",
-   "There is an 80% chance the alternative is true"
+   "There is a 20% chance that the null hypothesis is true",
+   "Data like these would be common if H0 were true",
+   "There is an 80% chance the alternative is true",
+   "The effect size in the population is 0.20"
   ],
   "correct": 2,
   "explanation": "A large p-value means the data are consistent with H0; it is not the probability that H0 is true.",
@@ -1070,10 +1070,10 @@
   "type": "survey",
   "question": "What is the main purpose of random assignment in an experiment?",
   "options": [
-   "To balance confounding variables between groups, allowing causal conclusions",
+   "To balance confounders so causal claims are justified",
    "To make the sample representative of the population",
-   "To guarantee a significant result",
-   "To reduce the sample size needed"
+   "To guarantee that the result is statistically significant",
+   "To reduce the sample size that the study needs"
   ],
   "correct": 1,
   "explanation": "Random assignment supports causation; random sampling supports generalisation.",
@@ -1128,15 +1128,15 @@
  {
   "id": "surv_13",
   "type": "survey",
-  "question": "Which describes statistical power?",
+  "question": "A study has 80% power. What does that mean?",
   "options": [
-   "The chance of a false positive",
-   "The confidence level",
-   "The chance of detecting an effect that really exists",
-   "The size of the p-value"
+   "There is an 80% chance that the null hypothesis is false",
+   "80% of the study's significant results are real effects",
+   "A real effect would be detected 80% of the time",
+   "The p-value will be below 0.80 in 80% of studies"
   ],
   "correct": 3,
-  "explanation": "Power = P(reject H0 | H0 false).",
+  "explanation": "Power is the probability of rejecting H0 when a real effect of the assumed size exists (1 − β). It is not the probability that H0 is false, and it doesn't say what share of significant results are true.",
   "theme": "",
   "subtheme": ""
  },

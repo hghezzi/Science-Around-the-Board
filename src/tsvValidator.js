@@ -16,6 +16,7 @@ import { getAllTopics, getModulesForTopic } from "./tsvParser.js";
 import { matchesTopicAndModule } from "./tsvBoardBuilder.js";
 import { FORMATS, parseFormat, parseIndexList, parseNumber, parseTolerance, hasExplicitMishapAmount } from "./questionFormats.js";
 import { CONFIG_KEYS, EMAIL_PATTERN } from "./config.js";
+import { checkItemQuality, formatCueSummary } from "./itemQuality.js";
 
 export const KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence", "config"];
 const QUIZ_TYPES = ["property", "milestone", "core", "survey"];
@@ -61,7 +62,7 @@ function summarizeLabels(labels, max = 5) {
  * Validate parsed TSV rows.
  * @param {object[]} rows   output of parseTsv()
  * @param {string[]} headers header names (optional; inferred from rows)
- * @returns {{ errors: string[], warnings: string[], games: object[], images: string[], formatCounts: object }}
+ * @returns {{ errors: string[], warnings: string[], games: object[], images: string[], formatCounts: object, cues: object|null }}
  */
 export function validateQuestionRows(rows, headers) {
   const errors = [];
@@ -71,7 +72,7 @@ export function validateQuestionRows(rows, headers) {
 
   if (!rows.length) {
     errors.push("The file has no question rows (it needs a header line plus at least one row).");
-    return { errors, warnings, games: [], images: [], formatCounts };
+    return { errors, warnings, games: [], images: [], formatCounts, cues: null };
   }
 
   // ---------- Headers ----------
@@ -171,6 +172,11 @@ export function validateQuestionRows(rows, headers) {
   if (vagueMishap.length) warnings.push(`Mishap without an explicit amount such as (+$100) or (-$50): ${summarizeLabels(vagueMishap)}. The default +$50 / -$100 will be used.`);
   if (noExplanation.length) warnings.push(`No explanation: ${summarizeLabels(noExplanation)}. Explanations are shown after every answer and are the main teaching moment.`);
 
+  // ---------- Answer-option quality (cues that give answers away) ----------
+  const quality = checkItemQuality(rows);
+  errors.push(...quality.errors);
+  warnings.push(...quality.warnings);
+
   // ---------- Per-game (bigTopic + module) checks ----------
   const games = [];
   let topics = getAllTopics(rows);
@@ -240,7 +246,7 @@ export function validateQuestionRows(rows, headers) {
     });
   });
 
-  return { errors, warnings, games, images: [...images], formatCounts };
+  return { errors, warnings, games, images: [...images], formatCounts, cues: quality.cues };
 }
 
 /** Format a validation result as plain text (CLI output). */
@@ -257,6 +263,8 @@ export function formatValidationReport(result) {
   });
   const f = result.formatCounts;
   if (f) lines.push(`Formats: mcq ${f.mcq} (true/false ${f.trueFalse}), multi ${f.multi}, numeric ${f.numeric}, order ${f.order}, text ${f.text}`);
+  const cueLine = formatCueSummary(result.cues);
+  if (cueLine) lines.push(cueLine);
   if (result.images.length) lines.push(`Images referenced (${result.images.length}): ${result.images.join(", ")}`);
   lines.push("");
   result.errors.forEach((e) => lines.push(`ERROR: ${e}`));

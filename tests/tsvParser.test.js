@@ -28,7 +28,7 @@ describe("parseTsv", () => {
 
   it("parses the demo file", () => {
     const rows = parseTsv(DEMO_TSV);
-    expect(rows.length).toBe(177);
+    expect(rows.length).toBe(183);
     expect(parseTsvHeaders(DEMO_TSV)).toContain("correctIndex");
   });
 });

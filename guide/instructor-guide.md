@@ -212,6 +212,8 @@ When a file is loaded, the game checks it and lists any problems before the sess
 
 - **Red items** will break the game or make a question impossible to answer correctly. Examples: fewer than 4 themes, a `correctIndex` that doesn’t point to an option, or a theme with no milestone questions.
 - **Yellow notes** (click to expand) are suggestions. Examples: too few survey questions, wildcards without an amount, or ignored rows.
+- **Answer cues** are yellow notes about question quality. Test-wise students pick the longest or most detailed option, avoid options with "always" or "never", and pick the option that repeats the question's words. The checker measures how well each of these blind strategies would score on your file. For four options, chance is 25%; if "pick the longest option" would score, say, 60%, students can win without knowing the content. Fix it by making the wrong options as long and as detailed as the right one (real misconceptions, not padding), or by moving the extra detail from the correct option into the explanation.
+- **Spreadsheet errors** such as `#NAME?` are red items. Excel and Google Sheets turn text starting with `-`, `+` or `=` (for example `--p-sampling-depth`) into a formula. Type an apostrophe first, or wrap commands in backticks.
 
 Load your file yourself before class and fix the red items. If you work from the repository, `npm run validate-tsv -- my_questions.tsv` runs the same checks on the command line.
 
@@ -426,6 +428,7 @@ Science Around the Board was originally designed for review-style sessions, so i
 When writing your TSV file, remember that the "incorrect" options are just as important as the correct one.
 
 - **Write plausible distractors:** do not use throwaway joke answers. Every incorrect option should represent a common student misconception. When a student chooses a distractor, it reveals a specific gap in their mental model.
+- **Don't let the answer give itself away:** keep every option the same length, detail and grammar as the correct one. A careful author tends to make the correct answer the longest and most qualified option, and students quickly learn to pick it. Cover the question, read only the options, and ask whether you could guess. The file checker measures this for you.
 - **Leverage the explanation column:** this is your most powerful teaching tool in the game. Do not just write "Incorrect". Use this space to immediately correct the specific misconception tied to the distractors. Immediate, targeted feedback at the exact moment of failure is what transforms this from a quiz into a learning tool.
 - **Write separate survey questions:** make the `survey` questions parallel to the board content (same LOs) but not copies of board questions, so the post-game survey measures learning rather than memory of an exact question.
 
@@ -492,6 +495,9 @@ Welcome to the board, and have a great session!
 - **Everyone gets fixes promptly.** An open game checks for a new version regularly. On an empty start page it reloads by itself; during a session it shows a **Reload** notice and never interrupts the game.
 - **Results collector, version 2.** The Google Sheet script now rejects oversized or malformed submissions. If you set it up before, paste in the [new script](https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs) and create a new version of the deployment (the URL stays the same).
 - **Privacy:** changing your mind about analytics switches it off at once and deletes its cookies.
+- **The file checker now looks for answers that give themselves away.** When the correct option is usually the longest one, students can win without knowing anything. The checker reports how often "always pick the longest option" (or the shortest, or the one that repeats the question's words) would be right, compared with chance, and lists questions whose correct answer is much longer than the others. It also flags "all of the above", absolute words such as "always" or "never" that appear only in wrong options, survey questions that repeat a board question, and spreadsheet errors such as `#NAME?`. See *Checking your file*.
+- **Revised demo and statistics questions.** In the 16S demo, picking the longest option used to be right 69% of the time; it is now 21% (chance is 25%). Several questions were corrected (for example, QIIME 2 commands and flags), two questions whose options a spreadsheet had turned into `#NAME?` were restored, a few questions now use the numeric, ordering, select-all and short-answer formats, and there are six new wildcards.
+- **The question-writer skill** now checks every batch for these cues before building the file.
 
 **October 2026 (documentation)**
 
