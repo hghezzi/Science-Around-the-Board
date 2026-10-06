@@ -53,10 +53,32 @@ export function parseIndexList(cell) {
   )].sort((a, b) => a - b);
 }
 
-/** Parse a number written with optional thousands separators ("1,500", " 2.5 "). */
+/**
+ * Parse a number the way people type it, anywhere in the world:
+ *   "1,500" / "1 500" / "1,000.5"  -> thousands separators (groups of 3 digits)
+ *   "2,5" / "0,05" / "1.000,5"     -> decimal comma
+ *   "−5" (Unicode minus), " 2.5 ", "1e-3"
+ * Returns NaN when the text isn't a number.
+ */
 export function parseNumber(value) {
   if (typeof value === "number") return value;
-  const s = String(value ?? "").trim().replace(/,/g, "");
+  let s = String(value ?? "")
+    .trim()
+    .replace(/[\u2212\u2012\u2013\uFE63\uFF0D]/g, "-");
+  // Spaces (incl. no-break and thin spaces) as thousands separators: "1 500 000".
+  if (/^[-+]?\d{1,3}([\s\u00a0\u202f\u2009]\d{3})+([.,]\d+)?$/.test(s)) s = s.replace(/[\s\u00a0\u202f\u2009]/g, "");
+  const comma = s.lastIndexOf(",");
+  const dot = s.lastIndexOf(".");
+  if (comma >= 0 && dot >= 0) {
+    // Both present: the last one is the decimal separator, the other groups thousands.
+    if (comma > dot && /^[-+]?\d{1,3}(\.\d{3})+,\d+$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+    else if (dot > comma && /^[-+]?\d{1,3}(,\d{3})+\.\d+$/.test(s)) s = s.replace(/,/g, "");
+    else return NaN;
+  } else if (comma >= 0) {
+    const thousands = /^[-+]?[1-9]\d{0,2}(,\d{3})+$/.test(s);
+    if (thousands) s = s.replace(/,/g, "");
+    else if (/^[-+]?\d*,\d+$/.test(s)) s = s.replace(",", ".");
+  }
   if (!/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(s)) return NaN;
   return Number(s);
 }
@@ -232,7 +254,8 @@ export function checkAnswer(q, response) {
         break;
       }
       case "numeric": {
-        const x = parseNumber(response);
+        // "50%" counts as 50: the unit is already in the question.
+        const x = parseNumber(String(response).trim().replace(/\s*%$/, ""));
         const target = q.numericAnswer;
         if (!Number.isNaN(x) && !Number.isNaN(target)) {
           const t = q.tolerance || { abs: 0 };
@@ -251,7 +274,10 @@ export function checkAnswer(q, response) {
         correct = got.length > 0 && (q.acceptedAnswers || []).some((a) => {
           const want = normalizeText(a);
           if (got === want) return true;
-          return want.length >= 5 && editDistance(got, want) <= 1;
+          // One typo is forgiven on longer answers, but never in a number:
+          // "1980s" is not a typo of "1990s".
+          const digits = (t) => t.replace(/\D/g, "");
+          return want.length >= 5 && digits(got) === digits(want) && editDistance(got, want) <= 1;
         });
         break;
       }

@@ -49,3 +49,29 @@ describe("topic helpers", () => {
     expect(getModulesForTopic(rows, "Chem")).toEqual(["W1"]);
   });
 });
+
+describe("parseTsv edge cases", () => {
+  it("ignores a UTF-8 byte-order mark (Excel's 'UTF-8' export)", () => {
+    const bom = String.fromCharCode(0xfeff);
+    const text = `${bom}id\tquestion\ttype\nq1\tWhat?\tproperty`;
+    expect(Object.keys(parseTsv(text)[0])).toEqual(["id", "question", "type"]);
+    expect(parseTsv(text)[0].id).toBe("q1");
+    expect(parseTsvHeaders(text)[0]).toBe("id");
+  });
+
+  it("unwraps quoted cells but keeps a lone quote character", () => {
+    const rows = parseTsv('id\tquestion\toption1\nq1\t"Say ""hi"""\t"');
+    expect(rows[0].question).toBe('Say "hi"');
+    expect(rows[0].option1).toBe('"');
+  });
+
+  it("keeps non-English text intact", () => {
+    const rows = parseTsv("id\tquestion\nq1\t¿Qué es el ADN? β-diversité 多样性");
+    expect(rows[0].question).toBe("¿Qué es el ADN? β-diversité 多样性");
+  });
+
+  it("fills missing trailing cells with empty strings", () => {
+    const rows = parseTsv("id\tquestion\ttype\nq1\tWhat?");
+    expect(rows[0].type).toBe("");
+  });
+});

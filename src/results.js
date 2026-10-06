@@ -4,7 +4,7 @@
 import { teamDisplayName } from "./labels.js";
 
 // Stop spreadsheet apps from treating typed text such as "=SUM(...)" as a formula
-// (OWASP CSV injection list: also a leading tab or carriage return).
+// (OWASP CSV injection: =, +, -, @, and a leading tab or carriage return).
 const safeCell = (v) => (typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
 
 export function toCsv(rows) {
@@ -14,7 +14,9 @@ export function toCsv(rows) {
 }
 
 export function resultsFilename(topic, module, date = new Date()) {
-  const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  // ASCII-only file names travel safely through every LMS; accents are dropped ("Biología" -> "biologia").
+  const slug = (s) => String(s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const pad = (n) => String(n).padStart(2, "0");
   const stamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
   const name = [slug(topic), slug(module)].filter(Boolean).join("_") || "game";
