@@ -12,7 +12,7 @@
 
 You need:
 
-- **A computer** (a laptop or desktop, not a phone) with an up-to-date browser such as Chrome, Edge, Firefox or Safari. Your instructor will tell you how many teams share each computer. A computer can host 1 to 4 teams.
+- **A computer** (a laptop, a desktop or a tablet held sideways; a phone screen is too small) with an up-to-date browser such as Chrome, Edge, Firefox or Safari. Your instructor will tell you how many teams share each computer. A computer can host 1 to 4 teams.
 - **Your instructor's questions.** This is either a **game link** or a **question file** (`.tsv`, or a protected `.lock` file).
 - **The class password**, but only if your file is a `.lock` file.
 - **Any image files** your instructor gave you. They are optional.
