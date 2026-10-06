@@ -7,7 +7,7 @@
 //
 // Callers should pass a `key` that changes per question so state resets.
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Button, Checkbox, FormControlLabel, TextField, Typography, Alert } from "@mui/material";
 import { hasResponse } from "./questionFormats";
 
@@ -42,6 +42,21 @@ function initialResponse(q, value) {
     case "text": return "";
     default: return null;
   }
+}
+
+// Small text tag on revealed answers, so right/wrong is never shown by colour alone.
+function Tag({ ok, children }) {
+  return (
+    <Box
+      component="span"
+      sx={{
+        ml: "auto", pl: 1.5, flexShrink: 0, fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap",
+        color: ok ? "success.main" : "error.main",
+      }}
+    >
+      <span aria-hidden>{ok ? "✓ " : "✗ "}</span>{children}
+    </Box>
+  );
 }
 
 const HINTS = {
@@ -85,6 +100,21 @@ export default function QuestionInput({
     onSubmit(response);
   };
 
+  // Game mode: keys A–D (or 1–4) pick a multiple-choice answer.
+  const shortcuts = format === "mcq" && !survey && Boolean(onSubmit) && !locked;
+  useEffect(() => {
+    if (!shortcuts) return undefined;
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || "")) return;
+      const k = e.key.toLowerCase();
+      const i = "abcd".indexOf(k) >= 0 ? "abcd".indexOf(k) : "1234".indexOf(k);
+      if (i >= 0 && i < (q.options || []).length) { e.preventDefault(); onSubmit(i); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcuts, q, onSubmit]);
+
   const image = q.image && resolveImage ? <QuestionImage src={resolveImage(q.image)} maxHeight={imageMaxHeight} /> : null;
   const hint = HINTS[format] ? (
     <Typography variant="caption" color="textSecondary" sx={{ display: "block", mb: 1 }}>{HINTS[format]}</Typography>
@@ -104,20 +134,23 @@ export default function QuestionInput({
   if (format === "mcq") {
     const picked = locked ? reveal.response : response;
     body = (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
         {q.options.map((opt, i) => {
-          let borderColor = COLORS.border, bgColor = "transparent", textColor = COLORS.text;
+          let borderColor = COLORS.border, bgColor = "transparent", textColor = COLORS.text, tag = null;
           if (locked) {
             if (i === picked) {
               borderColor = reveal.correct ? COLORS.success : COLORS.danger;
               bgColor = reveal.correct ? COLORS.successBg : COLORS.dangerBg;
               textColor = borderColor;
+              tag = <Tag ok={reveal.correct}>{reveal.correct ? "Your answer, correct" : "Your answer"}</Tag>;
             } else if (i === q.answer && !reveal.correct) {
               borderColor = COLORS.success;
+              tag = <Tag ok>Correct answer</Tag>;
             }
           } else if (survey && i === picked) {
             borderColor = COLORS.selected; bgColor = COLORS.selectedBg;
           }
+          const highlighted = i === picked || tag;
           return (
             <Button
               key={i}
@@ -127,17 +160,34 @@ export default function QuestionInput({
               aria-pressed={i === picked}
               onClick={() => (survey ? update(i) : onSubmit && onSubmit(i))}
               sx={{
-                justifyContent: "flex-start", textAlign: "left", py: 1.5, px: 2, textTransform: "none",
-                borderColor, backgroundColor: bgColor, color: textColor, whiteSpace: "normal",
-                borderWidth: i === picked ? "2px" : "1px",
+                justifyContent: "flex-start", alignItems: "center", textAlign: "left", py: 1.25, px: 1.5, textTransform: "none",
+                borderColor, backgroundColor: bgColor, color: textColor, whiteSpace: "normal", fontWeight: 700, fontSize: "1rem",
+                borderWidth: highlighted ? "2px" : "1px",
                 "&.Mui-disabled": { color: textColor, borderColor },
                 "&:hover": { borderColor: COLORS.selected, backgroundColor: locked ? bgColor : COLORS.selectedBg },
+                "& .opt-letter": { borderColor: highlighted ? borderColor : COLORS.border },
               }}
             >
-              <span style={{ fontWeight: "bold", marginRight: 10, minWidth: 20 }}>{String.fromCharCode(65 + i)}.</span> {opt}
+              <Box
+                component="span"
+                className="opt-letter"
+                sx={{
+                  flexShrink: 0, width: 30, height: 30, mr: 1.5, borderRadius: "50%", border: "2px solid",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "0.85rem",
+                }}
+              >
+                {String.fromCharCode(65 + i)}.
+              </Box>
+              <span>{opt}</span>
+              {tag}
             </Button>
           );
         })}
+        {shortcuts && (
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: "right" }}>
+            Tip: press {["A", "B", "C", "D"].slice(0, q.options.length).join(", ")} on the keyboard to answer.
+          </Typography>
+        )}
       </Box>
     );
   } else if (format === "multi") {
@@ -153,7 +203,13 @@ export default function QuestionInput({
               key={i}
               disabled={locked}
               control={<Checkbox checked={checked} onChange={() => update(checked ? picked.filter((x) => x !== i) : [...picked, i])} />}
-              label={<Typography sx={{ color, fontWeight: locked && isAnswer ? "bold" : "normal" }}>{opt}</Typography>}
+              label={
+                <Typography component="span" sx={{ color, fontWeight: locked && isAnswer ? "bold" : "normal" }}>
+                  {opt}
+                  {locked && isAnswer && <Tag ok>{checked ? "Correct, you chose it" : "Correct, you missed it"}</Tag>}
+                  {locked && !isAnswer && checked && <Tag ok={false}>Not correct</Tag>}
+                </Typography>
+              }
               sx={{ "& .Mui-disabled": { color: color ? `${color} !important` : undefined } }}
             />
           );
@@ -171,7 +227,10 @@ export default function QuestionInput({
         onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
         placeholder={format === "numeric" ? "e.g. 42" : "Your answer"}
         slotProps={{ htmlInput: { inputMode: format === "numeric" ? "decimal" : "text", "aria-label": "Answer" } }}
-        sx={locked ? { "& .MuiOutlinedInput-notchedOutline": { borderColor: `${reveal.correct ? COLORS.success : COLORS.danger} !important`, borderWidth: 2 } } : undefined}
+        sx={locked ? {
+          "& .MuiOutlinedInput-notchedOutline": { borderColor: `${reveal.correct ? COLORS.success : COLORS.danger} !important`, borderWidth: 2 },
+          "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: COLORS.text, fontWeight: 700 },
+        } : undefined}
       />
     );
   } else if (format === "order") {
@@ -199,6 +258,7 @@ export default function QuestionInput({
             >
               <Typography sx={{ fontWeight: "bold", minWidth: 24 }}>{i + 1}.</Typography>
               <Typography sx={{ flex: 1 }}>{item}</Typography>
+              {locked && <Tag ok={right}>{right ? "Right place" : `Should be ${(q.correctOrder || []).indexOf(item) + 1}`}</Tag>}
               {!locked && (
                 <>
                   <Button size="small" variant="outlined" sx={{ minWidth: 36 }} disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move "${item}" up`}>↑</Button>

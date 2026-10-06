@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import CryptoJS from "crypto-js";
 
 const ROLLS = Number(process.env.ROLLS || 10);
-const server = await preview({ preview: { port: 4181, strictPort: false }, logLevel: "error" });
+const server = await preview({ preview: { port: Number(process.env.SMOKE_PORT || 4181), strictPort: false }, logLevel: "error" });
 const BASE = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const failures = [];
@@ -18,7 +18,7 @@ const fail = (msg) => { failures.push(msg); console.log(`  ✗ ${msg}`); };
 // Buttons the bot may press in game dialogs, in order of preference.
 const DIALOG_BUTTONS = [/^Next question/i, /^Finish exam/i, /^Finish quiz/i, /^Start exam/i, /^Accept challenge/i,
   /^Start the rescue quiz/i, /^Keep playing/i, /^See final standings/i, /^Sell deed/i, /^Downgrade/i,
-  /^Buy$/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full$/i, /^Cancel$/i];
+  /^Buy\b/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full/i, /^Cancel$/i];
 
 // Service workers are blocked except in the offline scenario: requests they answer
 // from their cache would bypass page.route() mocks.
@@ -253,7 +253,7 @@ async function resumeScenario() {
   await playTurns(page, "resume", 3);
   const turn = page.getByText(/^Turn \d+$/);
   const before = await turn.textContent();
-  const worth = page.getByText(/^Net worth -?\$\d+$/); // team panel only (tile cards also show prices)
+  const worth = page.getByText(/^Net worth [-−]?\$[\d,]+$/); // team panel only (tile cards also show prices)
   const worthBefore = await worth.allTextContents();
   await page.reload();
   await page.getByRole("button", { name: /^Resume$/ }).click();

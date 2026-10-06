@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import CryptoJS from "crypto-js"; 
 import { buildBoardFromTsv } from "./gameData"; 
 import GameScreen from "./GameScreen";
@@ -18,13 +18,22 @@ import ConsentBanner from "./ConsentBanner";
 import PasswordDialog from "./components/PasswordDialog";
 import InstallButton from "./components/InstallButton";
 import { DECK_SHORTCUTS, buildShareLink, isUnpublishedSheet, normalizeDeckUrl, normalizeImagesBase, readDeckParams } from "./deckLinks";
-import { TEAM_COLORS, TEAM_SYMBOLS } from "./theme";
+import { TEAM_COLORS, TEAM_SYMBOLS, TEAM_INK } from "./theme";
 import { teamDisplayName } from "./labels";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
   Box, Slider, Divider, Modal, Alert, Paper, TextField, Accordion, AccordionSummary, AccordionDetails,
 } from "@mui/material";
+
+/** Team symbol on its deep team colour. */
+function TeamToken({ index, size = 22 }) {
+  return (
+    <Box aria-hidden sx={{ width: size, height: size, borderRadius: "50%", bgcolor: TEAM_INK[index], color: "common.white", fontSize: Math.round(size * 0.5), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 0 0 2px ${TEAM_COLORS[index]}`, verticalAlign: "middle" }}>
+      {TEAM_SYMBOLS[index]}
+    </Box>
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /* SURVEY VIEWS                                                               */
@@ -43,6 +52,7 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
     if (lock[currentPlayer]) return;
     setSliderValues((prev) => prev.map((p, i) => (i === currentPlayer ? { ...p, [key]: val } : p)));
   };
+  const headingRef = useRef(null);
   const submitConfidence = () => setLock((prev) => prev.map((x, i) => (i === currentPlayer ? true : x)));
   const setAns = (qi, response) =>
     setAnswers((prev) => prev.map((P, i) => (i === currentPlayer ? P.map((x, j) => (j === qi ? response : x)) : P)));
@@ -51,6 +61,7 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
     if (currentPlayer < playerCount - 1) {
       setCurrentPlayer((p) => p + 1);
       window.scrollTo(0, 0);
+      headingRef.current?.focus(); // screen readers start again at the top for the next team
       return;
     }
     const rows = [];
@@ -79,15 +90,22 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
   const currentSliders = sliderValues[currentPlayer];
   const locked = lock[currentPlayer];
   const lastLabel = isPre ? "Start Game" : "Finish Surveys";
+  const answered = (answers[currentPlayer] || []).filter((a) => a != null && (!Array.isArray(a) || a.length > 0) && a !== "").length;
+  const scaleLabels = [{ value: 0, label: "0" }, { value: 5, label: "5" }, { value: 10, label: "10" }];
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 5 }}>
     <Container maxWidth="md">
       <Card sx={{ p: { xs: 3, md: 5 } }}>
-        <Typography variant="h4" gutterBottom>{isPre ? "Pre-Game Survey" : "Post-Game Survey"}</Typography>
+        <Typography variant="h4" component="h1" gutterBottom ref={headingRef} tabIndex={-1} sx={{ outline: "none" }}>{isPre ? "Pre-Game Survey" : "Post-Game Survey"}</Typography>
+        {currentPlayer > 0 && !locked && (
+          <Alert severity="info" icon={<span aria-hidden>🔄</span>} sx={{ mb: 2 }}>
+            Thanks, {teamDisplayName(currentPlayer - 1, playerCount)}! Pass the computer to <strong>{teamDisplayName(currentPlayer, playerCount)}</strong>.
+          </Alert>
+        )}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Box aria-hidden sx={{ width: 22, height: 22, borderRadius: "50%", bgcolor: TEAM_COLORS[currentPlayer], color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", textShadow: "0 0 2px rgba(0,0,0,.7)" }}>{TEAM_SYMBOLS[currentPlayer]}</Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{teamDisplayName(currentPlayer, playerCount)} · player {currentPlayer + 1} of {playerCount}</Typography>
+          <TeamToken index={currentPlayer} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{teamDisplayName(currentPlayer, playerCount)}{playerCount > 1 ? ` · team ${currentPlayer + 1} of ${playerCount}` : ""}</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           {isPre ? "Answer on your own; this is your starting point, not a test. The best score goes first." : "Same questions as before the game. How much have you learned?"}
@@ -95,11 +113,19 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
         <Divider sx={{ my: 3 }} />
         {C.length > 0 && (
           <>
-            <Typography variant="h5" sx={{ color: "primary.main" }}>Section 1 – Confidence</Typography>
+            <Typography variant="h5" component="h2" sx={{ color: "primary.main" }}>Section 1 – Confidence</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>How much do you agree? 0 = not at all, 10 = completely.</Typography>
             {C.map((cfg) => (
-              <Box key={cfg.key} sx={{ my: 4 }}>
-                <Typography variant="h6" gutterBottom>{cfg.label}</Typography>
-                <Slider min={0} max={10} marks value={currentSliders[cfg.key] ?? 5} disabled={locked} onChange={(_, v) => handleSliderChange(cfg.key, v)} valueLabelDisplay="auto" aria-label={cfg.label} />
+              <Box key={cfg.key} sx={{ my: 3.5, px: 1 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 2, mb: 0.5 }}>
+                  <Typography variant="h6" component="h3" sx={{ fontSize: "1.1rem" }}>{cfg.label}</Typography>
+                  <Typography aria-hidden sx={{ fontWeight: 800, color: "primary.main", fontSize: "1.25rem", minWidth: 32, textAlign: "right" }}>{currentSliders[cfg.key] ?? 5}</Typography>
+                </Box>
+                <Slider min={0} max={10} step={1} marks={scaleLabels} value={currentSliders[cfg.key] ?? 5} disabled={locked} onChange={(_, v) => handleSliderChange(cfg.key, v)} valueLabelDisplay="auto" aria-label={cfg.label} getAriaValueText={(v) => `${v} out of 10`} />
+                <Box aria-hidden sx={{ display: "flex", justifyContent: "space-between", mt: -0.5 }}>
+                  <Typography variant="caption" color="text.secondary">Not at all</Typography>
+                  <Typography variant="caption" color="text.secondary">Completely</Typography>
+                </Box>
               </Box>
             ))}
           </>
@@ -113,12 +139,12 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
         {locked && (
           <>
             <Divider sx={{ my: 4 }} />
-            <Typography variant="h5" sx={{ color: "primary.main", mb: 2 }}>{C.length > 0 ? "Section 2 – Questions" : "Questions"}</Typography>
+            <Typography variant="h5" component="h2" sx={{ color: "primary.main", mb: 2 }}>{C.length > 0 ? "Section 2 – Questions" : "Questions"}</Typography>
             {currentQuestions.length === 0 && <Typography color="textSecondary">No survey questions in this file.</Typography>}
             {currentQuestions.map((q, qi) => (
               <Box key={`${currentPlayer}-${qi}`} sx={{ mb: 3, p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
                 <Typography variant="overline" color="textSecondary">Question {qi + 1} of {currentQuestions.length}</Typography>
-                <Typography variant="h6" gutterBottom sx={{ mt: 1, whiteSpace: "pre-wrap" }}>{q.prompt}</Typography>
+                <Typography variant="h6" component="h3" gutterBottom sx={{ mt: 0.5, whiteSpace: "pre-wrap", fontSize: "1.1rem" }}>{q.prompt}</Typography>
                 <QuestionInput
                   key={`${phase}-${currentPlayer}-${qi}`}
                   question={q}
@@ -130,9 +156,16 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
                 />
               </Box>
             ))}
-            <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitPlayer}>
-              {currentPlayer < playerCount - 1 ? "Next Player" : lastLabel}
-            </Button>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", mt: 2 }}>
+              <Button variant="contained" size="large" onClick={submitPlayer}>
+                {currentPlayer < playerCount - 1 ? "Next Player" : lastLabel}
+              </Button>
+              {currentQuestions.length > 0 && (
+                <Typography variant="body2" color={answered < currentQuestions.length ? "text.secondary" : "success.main"} sx={{ fontWeight: 700 }} aria-live="polite">
+                  {answered} of {currentQuestions.length} answered{answered < currentQuestions.length ? " · blank answers count as not correct" : " ✓"}
+                </Typography>
+              )}
+            </Box>
           </>
         )}
       </Card>
@@ -230,17 +263,22 @@ function SummaryView({ playerCount, config, topic, module, preRows, postRows, ga
           <Box sx={{ textAlign: "center" }}>
             <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1 }}>🏁</Box>
             <Typography variant="h4" component="h1" sx={{ mt: 1 }}>Session complete</Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.5 }}>Nice work! Here's how your survey scores changed.</Typography>
           </Box>
           <Box component="table" sx={{ width: "100%", borderCollapse: "collapse", my: 3, "& td, & th": { p: 1, borderBottom: "1px solid", borderColor: "divider", textAlign: "left" } }}>
-            <thead><tr><th>Team</th><th>Survey before</th><th>Survey after</th></tr></thead>
+            <thead><tr><th scope="col">Team</th><th scope="col">Survey before</th><th scope="col">Survey after</th><th scope="col">Change</th></tr></thead>
             <tbody>
-              {summary.map((t) => (
-                <tr key={t.playerIndex}>
-                  <td>{TEAM_SYMBOLS[t.playerIndex]} {t.team}</td>
-                  <td>{t.preScore}/{t.surveyQuestions}</td>
-                  <td><strong>{t.postScore}/{t.surveyQuestions}</strong></td>
-                </tr>
-              ))}
+              {summary.map((t) => {
+                const delta = t.postScore - t.preScore;
+                return (
+                  <tr key={t.playerIndex}>
+                    <td><Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}><TeamToken index={t.playerIndex} size={20} />{t.team}</Box></td>
+                    <td>{t.preScore}/{t.surveyQuestions}</td>
+                    <td><strong>{t.postScore}/{t.surveyQuestions}</strong></td>
+                    <Box component="td" sx={{ fontWeight: 800, color: delta > 0 ? "success.main" : delta < 0 ? "error.main" : "text.secondary" }}>{delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : "±0"}</Box>
+                  </tr>
+                );
+              })}
             </tbody>
           </Box>
           <Typography variant="h6" component="h2">Who played?</Typography>
@@ -534,13 +572,14 @@ export default function App() {
       <Card
         component="button"
         onClick={action.onClick}
-        sx={{ p: 2.5, textAlign: "left", cursor: "pointer", font: "inherit", color: "text.primary", bgcolor: "background.paper", display: "flex", gap: 2, alignItems: "center", width: "100%", transition: "transform .15s, box-shadow .15s", "&:hover": { transform: "translateY(-2px)", boxShadow: 6 }, "&:focus-visible": { outline: "3px solid", outlineColor: "primary.main" } }}
+        sx={{ p: 2.5, textAlign: "left", cursor: "pointer", font: "inherit", color: "text.primary", bgcolor: "background.paper", display: "flex", gap: 2, alignItems: "center", width: "100%", transition: "transform .15s, box-shadow .15s", "&:hover": { transform: "translateY(-2px)", boxShadow: 6, borderColor: "primary.main" }, "&:focus-visible": { outline: "3px solid", outlineColor: "primary.main", outlineOffset: 2 }, "@media (prefers-reduced-motion: reduce)": { transition: "none", "&:hover": { transform: "none" } } }}
       >
         <Box aria-hidden sx={{ fontSize: 34, lineHeight: 1 }}>{icon}</Box>
-        <Box>
-          <Typography variant="h6" sx={{ lineHeight: 1.2 }}>{title}</Typography>
-          <Typography variant="body2" color="text.secondary">{text}</Typography>
+        <Box component="span" sx={{ display: "block", flex: 1 }}>
+          <Typography variant="h6" component="span" sx={{ display: "block", lineHeight: 1.2 }}>{title}</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" sx={{ display: "block" }}>{text}</Typography>
         </Box>
+        <Box aria-hidden component="span" sx={{ fontSize: 22, color: "text.secondary" }}>›</Box>
       </Card>
     );
 
@@ -548,8 +587,8 @@ export default function App() {
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: { xs: 4, md: 8 } }}>
         <Container maxWidth="sm" sx={{ textAlign: "center" }}>
           <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1, mb: 1 }}>🎲</Box>
-          <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1 }}>Science Around the Board</Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, mb: 4 }}>
+          <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1, textWrap: "balance" }}>Science Around the Board</Typography>
+          <Typography variant="h6" component="p" color="text.secondary" sx={{ fontWeight: 500, mb: 4, textWrap: "balance" }}>
             Turn any course into a board-game review session: roll, answer, invest and outwit the other teams.
           </Typography>
 
@@ -558,9 +597,9 @@ export default function App() {
               severity="info"
               sx={{ mb: 2, textAlign: "left" }}
               action={
-                <Box sx={{ display: "flex", gap: 1 }}>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                   <Button variant="contained" size="small" onClick={resumeSaved}>Resume</Button>
-                  <Button size="small" color="inherit" onClick={discardSaved}>Start over</Button>
+                  <Button size="small" color="inherit" onClick={discardSaved} sx={{ whiteSpace: "nowrap" }}>Start over</Button>
                 </Box>
               }
             >
@@ -578,7 +617,7 @@ export default function App() {
               <Card sx={{ p: 2.5, display: "flex", gap: 2, alignItems: "center", bgcolor: "background.paper" }}>
                 <Box aria-hidden sx={{ fontSize: 34, lineHeight: 1 }}>📂</Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" sx={{ lineHeight: 1.2 }}>Use your instructor's questions</Typography>
+                  <Typography variant="h6" component="h2" sx={{ lineHeight: 1.2 }}>Use your instructor's questions</Typography>
                   <Typography variant="body2" color="text.secondary">Upload the .tsv or encrypted .lock file you were given.</Typography>
                 </Box>
                 <Button variant="contained" component="label">
@@ -617,6 +656,7 @@ export default function App() {
           <InstallButton />
 
           <Typography variant="body2" sx={{ mt: 4 }}>
+            <a href="./guide/students.html" target="_blank" rel="noopener">How to play</a> ·{" "}
             <a href="./guide/" target="_blank" rel="noopener">Instructor guide</a> ·{" "}
             <a href="./encryptor.html" target="_blank" rel="noopener">Encrypt a question file</a>
           </Typography>
@@ -642,7 +682,8 @@ export default function App() {
           <Typography variant="h3" component="h1" sx={{ textAlign: "center", mb: 4 }}>Game setup</Typography>
 
           <Card sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>1 · How many teams?</Typography>
+            <Typography variant="h6" component="h2" gutterBottom>1 · How many teams?</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5, mb: 1.5 }}>Teams take turns on this computer. A team can be one student or a small group.</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1.5 }}>
               {[1, 2, 3, 4].map((n) => (
                 <Box
@@ -650,12 +691,10 @@ export default function App() {
                   component="button"
                   aria-pressed={playerCount === n}
                   onClick={() => setPlayerCount(n)}
-                  sx={{ p: 1.5, borderRadius: 2, cursor: "pointer", font: "inherit", color: "text.primary", bgcolor: playerCount === n ? "action.selected" : "background.paper", border: "2px solid", borderColor: playerCount === n ? "primary.main" : "divider" }}
+                  sx={{ p: 1.5, borderRadius: 2, cursor: "pointer", font: "inherit", color: "text.primary", bgcolor: playerCount === n ? "action.selected" : "background.paper", border: "2px solid", borderColor: playerCount === n ? "primary.main" : "divider", "&:hover": { borderColor: "primary.main" }, "&:focus-visible": { outline: "3px solid", outlineColor: "primary.main", outlineOffset: 2 } }}
                 >
                   <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5, mb: 0.5 }}>
-                    {TEAM_COLORS.slice(0, n).map((c, i) => (
-                      <Box key={i} aria-hidden sx={{ width: 20, height: 20, borderRadius: "50%", bgcolor: c, color: "#fff", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", textShadow: "0 0 2px rgba(0,0,0,.7)" }}>{TEAM_SYMBOLS[i]}</Box>
-                    ))}
+                    {TEAM_COLORS.slice(0, n).map((c, i) => <TeamToken key={i} index={i} size={20} />)}
                   </Box>
                   <Typography sx={{ fontWeight: 800 }}>{n === 1 ? "Solo" : `${n} teams`}</Typography>
                 </Box>
@@ -664,7 +703,7 @@ export default function App() {
           </Card>
 
           <Card sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6">2 · Session length</Typography>
+            <Typography variant="h6" component="h2">2 · Session length</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
               The game ends when one team is left standing, or when time runs out (highest net worth wins).
             </Typography>
@@ -674,7 +713,7 @@ export default function App() {
           </Card>
 
           <Card sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>3 · Choose a topic</Typography>
+            <Typography variant="h6" component="h2" gutterBottom>3 · Choose a topic</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 1.5 }}>
               {topics.map((t) => (
                 <Box
@@ -682,10 +721,10 @@ export default function App() {
                   component="button"
                   aria-pressed={gameMode === t}
                   onClick={() => selectTopic(t)}
-                  sx={{ p: 2.5, borderRadius: 2, cursor: "pointer", font: "inherit", textAlign: "left", color: "text.primary", bgcolor: gameMode === t ? "action.selected" : "background.paper", border: "2px solid", borderColor: gameMode === t ? "primary.main" : "divider", transition: "transform .15s", "&:hover": { transform: "translateY(-2px)" } }}
+                  sx={{ p: 2.5, borderRadius: 2, cursor: "pointer", font: "inherit", textAlign: "left", color: "text.primary", bgcolor: gameMode === t ? "action.selected" : "background.paper", border: "2px solid", borderColor: gameMode === t ? "primary.main" : "divider", transition: "transform .15s", "&:hover": { transform: "translateY(-2px)", borderColor: "primary.main" }, "&:focus-visible": { outline: "3px solid", outlineColor: "primary.main", outlineOffset: 2 }, "@media (prefers-reduced-motion: reduce)": { transition: "none", "&:hover": { transform: "none" } } }}
                 >
-                  <Typography variant="h6" sx={{ color: "primary.main" }}>{t}</Typography>
-                  {gameMode === t && selectedModule && <Typography variant="body2" color="text.secondary">Module: {selectedModule}</Typography>}
+                  <Typography variant="h6" component="span" sx={{ display: "block", color: "primary.main" }}>{t}</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary" sx={{ display: "block" }}>{gameMode === t && selectedModule ? `Module: ${selectedModule}` : "Select to choose a module"}</Typography>
                 </Box>
               ))}
             </Box>
@@ -694,15 +733,19 @@ export default function App() {
 
         <Paper elevation={6} sx={{ p: 2, position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 2, zIndex: 100, borderRadius: 0 }}>
           <Button size="small" color="inherit" onClick={resetFile}>Change file</Button>
-          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game →</Button>
+          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" }, fontWeight: 700 }} aria-live="polite">
+            {gameMode ? `${playerCount === 1 ? "Solo" : `${playerCount} teams`} · ${sessionMinutes ? `${sessionMinutes} min` : "no timer"} · ${[gameMode, selectedModule].filter(Boolean).join(" / ")}` : "Choose a topic to start"}
+          </Typography>
+          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game <span aria-hidden>&nbsp;→</span></Button>
         </Paper>
 
         <Modal open={moduleModalOpen} onClose={() => setModuleModalOpen(false)}>
-          <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(360px, 92vw)", bgcolor: "background.paper", color: "text.primary", p: 4, borderRadius: 3, boxShadow: 24 }}>
-            <Typography variant="h6" gutterBottom>Select module</Typography>
-            {modules.length > 0 ? modules.map((m) => <Button key={m} fullWidth variant={selectedModule === m ? "contained" : "outlined"} onClick={() => setSelectedModule(m)} sx={{ mb: 1 }}>{m}</Button>) : <Typography>No specific modules found.</Typography>}
+          <Box role="dialog" aria-modal="true" aria-labelledby="module-title" sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(400px, 92vw)", maxHeight: "90vh", overflowY: "auto", bgcolor: "background.paper", color: "text.primary", p: 4, borderRadius: 3, boxShadow: 24, outline: "none" }}>
+            <Typography id="module-title" variant="h6" component="h2">Select module</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{gameMode}: which part of the course should the board cover?</Typography>
+            {modules.length > 0 ? modules.map((m) => <Button key={m} fullWidth size="large" aria-pressed={selectedModule === m} variant={selectedModule === m ? "contained" : "outlined"} onClick={() => setSelectedModule(m)} sx={{ mb: 1 }}>{selectedModule === m && <span aria-hidden>✓&nbsp;</span>}{m}</Button>) : <Typography>This topic has no separate modules; the whole topic is used.</Typography>}
             <Divider sx={{ my: 2 }} />
-            <Button fullWidth variant="contained" color="success" sx={{ py: 1.5 }} onClick={confirmModule}>Confirm selection</Button>
+            <Button fullWidth variant="contained" color="success" size="large" sx={{ py: 1.25 }} onClick={confirmModule}>Confirm selection</Button>
           </Box>
         </Modal>
       </Box>
