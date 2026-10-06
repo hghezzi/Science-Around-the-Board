@@ -32,7 +32,7 @@
             background: var(--card); border: 1px solid var(--border);
             padding: 2.5rem; border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-            width: 100%; max-width: 480px; text-align: center;
+            width: 100%; max-width: 520px; text-align: center;
         }
         h1 { margin-top: 0; color: var(--heading); font-size: 1.8rem; }
         p { color: var(--muted); margin-bottom: 2rem; line-height: 1.5; }
@@ -59,28 +59,43 @@
         }
         .btn-encrypt:hover { background: var(--accent-hover); transform: translateY(-1px); }
         .btn-encrypt:active { transform: translateY(1px); }
-        #status { margin-top: 20px; font-size: 0.9rem; min-height: 20px; }
+        #status { margin: 16px 0 0; font-size: 0.9rem; min-height: 20px; }
         .success { color: var(--success); }
         .error { color: var(--error); }
         a { color: var(--accent); }
+        label { text-align: left; font-weight: 600; margin-bottom: -0.6rem; }
+        code { background: var(--chip); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+        .notes { text-align: left; color: var(--muted); font-size: 0.9rem; line-height: 1.5; padding-left: 1.2rem; margin: 1.5rem 0 1rem; }
+        .notes li { margin-bottom: 0.4rem; }
+        .links { margin: 0; font-size: 0.95rem; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Question Encryptor</h1>
-        <p>Prepare your custom question file for secure distribution to students.</p>
+    <main class="container">
+        <h1>Encrypt a question file</h1>
+        <p>Turn your <code>.tsv</code> question file into a password-protected <code>.lock</code> file, so students can't read the answers before they play. Give students the <code>.lock</code> file and the class password; the game asks for the password when they open it.</p>
 
         <div class="form-group">
-            <input type="text" id="password" placeholder="Create a Class Password" autocomplete="off" />
+            <label for="password">1. Choose a class password</label>
+            <input type="text" id="password" placeholder="e.g. Review2026" autocomplete="off" />
 
+            <label for="fileInput">2. Choose your question file (.tsv)</label>
             <input type="file" id="fileInput" accept=".tsv,.txt">
 
-            <button class="btn-encrypt" onclick="encryptFile()">Download .lock File</button>
+            <button class="btn-encrypt" onclick="encryptFile()">3. Download .lock File</button>
         </div>
 
-        <p id="status"></p>
-    </div>
+        <p id="status" role="status"></p>
+
+        <ul class="notes">
+            <li>The encryption happens in this browser: your file is never uploaded.</li>
+            <li>Passwords are case-sensitive. Keep your original <code>.tsv</code>: a <code>.lock</code> file can't be opened without its password.</li>
+            <li>Load the plain <code>.tsv</code> in the game first, to check it, before you encrypt it.</li>
+            <li>This keeps casual eyes off the answer key. It isn't strong security, since every student knows the password.</li>
+        </ul>
+        <p class="links"><a href="./">← Back to the game</a> · <a href="./guide/#optional-encrypting-your-questions-file">Instructor Guide</a></p>
+    </main>
 
     <script>
         function encryptFile() {
@@ -129,7 +144,7 @@
                     a.click();
                     document.body.removeChild(a);
                     
-                    status.innerText = `✅ Success! Downloaded "${filename}"`;
+                    status.innerText = `✅ Downloaded "${filename}". Share it with your students, together with the password.`;
                     status.className = 'success';
                 } catch (err) {
                     console.error(err);
