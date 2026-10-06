@@ -106,7 +106,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `scripts/validate_tsv.py` is a stdlib Python mirror of the validator.
   - `references/` holds the format spec and the question-design guide.
 - `MICB_475_2026_Workshop/`: the real course's encrypted `.lock` and images. Don't modify it without asking.
-- `BackupCode/` and `website/build` + `website/.docusaurus` are committed clutter, ignored by lint.
+- Old code backups and the Docusaurus build output (`website/build`, `website/.docusaurus`) are gitignored; old code lives in the history. `website/` is ignored by lint.
 
 ## Question file (TSV) format
 - Columns: `id, question, option1..option4, correctIndex (1-4), explanation, bigTopic, module, theme, subtheme, type, imageFile`, plus the optional `format, answer, tolerance`. The full spec is in `.claude/skills/sab-question-writer/references/format.md`.
