@@ -17,6 +17,7 @@ import math
 import os
 import re
 import sys
+import unicodedata
 from collections import Counter
 
 KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence", "config"]
@@ -81,11 +82,51 @@ def ordered_unique(items):
     return out
 
 
+SPACES = "\s\u00a0\u202f\u2009"
+
+
 def parse_number(v):
-    s = str(v or "").strip().replace(",", "")
-    if not re.fullmatch(r"[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?", s, re.I):
+    """Mirror of parseNumber in src/questionFormats.js: numbers as people type them.
+
+    "1,500" / "1 500" / "1,000.5" use thousands separators (groups of 3 digits);
+    "2,5" / "0,05" / "1.000,5" use a decimal comma; "−5" (Unicode minus) and "1e-3"
+    work. Ambiguous mixes such as "1,2.3" are rejected. Returns None if not a number.
+    """
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return float(v)
+    s = re.sub("[\u2212\u2012\u2013\ufe63\uff0d]", "-", str(v if v is not None else "").strip())
+    if re.fullmatch(f"[-+]?[0-9]{{1,3}}([{SPACES}][0-9]{{3}})+([.,][0-9]+)?", s):
+        s = re.sub(f"[{SPACES}]", "", s)
+    comma, dot = s.rfind(","), s.rfind(".")
+    if comma >= 0 and dot >= 0:
+        if comma > dot and re.fullmatch(r"[-+]?[0-9]{1,3}(\.[0-9]{3})+,[0-9]+", s):
+            s = s.replace(".", "").replace(",", ".", 1)
+        elif dot > comma and re.fullmatch(r"[-+]?[0-9]{1,3}(,[0-9]{3})+\.[0-9]+", s):
+            s = s.replace(",", "")
+        else:
+            return None
+    elif comma >= 0:
+        if re.fullmatch(r"[-+]?[1-9][0-9]{0,2}(,[0-9]{3})+", s):
+            s = s.replace(",", "")
+        elif re.fullmatch(r"[-+]?[0-9]*,[0-9]+", s):
+            s = s.replace(",", ".", 1)
+    if not re.fullmatch(r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)(e[-+]?[0-9]+)?", s, re.I):
         return None
     return float(s)
+
+
+def normalize_text(s):
+    """Mirror of normalizeText: drop accents and punctuation, lowercase, collapse spaces."""
+    s = unicodedata.normalize("NFKD", str(s if s is not None else ""))
+    s = "".join(ch for ch in s if not ("\u0300" <= ch <= "\u036f")).lower()
+    s = "".join(ch if unicodedata.category(ch)[0] in "LN" or ch.isspace() else " " for ch in s)
+    return " ".join(s.split())
+
+
+def js_parse_int(v):
+    """parseInt(v, 10) from JavaScript: the leading integer, or None."""
+    m = re.match(r"\s*([-+]?[0-9]+)", str(v if v is not None else ""))
+    return int(m.group(1)) if m else None
 
 
 def tolerance_ok(v):
@@ -363,7 +404,7 @@ def validate(headers, rows, image_dir=None):
     if unknown:
         warnings.append(f"Unrecognised column(s) will be ignored: {', '.join(unknown)}.")
 
-    buckets = {k: [] for k in ["type", "case", "noq", "few", "ans", "fmt", "multi", "num", "tol", "text", "noexp", "mishap"]}
+    buckets = {k: [] for k in ["type", "case", "noq", "few", "ans", "fmt", "mcqmany", "multi", "num", "tol", "text", "noexp", "mishap"]}
     ids = Counter(r.get("id") for r in rows if r.get("id"))
     images, positions = set(), Counter()
     format_counts = {"mcq": 0, "trueFalse": 0, "multi": 0, "numeric": 0, "order": 0, "text": 0}
@@ -400,14 +441,14 @@ def validate(headers, rows, image_dir=None):
         if fmt == "mcq":
             if len(opts) < 2:
                 buckets["few"].append(label)
-            try:
-                idx = int(str(r.get("correctIndex", "")).strip())
-            except ValueError:
-                idx = None
+            idx = js_parse_int(r.get("correctIndex", ""))
             if idx is None or idx < 1 or idx > len(opts):
                 buckets["ans"].append(label)
             else:
                 positions[idx] += 1
+                listed = {p for p in re.split(r"[,;|\s]+", str(r.get("correctIndex", ""))) if p}
+                if len({js_parse_int(p) for p in listed}) > 1:
+                    buckets["mcqmany"].append(label)
         elif fmt == "multi":
             if len(opts) < 2:
                 buckets["few"].append(label)
@@ -427,7 +468,7 @@ def validate(headers, rows, image_dir=None):
             if not tolerance_ok(r.get("tolerance")):
                 buckets["tol"].append(label)
         elif fmt == "text":
-            if not any(a.strip() for a in str(r.get("answer", "")).split("|")):
+            if not any(normalize_text(a) for a in str(r.get("answer", "")).split("|")):
                 buckets["text"].append(label)
         if t != "survey" and not (r.get("explanation") or "").strip():
             buckets["noexp"].append(label)
@@ -439,7 +480,7 @@ def validate(headers, rows, image_dir=None):
     if b["type"]:
         warnings.append(f"Unknown type, row will be ignored: {summarize(b['type'])}. Valid types: {', '.join(KNOWN_TYPES)}.")
     if b["case"]:
-        warnings.append(f"Type is not lowercase: {summarize(b['case'])}.")
+        warnings.append(f"Type is not lowercase: {summarize(b['case'])}. The game accepts it, but lowercase keeps the file consistent.")
     if b["noq"]:
         errors.append(f"Empty question text: {summarize(b['noq'])}.")
     if b["few"]:
@@ -448,6 +489,8 @@ def validate(headers, rows, image_dir=None):
         errors.append(f"correctIndex is missing or does not point to a filled option (use 1-4): {summarize(b['ans'])}.")
     if b["fmt"]:
         errors.append(f"Unknown format: {summarize(b['fmt'])}. Valid formats: {', '.join(FORMATS)} (blank = mcq).")
+    if b["mcqmany"]:
+        warnings.append(f"correctIndex lists several options but the format is multiple choice, so only the first counts: {summarize(b['mcqmany'])}. For select-all-that-apply, set format to multi.")
     if b["multi"]:
         errors.append(f'Multi-select correctIndex must list filled options, e.g. "1,3": {summarize(b["multi"])}.')
     if b["num"]:
@@ -455,7 +498,7 @@ def validate(headers, rows, image_dir=None):
     if b["tol"]:
         errors.append(f"Invalid tolerance (use 0.5 or 5%): {summarize(b['tol'])}.")
     if b["text"]:
-        errors.append(f'Short-text questions need accepted answers in "answer", separated by |: {summarize(b["text"])}.')
+        errors.append(f'Short-text questions need accepted answers (with letters or digits) in the "answer" column, separated by | : {summarize(b["text"])}.')
     if b["mishap"]:
         warnings.append(f"Mishap without an explicit amount such as (+$100) or (-$50): {summarize(b['mishap'])}.")
     if b["noexp"]:

@@ -208,6 +208,29 @@ describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_ts
     });
   });
 
+  it("parses numbers like the game (decimal commas, spaced thousands, Unicode minus)", () => {
+    const cases = {
+      "1,500": 1500, "1 500": 1500, "1 500 000": 1500000, "2,5": 2.5, "0,05": 0.05, "1.000,5": 1000.5,
+      "1,000.5": 1000.5, "−5": -5, "1e-3": 0.001, " 2.5 ": 2.5, "12,34": 12.34, "1,2.3": null, "abc": null, "": null,
+    };
+    const code = `import json,sys; sys.path.insert(0, ${JSON.stringify(join(PY_VALIDATOR, ".."))}); from validate_tsv import parse_number; print(json.dumps({k: parse_number(k) for k in json.loads(sys.argv[1])}))`;
+    const out = spawnSync("python3", ["-c", code, JSON.stringify(Object.keys(cases))], { encoding: "utf8" });
+    expect(JSON.parse(out.stdout)).toEqual(cases);
+  });
+
+  it("warns on mcq rows with several answers and errors on punctuation-only text answers", () => {
+    const rows = [
+      HEADER + "\tformat\tanswer\ttolerance",
+      ["m", "Pick one", "A", "B", "C", "D", "1,3", "Why.", "Topic", "Mod", "T1", "T1-a", "property", "", "", "", ""].join("\t"),
+      ["t", "Type it", "", "", "", "", "", "Why.", "Topic", "Mod", "T1", "T1-a", "property", "", "text", "?!|...", ""].join("\t"),
+      ["c", "Case", "A", "B", "C", "D", "1", "Why.", "Topic", "Mod", "T1", "T1-a", "Property", "", "", "", ""].join("\t"),
+    ].join("\n");
+    const py = runPython(rows);
+    expect(py.warnings).toContain('correctIndex lists several options but the format is multiple choice, so only the first counts: "m". For select-all-that-apply, set format to multi.');
+    expect(py.errors).toContain('Short-text questions need accepted answers (with letters or digits) in the "answer" column, separated by | : "t".');
+    expect(py.warnings).toContain('Type is not lowercase: "c". The game accepts it, but lowercase keeps the file consistent.');
+  });
+
   it("produces every kind of message on the fixture", () => {
     const js = checkItemQuality(parseTsv(fixture));
     expect(js.errors).toHaveLength(1);
