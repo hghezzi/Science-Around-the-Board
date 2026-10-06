@@ -7,6 +7,7 @@ import { preview } from "vite";
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
 import CryptoJS from "crypto-js";
+import { parseTsv } from "../src/tsvParser.js";
 
 const ROLLS = Number(process.env.ROLLS || 10);
 const server = await preview({ preview: { port: Number(process.env.SMOKE_PORT || 4181), strictPort: false }, logLevel: "error" });
@@ -304,7 +305,43 @@ async function offlineScenario() {
   await context.close();
 }
 
+// Debt is settled only after the feedback that caused it: a saved game is injected
+// (Red at tile 2 with $10, owning a milestone; Blue owns the core on tile 4) and
+// Math.random is fixed so the dice roll 1 + 1.
+async function debtScenario() {
+  console.log("▶ debt after rent (deterministic)");
+  const { context, page } = await newPage();
+  const rows = parseTsv(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"));
+  const team = (id, name, color, position, money) => ({ id, name, color, position, money, jailed: false, chaosTokens: 0, rescueUsed: false, eliminated: false });
+  const tiles = Array.from({ length: 36 }, (_, i) => [i === 4 ? 1 : i === 9 ? 0 : null, 0]);
+  const snapshot = {
+    version: 1, savedAt: Date.now(), phase: "GAME", sessionId: "debt-test", allTsvRows: rows, imagesBase: "", gameMode: "16S", selectedModule: "QIIME2",
+    playerCount: 2, sessionMinutes: 0, startPlayer: 0, playerQuestionSets: [[], []], confQ: [], preRows: [], postRows: [], gameRows: [],
+    game: { tiles, players: [team(0, "Red Team", "#e53935", 2, 10), team(1, "Blue Team", "#1e88e5", 0, 2500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
+  };
+  await page.addInitScript((s) => {
+    if (!sessionStorage.getItem("seeded")) { localStorage.setItem("sab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
+    Math.random = () => 0;
+  }, JSON.stringify(snapshot));
+  await page.goto(BASE);
+  const noThanks = page.getByRole("button", { name: "No thanks" });
+  if (await noThanks.count()) await noThanks.click();
+  await page.getByRole("button", { name: /^Resume$/ }).click();
+  await page.getByRole("button", { name: /^Roll/ }).click();
+  const dialog = page.locator(".MuiModal-root").last();
+  await dialog.getByText(/Rent Due: \$120/).waitFor({ timeout: 10000 });
+  if (!(await answerQuestion(dialog))) fail("debt: couldn't answer the rent question");
+  await dialog.getByRole("button", { name: /^Continue$/i }).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no feedback dialog (${(await page.locator("body").innerText()).slice(0, 300)})`));
+  if (/Out of money/i.test(await dialog.innerText())) fail("debt: liquidation replaced the rent feedback");
+  await dialog.getByRole("button", { name: /^Continue$/i }).click();
+  await page.getByText(/Out of money/).waitFor({ timeout: 5000 }).catch(() => fail("debt: no liquidation after the feedback"));
+  await page.getByRole("button", { name: /^Sell deed/i }).click();
+  await page.getByText(/Blue Team's turn/).waitFor({ timeout: 5000 }).catch(() => fail("debt: the turn didn't pass after clearing the debt"));
+  await context.close();
+}
+
 const SCENARIOS = {
+  debt: debtScenario,
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),
   results: resultsScenario,
