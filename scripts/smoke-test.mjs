@@ -218,7 +218,7 @@ async function filesScenario() {
   await dialog.getByText(/password didn't work/).waitFor();
   await dialog.getByLabel(/Class password/).fill("Class-Pass");
   await dialog.getByRole("button", { name: "Unlock" }).click();
-  await page.getByText(/Loaded 177 questions/).waitFor({ timeout: 10000 });
+  await page.getByText(/Loaded 183 questions/).waitFor({ timeout: 10000 });
   await page.waitForTimeout(1500); // image checks run in the background
   if (await page.getByText(/couldn't be found/).count()) fail("files: the demo reports missing images, but all its images are hosted");
   await page.getByRole("button", { name: /Use a different file/ }).click();

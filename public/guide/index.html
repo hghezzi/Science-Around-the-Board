@@ -60,6 +60,12 @@
 </blockquote>
 <nav class="toc" aria-label="Contents"><p class="toc-title">Contents</p><ol><li><a href="#whats-new">What’s new</a></li><li><a href="#introduction">Introduction</a></li><li><a href="#definitions">Definitions</a></li><li><a href="#why-use-science-around-the-board">Why use ‘Science Around the Board’?</a></li><li><a href="#important-links">Important links</a></li><li><a href="#how-to-use-science-around-the-board">How to use ‘Science Around the Board’</a></li><li><a href="#game-mechanics">Game mechanics</a></li><li><a href="#endgame-dynamics">Endgame dynamics</a></li><li><a href="#designing-a-session-based-on-science-around-the-board">Designing a session based on ‘Science Around the Board’</a></li><li><a href="#common-challenges">Common challenges</a></li><li><a href="#privacy-and-student-data">Privacy and student data</a></li><li><a href="#conclusion">Conclusion</a></li></ol></nav>
 <h2 id="whats-new">What’s new</h2>
+<p><strong>October 2026 (update 3)</strong></p>
+<ul>
+<li><strong>The file checker now looks for answers that give themselves away.</strong> When the correct option is usually the longest one, students can win without knowing anything. The checker reports how often &quot;always pick the longest option&quot; (or the shortest, or the one that repeats the question&#39;s words) would be right, compared with chance, and lists questions whose correct answer is much longer than the others. It also flags &quot;all of the above&quot;, absolute words such as &quot;always&quot; or &quot;never&quot; that appear only in wrong options, survey questions that repeat a board question, and spreadsheet errors such as <code>#NAME?</code>. See <em>Checking your file</em>.</li>
+<li><strong>Revised demo and statistics questions.</strong> In the 16S demo, picking the longest option used to be right 69% of the time; it is now 21% (chance is 25%). Several questions were corrected (for example, QIIME 2 commands and flags), two questions whose options a spreadsheet had turned into <code>#NAME?</code> were restored, a few questions now use the numeric, ordering, select-all and short-answer formats, and there are six new wildcards.</li>
+<li><strong>The question-writer skill</strong> now checks every batch for these cues before building the file.</li>
+</ul>
 <p><strong>October 2026 (update 2)</strong></p>
 <ul>
 <li><strong>Results can go straight to you.</strong> Students type their names or student IDs on the end screen, then click <strong>Send results to instructor</strong> (an optional Google Sheet you set up once), <strong>Email results to instructor</strong>, or <strong>Download results</strong>. See <em>Collecting results</em>.</li>
@@ -386,6 +392,8 @@
 <ul>
 <li><strong>Red items</strong> will break the game or make a question impossible to answer correctly. Examples: fewer than 4 themes, a <code>correctIndex</code> that doesn’t point to an option, or a theme with no milestone questions.</li>
 <li><strong>Yellow notes</strong> are suggestions. Examples: too few survey questions, wildcards without an amount, or ignored rows.</li>
+<li><strong>Answer cues</strong> are yellow notes about question quality. Test-wise students pick the longest or most detailed option, avoid options with &quot;always&quot; or &quot;never&quot;, and pick the option that repeats the question&#39;s words. The checker measures how well each of these blind strategies would score on your file. For four options, chance is 25%; if &quot;pick the longest option&quot; would score, say, 60%, students can win without knowing the content. Fix it by making the wrong options as long and as detailed as the right one (real misconceptions, not padding), or by moving the extra detail from the correct option into the explanation.</li>
+<li><strong>Spreadsheet errors</strong> such as <code>#NAME?</code> are red items. Excel and Google Sheets turn text starting with <code>-</code>, <code>+</code> or <code>=</code> (for example <code>--p-sampling-depth</code>) into a formula. Type an apostrophe first, or wrap commands in backticks.</li>
 </ul>
 <p>Load your file yourself before class and fix the red items.</p>
 <p><figure><img src="images/01-landing.png" alt="The start page" loading="lazy"><figcaption>The start page</figcaption></figure></p>
@@ -576,6 +584,7 @@
 <p>When writing your TSV file, remember that the &quot;incorrect&quot; options are just as important as the correct one.</p>
 <ul>
 <li><strong>Write plausible distractors:</strong> do not use throwaway joke answers. Every incorrect option should represent a common student misconception. When a student chooses a distractor, it reveals a specific gap in their mental model.</li>
+<li><strong>Don&#39;t let the answer give itself away:</strong> keep every option the same length, detail and grammar as the correct one. A careful author tends to make the correct answer the longest and most qualified option, and students quickly learn to pick it. Cover the question, read only the options, and ask whether you could guess. The file checker measures this for you.</li>
 <li><strong>Leverage the explanation column:</strong> this is your most powerful teaching tool in the game. Do not just write &quot;Incorrect&quot;. Use this space to immediately correct the specific misconception tied to the distractors. Immediate, targeted feedback at the exact moment of failure is what transforms this from a quiz into a learning tool.</li>
 <li><strong>Write separate survey questions:</strong> make the <code>survey</code> questions parallel to the board content (same LOs) but not copies of board questions, so the post-game survey measures learning rather than memory of an exact question.</li>
 </ul>
