@@ -13,6 +13,11 @@ describe("toCsv", () => {
     const csv = toCsv([{ text: "=SUM(A1:A9)", other: "+1", at: "@cmd", amount: -100 }]);
     expect(csv.split("\n")[1]).toBe(`"'=SUM(A1:A9)","'+1","'@cmd","-100"`);
   });
+
+  it("also neutralises text that starts with a tab or carriage return", () => {
+    const csv = toCsv([{ a: "\t=1+1", b: "\r=2" }]);
+    expect(csv.split("\n")[1]).toBe(`"'\t=1+1","'\r=2"`);
+  });
 });
 
 describe("resultsFilename", () => {
