@@ -71,9 +71,9 @@
 <li><strong>Check it.</strong> Download it as <strong>Tab-separated values (.tsv)</strong> (in Google Sheets: <strong>File → Download</strong>), load it in the game with <strong>Upload</strong> and read the <a href="#checking-your-file">file check</a>. Fix every red item.</li>
 <li><strong>Decide how students get the questions:</strong> a game link to a published Google Sheet, or the file itself, optionally password-protected. See <a href="#sharing-the-game-with-students">Sharing the game with students</a>.</li>
 <li><strong>Decide how results reach you.</strong> By default, students download a results file and submit it on your course page. With one or two extra rows in the file, they can email it to you or send it straight to your own Google Sheet instead. See <a href="#collecting-results">Collecting results</a>.</li>
-<li><strong>In class:</strong> seat teams of 2–4 students; up to four teams can share a computer. Give students the link (or file) and the <a href="students.html">Student Guide</a>, and tell them which session length and module to pick. A suggested 80-minute plan is in <a href="#structuring-your-time-the-boppps-model">Structuring your time</a>.</li>
+<li><strong>In class:</strong> seat groups of 2–4 students; each group plays as one player, and up to four players can share a computer. Give students the link (or file) and the <a href="students.html">Student Guide</a>, and tell them which session length and module to pick. A suggested 80-minute plan is in <a href="#structuring-your-time-the-boppps-model">Structuring your time</a>.</li>
 </ol>
-<p><strong>Before class:</strong> play your own file once, with a 2-team game, from start to results screen, on the kind of computer students will use. It takes about 10 minutes and catches almost every problem.</p>
+<p><strong>Before class:</strong> play your own file once, with a 2-player game, from start to results screen, on the kind of computer students will use. It takes about 10 minutes and catches almost every problem.</p>
 <h2 id="introduction">Introduction</h2>
 <p>Educational practices are constantly evolving, moving away from passive absorption towards active engagement. Growing up in a memorization-heavy system, I experienced firsthand the limitations of rote learning and the powerful impact that active, student-centered strategies can have on both motivation and long-term retention. As instructors, our primary goal is to support such deeper learning, but we should not view this as a strictly rigid or purely serious process.</p>
 <p>This is where the potential of playful pedagogy becomes transformative. By integrating game mechanics such as competition, resource management, and immediate feedback into the curriculum, we can create a dynamic environment where students feel safe to fail and eager to try again. The game I developed, Science Around the Board, leverages these principles to turn reviewing into an engaging learning cycle. This manual will guide you through that transition, showing you how to align the dynamic energy of a board game with the rigorous learning objectives of your course.</p>
@@ -83,17 +83,17 @@
 <h3 id="what-is-science-around-the-board">What is Science Around the Board?</h3>
 <p>Science Around the Board is a customizable, web-based, open-source educational platform developed to gamify the learning of complex topics.</p>
 <ul>
-<li><strong>Setup:</strong> instructors provide a question file in tab-separated values (.tsv) format, plus optional images. One to four teams share a computer and load the file, or simply open a game link the instructor shares.</li>
-<li><strong>Pre-game survey:</strong> before starting, each team completes a short pre-assessment.</li>
-<li><strong>Moving around the board:</strong> teams take turns rolling a pair of dice and moving around a square board. Each side of the board is dedicated to one theme.<ul>
-<li><strong>Unowned tile:</strong> the team answers one of your questions for the option to buy it.</li>
-<li><strong>Rival&#39;s tile:</strong> the team pays rent, and a correct answer halves it.</li>
-<li><strong>Corner milestones:</strong> the team must pass a short exam to capture the corner, which earns a Chaos Token. Chaos Tokens can be spent to try to steal a rival&#39;s property.</li>
-<li><strong>Full colour group:</strong> a team that owns every tile of a colour can add stars to charge much higher rent.</li>
+<li><strong>Setup:</strong> instructors provide a question file in tab-separated values (.tsv) format, plus optional images. One to four players share a computer and load the file, or simply open a game link the instructor shares.</li>
+<li><strong>Pre-game survey:</strong> before starting, each player completes a short pre-assessment.</li>
+<li><strong>Moving around the board:</strong> players take turns rolling a pair of dice and moving around a square board. Each side of the board is dedicated to one theme.<ul>
+<li><strong>Unowned tile:</strong> the player answers one of your questions for the option to buy it.</li>
+<li><strong>Rival&#39;s tile:</strong> the player pays rent, and a correct answer halves it.</li>
+<li><strong>Corner milestones:</strong> the player must pass a short exam to capture the corner, which earns a Chaos Token. Chaos Tokens can be spent to try to steal a rival&#39;s property.</li>
+<li><strong>Full colour group:</strong> a player who owns every tile of a colour can add stars to charge much higher rent.</li>
 </ul>
 </li>
-<li><strong>The end:</strong> the game ends when only one team is left standing, or when time runs out, in which case the team with the highest net worth wins.</li>
-<li><strong>Post-game survey:</strong> afterwards, teams answer the same survey again, so instructors can track learning.</li>
+<li><strong>The end:</strong> the game ends when only one player is left standing, or when time runs out, in which case the player with the highest net worth wins.</li>
+<li><strong>Post-game survey:</strong> afterwards, players answer the same survey again, so instructors can track learning.</li>
 </ul>
 <p>The game leverages key pedagogical frameworks, such as the BOPPPS model of lesson design, along with active learning techniques and frequent low-stakes assessments to incentivize and scaffold learning. Instructors should include explanations with each question to provide frequent learning opportunities.</p>
 <p>While originally designed for a 4th-year undergraduate research course in Microbiology, the modular nature of the game engine works seamlessly with absolutely any topic, as the content is determined by the input file. Its versatility is limitless: I have used the exact same engine to run advanced genomics workshops and to host a RuPaul’s Drag Race trivia night with my wife! The built-in <em>Intro Statistics</em> example shows the same engine with a completely different subject.</p>
@@ -104,12 +104,12 @@
 <h3 id="the-data-sandwich-how-a-session-measures-learning">The “data sandwich”: how a session measures learning</h3>
 <p>Every session wraps the game in measurement, so you learn something about your class each time:</p>
 <ol>
-<li><strong>Pre-game survey (baseline).</strong> Each team rates its confidence on your learning objectives (0–10 sliders) and answers 10 knowledge questions drawn at random from your <code>survey</code> rows.</li>
+<li><strong>Pre-game survey (baseline).</strong> Each player rates its confidence on your learning objectives (0–10 sliders) and answers 10 knowledge questions drawn at random from your <code>survey</code> rows.</li>
 <li><strong>Gameplay (the intervention).</strong> Dozens of low-stakes questions, each followed straight away by your explanation. Getting a question wrong costs only in-game money, so mistakes are cheap and memorable.</li>
-<li><strong>Post-game survey (growth).</strong> The same sliders and the same 10 questions again. The end screen shows each team’s score before and after.</li>
+<li><strong>Post-game survey (growth).</strong> The same sliders and the same 10 questions again. The end screen shows each player’s score before and after.</li>
 <li><strong>Results file (the record).</strong> Every answer, transaction and survey response, ready for a spreadsheet. See <a href="#what-the-results-contain">What the results contain</a>.</li>
 </ol>
-<p>Comparing confidence with survey scores also shows calibration: a team that rates itself 9/10 but scores 4/10 has a misconception worth addressing, and one that does the reverse may need encouragement.</p>
+<p>Comparing confidence with survey scores also shows calibration: a player who rates their confidence 9/10 but scores 4/10 has a misconception worth addressing, and one that does the reverse may need encouragement.</p>
 <h3 id="which-mechanics-exercise-which-skills">Which mechanics exercise which skills</h3>
 <table>
 <thead>
@@ -142,7 +142,7 @@
 <tr>
 <td align="left">Chaos challenges</td>
 <td align="left">Evaluate (metacognition)</td>
-<td align="left">A team must judge whether it knows a rival’s topic well enough to bet on it</td>
+<td align="left">A player must judge whether it knows a rival’s topic well enough to bet on it</td>
 </tr>
 </tbody></table>
 <h2 id="important-links">Important links</h2>
@@ -308,11 +308,11 @@
 <h4 id="game-logic-and-rules">Game logic and rules</h4>
 <ul>
 <li><strong>type:</strong> the most important control column. It dictates when and how a row is used in the game:<ul>
-<li><strong>property:</strong> standard questions used when a team tries to buy or defend a regular tile.</li>
+<li><strong>property:</strong> standard questions used when a player tries to buy or defend a regular tile.</li>
 <li><strong>milestone:</strong> harder, comprehensive questions used for the corner exams. Students must answer 5 out of 6 correctly to capture a milestone, so provide at least 6, and ideally 8–10, per theme.</li>
 <li><strong>core:</strong> questions for the four core tiles (the first <code>core</code> row’s subtheme names them, e.g. “UNIX” or “Statistics”), shared across the board.</li>
-<li><strong>mishap:</strong> the wildcards, random events drawn when a team lands on a Wildcard tile. Write the event text in the <code>question</code> column, including the amount, e.g. <em>&quot;Someone left the freezer open! (-$100)&quot;</em> or <em>&quot;Scholarship awarded! (+$150)&quot;</em>. The game charges or pays exactly that amount (without an amount: +$50 if the text contains a +, otherwise −$100). Put a fun fact or practical lesson in the <code>explanation</code> column. Theme them to your subject: a history course might use <em>&quot;Archive flooded! (-$100)&quot;</em>. Without <code>mishap</code> rows, the game uses general built-in cards with study tips.</li>
-<li><strong>survey / confidence:</strong> these rows bypass the board and form the pre-game and post-game assessments. Ten <code>survey</code> questions are drawn at random for each team, and the same ones are asked again after the game. <code>confidence</code> rows are statements (e.g. <em>&quot;I can explain how DADA2 denoises reads&quot;</em>) shown as 0–10 sliders, the same for every team.</li>
+<li><strong>mishap:</strong> the wildcards, random events drawn when a player lands on a Wildcard tile. Write the event text in the <code>question</code> column, including the amount, e.g. <em>&quot;Someone left the freezer open! (-$100)&quot;</em> or <em>&quot;Scholarship awarded! (+$150)&quot;</em>. The game charges or pays exactly that amount (without an amount: +$50 if the text contains a +, otherwise −$100). Put a fun fact or practical lesson in the <code>explanation</code> column. Theme them to your subject: a history course might use <em>&quot;Archive flooded! (-$100)&quot;</em>. Without <code>mishap</code> rows, the game uses general built-in cards with study tips.</li>
+<li><strong>survey / confidence:</strong> these rows bypass the board and form the pre-game and post-game assessments. Ten <code>survey</code> questions are drawn at random for each player, and the same ones are asked again after the game. <code>confidence</code> rows are statements (e.g. <em>&quot;I can explain how DADA2 denoises reads&quot;</em>) shown as 0–10 sliders, the same for every player.</li>
 <li><strong>config:</strong> optional settings, not questions (see <a href="#config-rows-optional-settings">Config rows</a> below).</li>
 </ul>
 </li>
@@ -468,64 +468,64 @@
 <h2 id="game-mechanics">Game mechanics</h2>
 <p>Once the file is loaded and the game begins, Science Around the Board operates on a blend of resource management, academic trivia and strategic risk-taking. Here is how the game plays out. The <a href="students.html">Student Guide</a> explains the same rules to students in a few minutes.</p>
 <h3 id="the-objective">The objective</h3>
-<p>Teams compete to achieve one of two victory conditions:</p>
+<p>Players compete to achieve one of two victory conditions:</p>
 <ol>
-<li><strong>Last team standing:</strong> be the last team that has not been eliminated by bankruptcy.</li>
-<li><strong>Highest net worth:</strong> when the session timer runs out, or when you ask teams to click <strong>End game</strong>, the team with the highest net worth (cash plus what it paid for the properties and upgrades it still owns) wins.</li>
+<li><strong>Last player standing:</strong> be the last player that has not been eliminated by bankruptcy.</li>
+<li><strong>Highest net worth:</strong> when the session timer runs out, or when you ask players to click <strong>End game</strong>, the player with the highest net worth (cash plus what it paid for the properties and upgrades it still owns) wins.</li>
 </ol>
-<p>Milestones don&#39;t win the game on their own. They earn Chaos Tokens and add to a team’s net worth, so mastery still pays off.</p>
+<p>Milestones don&#39;t win the game on their own. They earn Chaos Tokens and add to a player’s net worth, so mastery still pays off.</p>
 <h3 id="game-setup">Game setup</h3>
 <p>At each computer, one student loads the question file, or opens your game link, and adds the optional images, then clicks <strong>Continue to game setup →</strong> and picks:</p>
 <ul>
-<li><strong>How many players?</strong> <em>Solo</em> or 2, 3 or 4 players sharing the computer (each player can be one student or a small team);</li>
+<li><strong>How many players?</strong> <em>Solo</em> or 2, 3 or 4 players sharing the computer (each player can be one student or a small group);</li>
 <li><strong>Session length:</strong> <em>No timer</em>, or 30, 45, 60 or 90 minutes;</li>
 <li><strong>Choose a topic</strong>, then the module under <strong>Select module</strong>.</li>
 </ul>
-<p><figure><img src="images/04-setup.png" alt="Game setup: number of teams, session length and topic" loading="lazy"><figcaption>Game setup: number of teams, session length and topic</figcaption></figure></p>
+<p><figure><img src="images/04-setup.png" alt="Game setup: number of players, session length and topic" loading="lazy"><figcaption>Game setup: number of players, session length and topic</figcaption></figure></p>
 <p><figure><img src="images/03-module.png" alt="Choosing a module" loading="lazy"><figcaption>Choosing a module</figcaption></figure></p>
-<p>After <strong>Start game →</strong>, each team completes a brief pre-game survey: the confidence sliders and 10 questions. Teams take turns on the same screen until everyone is done, then the board opens. The team with the best pre-game survey score (unknown to players) starts; ties are broken at random.</p>
+<p>After <strong>Start game →</strong>, each player completes a brief pre-game survey: the confidence sliders and 10 questions. Players take turns on the same screen until everyone is done, then the board opens. The player with the best pre-game survey score (unknown to players) starts; ties are broken at random.</p>
 <p><figure><img src="images/05-survey.png" alt="Pre-game survey" loading="lazy"><figcaption>Pre-game survey</figcaption></figure></p>
 <h3 id="the-core-turn-sequence">The core turn sequence</h3>
-<p>Each team’s turn follows a fast-paced loop:</p>
+<p>Each player’s turn follows a fast-paced loop:</p>
 <ol>
-<li><strong>Roll:</strong> the active team rolls the dice in the centre of the board.</li>
+<li><strong>Roll:</strong> the active player rolls the dice in the centre of the board.</li>
 <li><strong>Move:</strong> their pawn advances around the board automatically. Passing START earns a $200 lap bonus.</li>
-<li><strong>Encounter:</strong> the team interacts with the tile they land on.</li>
+<li><strong>Encounter:</strong> the player interacts with the tile they land on.</li>
 </ol>
-<p>A new game opens with a short <strong>How to play</strong> pop-up of the quick rules, and teams can reopen it at any time with <strong>How to play</strong> at the top of the board (the start page has a <strong>Quick rules</strong> link too).</p>
+<p>A new game opens with a short <strong>How to play</strong> pop-up of the quick rules, and players can reopen it at any time with <strong>How to play</strong> at the top of the board (the start page has a <strong>Quick rules</strong> link too).</p>
 <p><figure><img src="images/06-rules.png" alt="The quick rules that open at the start of a game" loading="lazy"><figcaption>The quick rules that open at the start of a game</figcaption></figure></p>
-<p><figure><img src="images/06-board.png" alt="The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth" loading="lazy"><figcaption>The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth</figcaption></figure></p>
+<p><figure><img src="images/06-board.png" alt="The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each player’s cash and net worth" loading="lazy"><figcaption>The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each player’s cash and net worth</figcaption></figure></p>
 <h3 id="tile-encounters">Tile encounters</h3>
-<p>The heart of the game lies in what happens when a team lands on a tile.</p>
+<p>The heart of the game lies in what happens when a player lands on a tile.</p>
 <ul>
-<li><strong>Unowned tiles (properties):</strong> the team may try to buy the tile. They are shown one of your questions. Questions nobody has seen yet come first, and a question a team got wrong comes back about six turns later, so missed ideas get a second, spaced retrieval.<ul>
+<li><strong>Unowned tiles (properties):</strong> the player may try to buy the tile. They are shown one of your questions. Questions nobody has seen yet come first, and a question a player got wrong comes back about six turns later, so missed ideas get a second, spaced retrieval.<ul>
 <li><em>Correct answer:</em> they may pay the tile’s price and take ownership, or skip.</li>
 <li><em>Incorrect answer:</em> they pay a $20 fine, the tile stays unowned, and the correct answer and explanation are shown.</li>
 </ul>
 </li>
-<li><strong>Rival tiles (rent defense):</strong> landing on a rival’s tile means paying rent, but the team first answers a question.<ul>
+<li><strong>Rival tiles (rent defense):</strong> landing on a rival’s tile means paying rent, but the player first answers a question.<ul>
 <li><em>Correct answer:</em> rent is reduced by 50%.</li>
-<li><em>Incorrect answer:</em> the team pays full rent.</li>
+<li><em>Incorrect answer:</em> the player pays full rent.</li>
 </ul>
 </li>
-<li><strong>Milestones (corner exams):</strong> capturing a corner requires more than money; it requires mastery. A team needs $500 to attempt the exam and must answer 5 out of 6 questions on that side’s theme; a second mistake ends the exam. A team that passes pays $500, captures the corner and earns a Chaos Token; a team that fails pays nothing. Landing on a rival’s milestone means a $625 fee, or an expert challenge (the same 6-question exam) that halves it.</li>
-<li><strong>Core tiles:</strong> tiles with questions from your <code>core</code> rows. They are bought ($200) and defended like properties, with a fixed rent of $300.</li>
+<li><strong>Milestones (corner exams):</strong> capturing a corner requires more than money; it requires mastery. A player needs $500 to attempt the exam and must answer 5 out of 6 questions on that side’s theme; a second mistake ends the exam. A player that passes pays $500, captures the corner and earns a Chaos Token; a player that fails pays nothing. Landing on a rival’s milestone means a $250 fee, or an expert challenge (the same 6-question exam) that halves it.</li>
+<li><strong>Core tiles:</strong> tiles with questions from your <code>core</code> rows. They are bought ($200) and defended like properties, with a rent of $50 for each core tile the owner holds ($50 with one, $100 with two, up to $200 with all four).</li>
 <li><strong>Wildcard tiles:</strong> draw a random card from your <code>mishap</code> rows that pays or costs the amount written on it (e.g. &quot;Scholarship awarded! +$200&quot; or &quot;Contamination! -$100&quot;), with a fun fact.</li>
 </ul>
 <p><figure><img src="images/07-question.png" alt="A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder" loading="lazy"><figcaption>A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder</figcaption></figure></p>
 <p><figure><img src="images/08-feedback.png" alt="Feedback after an answer, with the correct answer and your explanation" loading="lazy"><figcaption>Feedback after an answer, with the correct answer and your explanation</figcaption></figure></p>
 <h3 id="advanced-mechanics-upgrades-and-chaos">Advanced mechanics: upgrades and chaos</h3>
-<p>To keep engagement high in the later stages of the session, the engine includes two advanced mechanics. Teams use both from the buttons in the centre of the board during their turn, before rolling.</p>
+<p>To keep engagement high in the later stages of the session, the engine includes two advanced mechanics. Players use both from the buttons in the centre of the board during their turn, before rolling.</p>
 <ul>
-<li><strong>Upgrades:</strong> if a team owns all the tiles in a subtheme (e.g. all three &quot;Denoising &amp; QC&quot; tiles), they can use the <strong>Upgrades</strong> button to upgrade those tiles evenly, up to four stars. This drastically increases the rent charged to rivals who land there.</li>
-<li><strong>Chaos Tokens:</strong> capturing a milestone awards a Chaos Token. A token can be spent on a Chaos Challenge (the <strong>Chaos tokens</strong> button) against a rival’s property: answer a question from that property’s own subtheme correctly to take it for half its price (paid to its owner), or pay a small fine. Either way the token is used up and the team’s turn ends without a roll. A complete set (all three tiles of a subtheme, upgraded or not) is protected and can’t be challenged, and the Challenge button stays off until the team can afford the price. Once all four milestones have been captured, Chaos Tokens can be bought for $500.</li>
+<li><strong>Upgrades:</strong> if a player owns all the tiles in a subtheme (e.g. all three &quot;Denoising &amp; QC&quot; tiles), they can use the <strong>Upgrades</strong> button to upgrade those tiles evenly, up to four stars. This drastically increases the rent charged to rivals who land there.</li>
+<li><strong>Chaos Tokens:</strong> capturing a milestone awards a Chaos Token. A token can be spent on a Chaos Challenge (the <strong>Chaos tokens</strong> button) against a rival’s property: answer a question from that property’s own subtheme correctly to take it for half its price (paid to its owner), or pay a small fine. Either way the token is used up and the player’s turn ends without a roll. A complete set (all three tiles of a subtheme, upgraded or not) is protected and can’t be challenged, and the Challenge button stays off until the player can afford the price. Once all four milestones have been captured, Chaos Tokens can be bought for $500.</li>
 </ul>
 <h3 id="bankruptcy-and-the-rescue-quiz">Bankruptcy and the Rescue Quiz</h3>
-<p>If a team’s balance goes negative:</p>
+<p>If a player’s balance goes negative:</p>
 <ol>
-<li><strong>Liquidation:</strong> the team must sell properties or remove upgrades until it is out of debt. Each sale returns half of what the team paid for it.</li>
-<li><strong>Rescue Quiz (once per game):</strong> if selling everything still can’t cover the debt, the team takes a 3-question Rescue Quiz drawn from the whole board. With 2 or more correct answers, the debt is cleared and the team receives $500 to keep playing.</li>
-<li><strong>Elimination:</strong> a team that fails the Rescue Quiz, or goes bankrupt a second time, is eliminated, and its properties return to the bank. Its players still take the post-game survey.</li>
+<li><strong>Liquidation:</strong> the player must sell properties or remove upgrades until it is out of debt. Each sale returns half of what the player paid for it.</li>
+<li><strong>Rescue Quiz (once per game):</strong> if selling everything still can’t cover the debt, the player takes a 3-question Rescue Quiz drawn from the whole board. With 2 or more correct answers, the debt is cleared and the player receives $500 to keep playing.</li>
+<li><strong>Elimination:</strong> a player who fails the Rescue Quiz, or goes bankrupt a second time, is eliminated, and their properties return to the bank. Those students still take the post-game survey.</li>
 </ol>
 <h3 id="numbers-at-a-glance">Numbers at a glance</h3>
 <table>
@@ -536,8 +536,8 @@
 </tr>
 </thead>
 <tbody><tr>
-<td align="left">Starting cash</td>
-<td align="left">$1,500 per team</td>
+<td align="left">Starting cash (each player)</td>
+<td align="left">$2,500 solo · $2,000 with 2 players · $1,500 with 3 · $1,250 with 4. Fewer players get more turns each and need more cash; these amounts, chosen with a simulation of 3,000 games per setting, keep the pressure on cash similar for 2–4 players</td>
 </tr>
 <tr>
 <td align="left">Lap bonus (passing START)</td>
@@ -557,7 +557,7 @@
 </tr>
 <tr>
 <td align="left">Core rent · rival milestone fee</td>
-<td align="left">$300 · $625</td>
+<td align="left">$50 per core tile the owner holds (up to $200) · $250</td>
 </tr>
 <tr>
 <td align="left">Correct rent-defense answer or passed expert challenge</td>
@@ -577,20 +577,20 @@
 </tr>
 <tr>
 <td align="left">Rescue Quiz</td>
-<td align="left">2 of 3 correct: debt cleared and +$500 (once per team)</td>
+<td align="left">2 of 3 correct: debt cleared and +$500 (once per player)</td>
 </tr>
 <tr>
 <td align="left">Net worth</td>
-<td align="left">cash + what the team paid for the tiles and upgrades it still owns (an upgrade counts once, as it was charged; a tile taken with chaos counts at the half price paid)</td>
+<td align="left">cash + what the player paid for the tiles and upgrades it still owns (an upgrade counts once, as it was charged; a tile taken with chaos counts at the half price paid)</td>
 </tr>
 </tbody></table>
 <h2 id="endgame-dynamics">Endgame dynamics</h2>
-<p>The game ends when only one team is left standing, when the session timer runs out (the timer turns orange in the last 5 minutes), or when a team clicks <strong>End game</strong>. A <strong>Final Standings</strong> screen ranks the teams by net worth and names the winner. After <strong>End game</strong>, teams can still go <strong>Back to game</strong> if they clicked it by mistake; <strong>Continue to post-survey</strong> moves on.</p>
+<p>The game ends when only one player is left standing, when the session timer runs out (the timer turns orange in the last 5 minutes), or when a player clicks <strong>End game</strong>. A <strong>Final Standings</strong> screen ranks the players by net worth and names the winner. After <strong>End game</strong>, players can still go <strong>Back to game</strong> if they clicked it by mistake; <strong>Continue to post-survey</strong> moves on.</p>
 <p><figure><img src="images/09-standings.png" alt="Final standings" loading="lazy"><figcaption>Final standings</figcaption></figure></p>
-<p>Next, every team completes the post-game survey: the same confidence sliders and questions as before the game. The end screen (<strong>Session complete</strong>) then shows each team’s survey scores before and after the game, and students hand in their results.</p>
+<p>Next, every player completes the post-game survey: the same confidence sliders and questions as before the game. The end screen (<strong>Session complete</strong>) then shows each player’s survey scores before and after the game, and students hand in their results.</p>
 <p><figure><img src="images/10-summary.png" alt="The results screen when the question file sets a results Sheet and an email address. Without config rows, only Download appears" loading="lazy"><figcaption>The results screen when the question file sets a results Sheet and an email address. Without config rows, only Download appears</figcaption></figure></p>
 <h3 id="collecting-results">Collecting results</h3>
-<p>On the end screen, students type the names or student IDs of everyone on each team, then hand in the results in one of three ways. You choose which ones appear with config rows in your question file (see <a href="#config-rows-optional-settings">Config rows</a>):</p>
+<p>On the end screen, students type the names or student IDs of everyone playing as each player, then hand in the results in one of three ways. You choose which ones appear with config rows in your question file (see <a href="#config-rows-optional-settings">Config rows</a>):</p>
 <table>
 <thead>
 <tr>
@@ -623,9 +623,9 @@
 <li>Choose <strong>Deploy → New deployment</strong>, select the type <strong>Web app</strong>, set <em>Execute as</em> to <strong>Me</strong> and <em>Who has access</em> to <strong>Anyone</strong>, then click <strong>Deploy</strong> and authorize the script with your Google account.</li>
 <li>Copy the <strong>Web app URL</strong> (it ends in <code>/exec</code>) and add it to your question file as a config row: <code>id</code> = <code>results_url</code>, <code>type</code> = <code>config</code>, <code>question</code> = the URL.</li>
 <li>Optionally, add <code>instructor_email</code> and <code>course</code> rows as well.</li>
-<li>Test it: load your file, play a quick solo game and click <strong>Send results to instructor</strong>. Two tabs appear in your Sheet: <strong>Summary</strong> (one row per team, with names, survey scores and rank) and <strong>Details</strong> (every answer and transaction).</li>
+<li>Test it: load your file, play a quick solo game and click <strong>Send results to instructor</strong>. Two tabs appear in your Sheet: <strong>Summary</strong> (one row per player, with names, survey scores and rank) and <strong>Details</strong> (every answer and transaction).</li>
 </ol>
-<p>If you edit the script later, use <strong>Deploy → Manage deployments → Edit → Version: New version</strong>, so the URL stays the same. Every submission carries a <code>sessionId</code>, so if a team sends its results twice you can spot and delete the duplicate.</p>
+<p>If you edit the script later, use <strong>Deploy → Manage deployments → Edit → Version: New version</strong>, so the URL stays the same. Every submission carries a <code>sessionId</code>, so if a player sends its results twice you can spot and delete the duplicate.</p>
 <p><em>Who has access: Anyone</em> lets anyone with the link send data to your Sheet, but only you can read it, and the collector accepts only game submissions. If your institution doesn&#39;t allow Google services for student data, use the email or download option instead, and ask students to type student numbers or initials rather than full names if your rules require it.</p>
 <h3 id="what-the-results-contain">What the results contain</h3>
 <p>Science Around the Board collects feedback on student performance in a Comma-Separated Values (CSV) file named after the topic, module, date and time, for example <code>sab_results_16s_qiime2_2026-10-06_1430.csv</code>; the <strong>Details</strong> tab of the results Sheet holds the same rows. It tracks every answer and transaction during the game, plus the pre- and post-game survey results. Instructors can open it in Excel or Google Sheets, or analyse it with R or Python, to see which questions were missed most often and how confidence and knowledge changed.</p>
@@ -639,11 +639,11 @@
 </thead>
 <tbody><tr>
 <td align="left"><code>TEAM_INFO</code></td>
-<td align="left">One row per team: the names or IDs typed on the end screen, survey scores before and after (<code>preScore</code>, <code>postScore</code>), <code>rank</code> and <code>netWorth</code></td>
+<td align="left">One row per player: the names or IDs typed on the end screen, survey scores before and after (<code>preScore</code>, <code>postScore</code>), <code>rank</code> and <code>netWorth</code></td>
 </tr>
 <tr>
 <td align="left"><code>phase</code> = <code>pre</code> / <code>post</code>, <code>section</code> = <code>confidence</code></td>
-<td align="left">Each team’s slider value (<code>response</code>) for each confidence statement</td>
+<td align="left">Each player’s slider value (<code>response</code>) for each confidence statement</td>
 </tr>
 <tr>
 <td align="left"><code>phase</code> = <code>pre</code> / <code>post</code>, <code>section</code> = <code>quiz</code></td>
@@ -651,7 +651,7 @@
 </tr>
 <tr>
 <td align="left"><code>PROPERTY_Q</code>, <code>RENT_Q</code>, <code>MILESTONE_Q</code>, <code>CHAOS_Q</code>, <code>GRANT_Q</code></td>
-<td align="left">Every in-game question: team (<code>playerName</code>), <code>questionId</code>, <code>format</code>, <code>response</code>, <code>correctAnswer</code>, <code>correct</code>, tile</td>
+<td align="left">Every in-game question: player (<code>playerName</code>), <code>questionId</code>, <code>format</code>, <code>response</code>, <code>correctAnswer</code>, <code>correct</code>, tile</td>
 </tr>
 <tr>
 <td align="left"><code>TRANSACTION</code></td>
@@ -659,11 +659,11 @@
 </tr>
 <tr>
 <td align="left"><code>ELIMINATED</code></td>
-<td align="left">A team leaving the game, and why</td>
+<td align="left">A player leaving the game, and why</td>
 </tr>
 <tr>
 <td align="left"><code>GAME_RESULT</code></td>
-<td align="left">Final <code>rank</code>, <code>cash</code>, property value (<code>assets</code>) and <code>netWorth</code> for each team, and how the game ended (<code>endReason</code>)</td>
+<td align="left">Final <code>rank</code>, <code>cash</code>, property value (<code>assets</code>) and <code>netWorth</code> for each player, and how the game ended (<code>endReason</code>)</td>
 </tr>
 </tbody></table>
 <p>(<code>GRANT_Q</code> rows are Rescue Quiz questions. Some codes, such as <code>GRANT_Q</code>, <code>EMERGENCY_GRANT</code> and <code>LAB_MISHAP</code> for wildcards, keep their original names so that older results files stay comparable.)</p>
@@ -673,7 +673,7 @@
 <li><strong>Learning gain:</strong> compare <code>preScore</code> and <code>postScore</code> on the <code>TEAM_INFO</code> rows, or the <code>pre</code> and <code>post</code> quiz rows question by question.</li>
 <li><strong>Calibration:</strong> compare the confidence sliders with the survey scores, before and after.</li>
 </ul>
-<p><strong>Grading.</strong> I recommend grading participation (a complete results file, or a team appearing in your Sheet) or the growth from pre- to post-game survey, rather than the final rank: dice decide part of every game, and low stakes are what make students willing to take risks.</p>
+<p><strong>Grading.</strong> I recommend grading participation (a complete results file, or a player appearing in your Sheet) or the growth from pre- to post-game survey, rather than the final rank: dice decide part of every game, and low stakes are what make students willing to take risks.</p>
 <p>The game saves the session in the browser as it goes, so an accidental refresh offers <strong>Resume your game?</strong> on the start page. Students should still send or download their results before closing the tab: the saved copy stays on that computer and expires after 12 hours.</p>
 <h2 id="designing-a-session-based-on-science-around-the-board">Designing a session based on ‘Science Around the Board’</h2>
 <p>Designing a successful Science Around the Board session requires intentionality, ensuring that the activity and the questions align with the learning objectives of the class or course. Here is a framework to design your session and enhance its pedagogical impact.</p>
@@ -730,7 +730,7 @@
 <li><strong>Bridge-in (5 mins):</strong> hook the students. Explain why you are using a game today (e.g. to synthesize the last 4 weeks of material) and outline the victory conditions.</li>
 <li><strong>Outcomes (2 mins):</strong> explicitly state the LOs on the board so students know what they are meant to be learning.</li>
 <li><strong>Pre-assessment (10 mins):</strong> have students load the game and complete the mandatory pre-game survey. This establishes a metacognitive baseline for their confidence and current knowledge.</li>
-<li><strong>Participatory learning (45 mins):</strong> this is the gameplay phase. Set the session timer to 45 minutes so the game ends on time by itself. Step back and become the Game Master, and let the competitive tension and &quot;hard fun&quot; drive the engagement. Encourage teams to read the explanations out loud.</li>
+<li><strong>Participatory learning (45 mins):</strong> this is the gameplay phase. Set the session timer to 45 minutes so the game ends on time by itself. Step back and become the Game Master, and let the competitive tension and &quot;hard fun&quot; drive the engagement. Encourage players to read the explanations out loud.</li>
 <li><strong>Post-assessment (10 mins):</strong> when the timer ends the game, students check the final standings, complete the post-game survey and send or download their results.</li>
 <li><strong>Summary / debrief (8 mins):</strong> do not skip this! Ask the room: &quot;Which side of the board was the hardest to defend?&quot; or &quot;What was the most surprising thing you learned from a mistake?&quot; Harvesting the play into conscious realization is critical.</li>
 </ol>
@@ -759,6 +759,12 @@
 <p>Building a great TSV cartridge takes intentional design, and mastering the role of the game master takes practice. But the payoff, watching your students actively conceptualize complex material rather than passively memorizing it, is entirely worth the effort.</p>
 <p>Welcome to the board, and have a great session!</p>
 <h2 id="whats-new">What’s new</h2>
+<p><strong>October 2026 (update 5)</strong></p>
+<ul>
+<li><strong>Starting cash depends on the number of players:</strong> $2,500 solo, $2,000 each with 2 players, $1,500 with 3 and $1,250 with 4. Fewer players get more turns and more tiles each, so they need more cash; I chose the amounts with a simulation of 3,000 games per setting so that 2, 3 and 4 players feel a similar squeeze.</li>
+<li><strong>Gentler fees:</strong> landing on a rival&#39;s milestone costs $250 again (it was $625), and a core tile&#39;s rent now grows with the owner&#39;s collection: $50 for each of the 4 core tiles they hold, up to $200.</li>
+<li><strong>&quot;Player&quot; everywhere in the game:</strong> the game now says <em>Red Player</em>, <em>Solo Player</em>, &quot;you pay…&quot; and so on, instead of &quot;team&quot;. A group of students can still share one player. The <code>TEAM_INFO</code> code in the results file is unchanged.</li>
+</ul>
 <p><strong>October 2026 (update 4): gameplay changes.</strong> These change how the game plays and scores.</p>
 <ul>
 <li><strong>Unseen questions first, missed ones later.</strong> The game now asks questions nobody has seen before repeating any, and a question answered wrongly comes back about six turns later (spaced retrieval). Exams, chaos challenges and the Rescue Quiz follow the same rule.</li>
