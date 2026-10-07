@@ -394,8 +394,57 @@ async function debtScenario() {
   await context.close();
 }
 
+// A Wildcard that bankrupts the team: its text must stay readable, then the
+// Rescue Quiz follows, and failing it eliminates the team (last team standing wins).
+async function bankruptScenario() {
+  console.log("▶ bankruptcy and rescue quiz");
+  const { context, page } = await newPage();
+  await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+    const response = await route.fetch();
+    const lines = (await response.text()).replace(/\s+$/, "").split(/\r?\n/);
+    const header = lines[0].split("\t");
+    const mishap = header.map((h) => ({ id: "m_crash", question: "Total disaster! (-$5000)", explanation: "Smoke fun fact.", bigTopic: "16S", module: "QIIME2", type: "mishap" }[h] ?? "")).join("\t");
+    await route.fulfill({ response, body: `${[...lines.filter((l) => !/\tmishap\t/.test(l)), mishap].join("\r\n")}\r\n` });
+  });
+  await openDemo(page);
+  await setupGame(page, 2);
+  await doSurvey(page, 2, "bankrupt pre");
+  await page.getByText("Game log").waitFor();
+  for (let step = 0; step < 300; step++) {
+    const modal = page.locator(".MuiModal-root").last();
+    if (!(await page.locator(".MuiModal-root").count())) {
+      const roll = page.getByRole("button", { name: /^Roll/ });
+      if (await roll.isEnabled()) { await roll.click(); await page.locator(".MuiModal-root").first().waitFor({ timeout: 10000 }).catch(() => {}); }
+      else await page.waitForTimeout(200);
+      continue;
+    }
+    const text = await modal.innerText();
+    if (/Total disaster/.test(text)) {
+      await page.waitForTimeout(500);
+      if (!/Smoke fun fact/.test(await modal.innerText())) fail("bankrupt: the Wildcard was replaced before the team could read it");
+      await modal.getByRole("button", { name: /^Continue$/i }).click();
+      await page.getByText(/Bankrupt!/).first().waitFor({ timeout: 5000 }).catch(() => fail("bankrupt: no Rescue Quiz offer after the Wildcard"));
+      continue;
+    }
+    if (/Victory!/i.test(text)) { await context.close(); return; }
+    // Answer wrong on purpose: pick the last option (fails some rescue quizzes).
+    const options = modal.getByRole("button", { name: /^[A-D]\./ });
+    if ((await options.count()) && (await options.first().isEnabled())) { await options.last().click(); continue; }
+    if (await answerQuestion(modal)) continue;
+    let clicked = false;
+    for (const name of [/^Next question/i, /^Finish quiz/i, /^Finish exam/i, /^Start the rescue quiz/i, /^Keep playing/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full/i]) {
+      const button = modal.getByRole("button", { name }).first();
+      if ((await button.count()) && (await button.isEnabled())) { await button.click(); clicked = true; break; }
+    }
+    if (!clicked) await page.waitForTimeout(200);
+  }
+  fail("bankrupt: no team was eliminated after 300 steps");
+  await context.close();
+}
+
 const SCENARIOS = {
   debt: debtScenario,
+  bankrupt: bankruptScenario,
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),
   results: resultsScenario,
