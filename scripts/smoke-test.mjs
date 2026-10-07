@@ -20,7 +20,7 @@ const fail = (msg) => { failures.push(msg); console.log(`  ✗ ${msg}`); };
 // Buttons the bot may press in game dialogs, in order of preference.
 const DIALOG_BUTTONS = [/^Next question/i, /^Finish exam/i, /^Finish quiz/i, /^Start exam/i, /^Accept challenge/i,
   /^Start the rescue quiz/i, /^Keep playing/i, /^See final standings/i, /^Sell deed/i, /^Downgrade/i,
-  /^Buy$/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full$/i, /^Cancel$/i];
+  /^Buy\b/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full/i, /^Cancel$/i];
 
 // Service workers are blocked except in the offline scenario: requests they answer
 // from their cache would bypass page.route() mocks.
@@ -272,7 +272,7 @@ async function resumeScenario() {
   await playTurns(page, "resume", 3);
   const turn = page.getByText(/^Turn \d+$/);
   const before = await turn.textContent();
-  const worth = page.getByText(/^Net worth -?\$\d+$/); // team panel only (tile cards also show prices)
+  const worth = page.getByText(/^Net worth [-−]?\$[\d,]+$/); // team panel only (tile cards also show prices)
   const worthBefore = await worth.allTextContents();
   await page.reload();
   await page.getByRole("button", { name: /^Resume$/ }).click();
@@ -383,7 +383,7 @@ async function debtScenario() {
   await page.getByRole("button", { name: /^Resume$/ }).click();
   await page.getByRole("button", { name: /^Roll/ }).click();
   const dialog = page.locator(".MuiModal-root").last();
-  await dialog.getByText(/Rent Due: \$120/).waitFor({ timeout: 10000 });
+  await dialog.getByText(/Rent due: \$120/i).waitFor({ timeout: 10000 });
   if (!(await answerQuestion(dialog))) fail("debt: couldn't answer the rent question");
   await dialog.getByRole("button", { name: /^Continue$/i }).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no feedback dialog (${(await page.locator("body").innerText()).slice(0, 300)})`));
   if (/Out of money/i.test(await dialog.innerText())) fail("debt: liquidation replaced the rent feedback");

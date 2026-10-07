@@ -18,6 +18,9 @@ import "@fontsource/fredoka/600.css";
 
 export const TEAM_SYMBOLS = ["●", "▲", "■", "◆"];
 export const TEAM_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f97316"];
+// Deeper shades of the team colours for filled buttons and badges that carry
+// white text (each has at least 4.5:1 contrast with white).
+export const TEAM_INK = ["#b91c1c", "#1d4ed8", "#15803d", "#c2410c"];
 export { TEAM_NAMES } from "./labels";
 
 const display = '"Fredoka", "Nunito", system-ui, sans-serif';
@@ -45,7 +48,7 @@ export const theme = createTheme({
         primary: { main: "#7cb8fb" },
         secondary: { main: "#a78bfa" },
         success: { main: "#4ade80", light: "#14532d" },
-        error: { main: "#f87171", light: "#4c1d1d" },
+        error: { main: "#fca5a5", light: "#4c1d1d" },
         warning: { main: "#fb923c", light: "#4a2512" },
         info: { main: "#38bdf8", light: "#0c3550" },
         background: { default: "#0f172a", paper: "#1e293b" },
@@ -83,9 +86,25 @@ export const theme = createTheme({
     },
     MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
     MuiChip: { styleOverrides: { root: { fontWeight: 700 } } },
-    MuiAlert: { styleOverrides: { root: { borderRadius: 10 } } },
+    MuiToggleButton: { styleOverrides: { root: { textTransform: "none", fontSize: "0.95rem" } } },
+    MuiAlert: {
+      styleOverrides: {
+        root: { borderRadius: 10 },
+        // Tinted backgrounds from the palette, so alerts look the same family in light and dark mode.
+        standardSuccess: ({ theme }) => ({ backgroundColor: theme.vars.palette.success.light, color: theme.vars.palette.text.primary }),
+        standardError: ({ theme }) => ({ backgroundColor: theme.vars.palette.error.light, color: theme.vars.palette.text.primary }),
+        standardWarning: ({ theme }) => ({ backgroundColor: theme.vars.palette.warning.light, color: theme.vars.palette.text.primary }),
+        standardInfo: ({ theme }) => ({ backgroundColor: theme.vars.palette.info.light, color: theme.vars.palette.text.primary }),
+      },
+    },
   },
 });
+
+/** sx for text that only screen readers announce. */
+export const SR_ONLY = {
+  position: "absolute", width: 1, height: 1, p: 0, m: "-1px", overflow: "hidden",
+  clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0,
+};
 
 /** CSS variable for a palette path, usable in plain `style` props. */
 export const v = (path) => `var(--mui-palette-${path.replace(/\./g, "-")})`;

@@ -6,9 +6,9 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, T
 export default function PasswordDialog({ error, busy = false, onSubmit, onCancel }) {
   const [password, setPassword] = useState("");
   return (
-    <Dialog open onClose={onCancel}>
+    <Dialog open onClose={onCancel} aria-labelledby="password-title">
       <form onSubmit={(e) => { e.preventDefault(); if (!busy) onSubmit(password); }}>
-        <DialogTitle>🔒 This question file is protected</DialogTitle>
+        <DialogTitle id="password-title"><span aria-hidden>🔒 </span>This question file is protected</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>Enter the class password from your instructor.</Typography>
           <TextField

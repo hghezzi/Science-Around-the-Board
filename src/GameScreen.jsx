@@ -1,5 +1,6 @@
 // src/GameScreen.jsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { MotionConfig, motion } from 'framer-motion';
 import {
   Button,
   Modal,
@@ -7,12 +8,14 @@ import {
   Typography,
   Card,
   Chip,
-  LinearProgress,
-  Divider,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { DEFAULT_CHANCE_CARDS } from './questionBank';
-import { LABELS, teamDisplayName } from './labels';
+import { LABELS, RULES, teamDisplayName, money, signedMoney } from './labels';
 import { matchesTopicAndModule } from './tsvBoardBuilder';
 import { BOARD_SIZE } from './gameData';
 import {
@@ -27,13 +30,11 @@ import Board from './components/Board';
 import Dice from './components/Dice';
 import TeamPanel from './components/TeamPanel';
 import { celebrate } from './components/confetti';
-import { TEAM_COLORS, TEAM_SYMBOLS } from './theme';
+import { TEAM_COLORS, TEAM_SYMBOLS, TEAM_INK, SR_ONLY } from './theme';
 
-// Status colours as theme CSS variables (light/dark aware).
-const THEME = {
-  danger: 'var(--mui-palette-error-main)',
-  success: 'var(--mui-palette-success-main)',
-};
+// Ids for the game dialog's accessible name and the latest outcome (read with the next action).
+const TITLE_ID = 'game-dialog-title';
+const OUTCOME_ID = 'game-dialog-outcome';
 
 const modalStyle = {
   position: 'absolute',
@@ -70,6 +71,7 @@ const NO_QUIZ = {
   selected: null,
   result: null,
   isCorrect: null,
+  history: [], // UI only: right/wrong per answered question
 };
 
 function generatePlayers(count) {
@@ -161,7 +163,12 @@ export default function GameScreen({
   const [modalOpen, setModalOpen] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
   const [modalStage, setModalStage] = useState('QUESTION');
+  // Result of the last answer or event: { tone: 'good'|'bad'|'neutral', title, detail, explanation, note }.
   const [feedback, setFeedback] = useState(null);
+  // The question just answered, shown again with the answer revealed (UI only).
+  const [lastAnswer, setLastAnswer] = useState(null);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [moneyFloats, setMoneyFloats] = useState({});
   const [quizState, setQuizState] = useState(NO_QUIZ);
@@ -367,7 +374,7 @@ export default function GameScreen({
     const debt = Math.max(0, -player.money);
     handleTransaction(player.id, debt + ECONOMY.rescueBonus, { action: 'EMERGENCY_GRANT', notes: 'Rescue Quiz passed' });
     setPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, rescueUsed: true } : p)));
-    setFeedback(`Your $${debt} debt is cleared and you receive $${ECONOMY.rescueBonus} to keep playing. This was your team's only rescue: if you go bankrupt again, you are out.`);
+    setFeedback({ tone: 'good', title: LABELS.rescued, detail: `Your ${money(debt)} debt is cleared and you receive ${money(ECONOMY.rescueBonus)} to keep playing.`, note: "This was your team's only rescue: if you go bankrupt again, you are out." });
     setModalStage('GRANT_RESULT');
   };
 
@@ -399,6 +406,7 @@ export default function GameScreen({
       questions: drawQuestions(source, rules.questions).map((q) => prepareQuestion(q)),
       targetScore: rules.pass, maxMistakes: rules.maxMistakes,
     });
+    setLastAnswer(null);
     setModalStage('QUIZ_START');
     setModalOpen(true);
   };
@@ -419,6 +427,7 @@ export default function GameScreen({
       isCorrect: result.correct,
       score: prev.score + (result.correct ? 1 : 0),
       mistakes: prev.mistakes + (result.correct ? 0 : 1),
+      history: [...(prev.history || []), result.correct],
     }));
   };
 
@@ -451,6 +460,7 @@ export default function GameScreen({
         addLog(`${activePlayer().name} captured the ${tile.name} milestone!`);
         setModalStage('MILESTONE_SUCCESS');
       } else {
+        addLog(`${activePlayer().name} didn't pass the ${tile.name} exam.`);
         setModalStage('MILESTONE_FAIL');
       }
     } else if (mode === 'MILESTONE_CHALLENGE') {
@@ -458,7 +468,10 @@ export default function GameScreen({
       const fee = passed ? Math.floor(baseRent / 2) : baseRent;
       handleTransaction(playerId, -fee, { action: passed ? 'MILESTONE_CHALLENGE_SUCCESS' : 'MILESTONE_CHALLENGE_FAIL', tileId: tile.id, tileName: tile.name });
       if (owner != null) handleTransaction(owner, fee, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
-      setFeedback(passed ? `Impressive! Milestone fee halved to $${fee}.` : `Quiz Failed. Paying the full milestone fee: $${fee}.`);
+      setFeedback(passed
+        ? { tone: 'good', title: 'Exam passed!', detail: `You pay only half the milestone fee: ${money(fee)}.` }
+        : { tone: 'bad', title: 'Exam not passed', detail: `You pay the full milestone fee: ${money(fee)}.` });
+      addLog(`${activePlayer().name} paid ${money(fee)} on the ${tile.name} milestone.`);
       setModalStage('FEEDBACK_INCORRECT');
     }
   };
@@ -491,6 +504,7 @@ export default function GameScreen({
     }
 
     setFeedback(null);
+    setLastAnswer(null);
 
     if (tile.owner === p.id) {
       openCard({ type: 'MSG', data: tile, msg: LABELS.ownTile }, 'MSG');
@@ -525,7 +539,8 @@ export default function GameScreen({
       const card = pickRandom(mishapPool) || { msg: 'Unexpected expense (-$100)', fact: null };
       const amount = parseMishapAmount(card.msg);
       if (amount !== 0) handleTransaction(p.id, amount, { action: 'LAB_MISHAP', tileId: tile.id, tileName: tile.name, notes: card.msg });
-      openCard({ type: 'MISHAP', data: { ...tile, fact: card.fact || null }, msg: card.msg }, 'MISHAP');
+      addLog(`${LABELS.chanceCard} for ${p.name}${amount ? ` (${signedMoney(amount)})` : ''}.`);
+      openCard({ type: 'MISHAP', data: { ...tile, fact: card.fact || null }, msg: card.msg, amount }, 'MISHAP');
       return;
     }
 
@@ -569,11 +584,12 @@ export default function GameScreen({
     const { q, data: tile } = activeCard;
     const result = checkAnswer(q, response);
     logAnswer('PROPERTY_Q', q, result, { tileId: tile.id, tileName: tile.name });
+    setLastAnswer({ q, response, result });
     if (result.correct) {
-      setFeedback(q.explanation || '');
+      setFeedback({ tone: 'good', title: 'Correct!', explanation: q.explanation || '' });
       setModalStage('DECISION');
     } else {
-      setFeedback(`Incorrect (-$${ECONOMY.wrongAnswerPenalty}). Correct answer: ${result.correctText}${q.explanation ? `\n\n${q.explanation}` : ''}`);
+      setFeedback({ tone: 'bad', title: 'Not quite', detail: `That costs your team ${money(ECONOMY.wrongAnswerPenalty)}.`, explanation: q.explanation || '' });
       handleTransaction(turnRef.current, -ECONOMY.wrongAnswerPenalty, { action: 'QUESTION_PENALTY', tileId: tile.id, tileName: tile.name, notes: 'Incorrect on acquisition question' });
       setModalStage('FEEDBACK_INCORRECT');
     }
@@ -584,6 +600,7 @@ export default function GameScreen({
     if (activePlayer().money < tile.price) { alert('Insufficient funds!'); return; }
     handleTransaction(turnRef.current, -tile.price, { action: 'BUY_PROPERTY', tileId: tile.id, tileName: tile.name });
     setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: turnRef.current } : t)));
+    addLog(`${activePlayer().name} bought ${tile.type === 'property' ? tile.sub : tile.name} for ${money(tile.price)}.`);
     passTurn();
   };
 
@@ -593,7 +610,12 @@ export default function GameScreen({
     const result = checkAnswer(q, response);
     logAnswer('RENT_Q', q, result, { tileId: tile.id, tileName: tile.name });
     const rentToPay = result.correct ? Math.floor(rent / 2) : rent;
-    setFeedback((result.correct ? 'Correct! Rent discounted.' : `Incorrect. Paying full rent. Correct answer: ${result.correctText}`) + `\n\n${q.explanation || ''}`);
+    const ownerName = activeCard.ownerName;
+    setLastAnswer({ q, response, result });
+    setFeedback(result.correct
+      ? { tone: 'good', title: 'Correct: half rent!', detail: `You pay ${money(rentToPay)} to ${ownerName} instead of ${money(rent)}.`, explanation: q.explanation || '' }
+      : { tone: 'bad', title: 'Not quite: full rent', detail: `You pay ${money(rentToPay)} to ${ownerName}.`, explanation: q.explanation || '' });
+    addLog(`${activeCard.payerName} paid ${money(rentToPay)} rent to ${ownerName}.`);
     handleTransaction(payerId, -rentToPay, { action: 'RENT_PAYMENT', tileId: tile.id, tileName: tile.name });
     if (ownerId != null) handleTransaction(ownerId, rentToPay, { action: 'RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
     setModalStage('FEEDBACK_INCORRECT');
@@ -609,6 +631,8 @@ export default function GameScreen({
   //  CHAOS CHALLENGE (spend a token to try to steal a rival's property)
   // ------------------------------------------------------------------
   const openChaosSelect = () => {
+    setFeedback(null);
+    setLastAnswer(null);
     openCard({ type: 'CHAOS_SELECT' }, 'CHAOS_SELECT');
   };
 
@@ -627,19 +651,22 @@ export default function GameScreen({
     const tile = boardRef.current[activeCard.data.id];
     const result = checkAnswer(q, response);
     logAnswer('CHAOS_Q', q, result, { tileId: tile.id, tileName: tile.name });
+    setLastAnswer({ q, response, result });
+    const ownerName = playersRef.current[tile.owner]?.name || LABELS.rivalTeam;
     setPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, chaosTokens: Math.max(0, p.chaosTokens - 1) } : p)));
 
     if (result.correct) {
       const cost = chaosStealCost(tile);
-      if (player.money < cost) { setFeedback('Correct, but insufficient funds.'); setModalStage('FEEDBACK_INCORRECT'); return; }
+      if (player.money < cost) { setFeedback({ tone: 'neutral', title: 'Correct, but not enough cash', detail: `Taking this tile costs ${money(cost)} and your team has ${money(player.money)}.`, explanation: q.explanation || '' }); setModalStage('FEEDBACK_INCORRECT'); return; }
       handleTransaction(player.id, -cost, { action: 'CHAOS_STEAL', tileId: tile.id, tileName: tile.name });
       if (tile.owner != null) handleTransaction(tile.owner, cost, { action: 'CHAOS_SELL', tileId: tile.id, tileName: tile.name });
       setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: player.id, level: 0 } : t)));
-      setFeedback(`Chaos success! Acquired ${tile.name} for $${cost}.`);
+      setFeedback({ tone: 'good', title: 'Chaos success!', detail: `You take ${tile.sub || tile.name} from ${ownerName} for ${money(cost)}.`, explanation: q.explanation || '' });
+      addLog(`${player.name} took ${tile.sub || tile.name} from ${ownerName} with a chaos token.`);
     } else {
       const penalty = chaosFailPenalty(tile);
       handleTransaction(player.id, -penalty, { action: 'CHAOS_FAIL', tileId: tile.id, tileName: tile.name });
-      setFeedback(`Chaos failed. Penalty: $${penalty}. Correct answer: ${result.correctText}${q.explanation ? `\n\n${q.explanation}` : ''}`);
+      setFeedback({ tone: 'bad', title: 'Chaos challenge failed', detail: `Penalty: ${money(penalty)}.`, explanation: q.explanation || '' });
     }
     setModalStage('FEEDBACK_INCORRECT');
   };
@@ -657,6 +684,7 @@ export default function GameScreen({
     if (activePlayer().money < cost) { alert('Insufficient funds.'); return; }
     handleTransaction(playerId, -cost, { action: 'UPGRADE_SUBTHEME', tileId: tile.id, tileName: tile.name, notes: `Level ${level}` });
     setBoard((prev) => applyUpgrade(prev, tile, playerId, level));
+    addLog(`${activePlayer().name} upgraded ${tile.sub} to level ${level}.`);
     setModalOpen(false);
   };
 
@@ -695,7 +723,8 @@ export default function GameScreen({
   useEffect(() => {
     if (!modalOpen) return;
     if (modalStage === 'WIN' || (modalStage === 'STANDINGS' && players.length > 1)) celebrate();
-  }, [modalOpen, modalStage, players.length]);
+    if (modalStage === 'MILESTONE_SUCCESS') celebrate(playersRef.current[turnRef.current]?.color);
+  }, [modalOpen, modalStage, players.length, playersRef, turnRef]);
 
   const handleEndGame = (reason = 'ended') => {
     const standings = rankPlayers(playersRef.current, boardRef.current);
@@ -723,7 +752,7 @@ export default function GameScreen({
   // Shared question renderer (prompt + image + any answer format).
   const renderQuestion = (q, onSubmit, opts = {}) => (
     <>
-      <Typography variant={opts.variant || 'body1'} sx={{ mb: 2, fontWeight: 'bold', whiteSpace: 'pre-wrap' }}>{q.prompt}</Typography>
+      <Typography component="p" sx={{ mb: 2, fontWeight: 800, fontSize: '1.15rem', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{q.prompt}</Typography>
       <QuestionInput
         key={opts.key || q.id || q.prompt}
         question={q}
@@ -734,40 +763,86 @@ export default function GameScreen({
       />
     </>
   );
+  // The answered question again, locked, with the right answer marked.
+  const renderAnswered = () => lastAnswer && renderQuestion(lastAnswer.q, () => {}, {
+    key: `answered-${lastAnswer.q.id || lastAnswer.q.prompt}`,
+    reveal: { ...lastAnswer.result, response: lastAnswer.response },
+    imageMaxHeight: 160,
+  });
 
   const title = module || bigTopic || 'Science Around the Board';
-  const rollLabel = timeUp ? "Time's up" : isMoving ? 'Moving…' : (currentPlayer.money < 0 ? 'Settle debt' : `Roll — ${currentPlayer.name}`);
+  const inDebt = currentPlayer.money < 0;
+  // In debt (only possible with a game saved by an older version), Roll opens the debt dialog.
+  const rollLabel = timeUp ? "Time's up" : isMoving ? 'Moving…' : (inDebt ? 'Settle debt' : `Roll — ${currentPlayer.name}`);
+  const tileLabel = (t) => (t?.type === 'property' ? t.sub : t?.name) || '';
+  const ownerName = (id) => (id === 99 || id == null ? LABELS.rivalTeam : players[id]?.name || LABELS.rivalTeam);
+
+  // Upgrade groups the current team owns at least one tile of.
+  const ownedGroups = (() => {
+    const seen = new Map();
+    board.forEach((t) => { if (t.type === 'property' && t.owner === turn && !seen.has(`${t.group}|${t.sub}`)) seen.set(`${t.group}|${t.sub}`, t); });
+    return [...seen.values()].map((t) => {
+      const groupTiles = getSubgroupTiles(board, t);
+      const owned = groupTiles.filter((g) => g.owner === turn).length;
+      const full = owned === groupTiles.length;
+      const level = t.level || 0;
+      const next = nextUpgradeLevel(board, t);
+      const canLevel = full && next > level;
+      const cost = canLevel ? upgradeCost(t, next) : 0;
+      return { tile: t, size: groupTiles.length, owned, full, level, next, canLevel, cost };
+    });
+  })();
+  // Rent of `tile` on a board where `change` has been applied to it (or to its group).
+  const rentIf = (tile, change, wholeGroup = false) => {
+    const hypo = board.map((t) => {
+      const hit = wholeGroup ? (t.type === 'property' && t.group === tile.group && t.sub === tile.sub) : t.id === tile.id;
+      return hit ? { ...t, ...change } : t;
+    });
+    return computeRent(hypo, hypo[tile.id]);
+  };
+  const quizTile = quizState.tile;
+  const dialogTile = activeCard?.data || (['QUIZ_START', 'MILESTONE_SUCCESS', 'MILESTONE_FAIL'].includes(modalStage) ? quizTile : null);
+  const showDialogTop = !['STANDINGS', 'WIN', 'ELIMINATED'].includes(modalStage) && !['STANDINGS', 'WIN', 'ELIMINATED'].includes(activeCard?.type);
+
+  const resultHeading = () => {
+    if (activeCard?.type === 'RENT_DEFENSE') return `Rent due · ${tileLabel(activeCard.data)}`;
+    if (activeCard?.type === 'CHAOS_CHALLENGE') return `Chaos challenge · ${tileLabel(activeCard.data)}`;
+    return `${LABELS.questionTitle} · ${tileLabel(activeCard?.data)}`;
+  };
 
   return (
+    <MotionConfig reducedMotion="user">
     <Box sx={{ bgcolor: 'background.default', color: 'text.primary', minHeight: '100vh', px: { xs: 1, md: 3 }, py: 2 }}>
       <Box component="header" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center', maxWidth: 1500, mx: 'auto', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>🎲 Science Around the Board</Typography>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}><span aria-hidden>🎲 </span>Science Around the Board</Typography>
           <Chip label={`Turn ${totalTurns}`} size="small" color="primary" />
           {endsAt && (
             <Chip
               label={timeUp ? "Time's up" : `⏱ ${formatClock(timeLeftMs)}`}
               size="small"
               color={timeUp ? 'error' : timeLeftMs <= 5 * 60000 ? 'warning' : 'default'}
-              aria-label="Time remaining"
+              aria-label={timeUp ? "Time's up" : `Time remaining ${formatClock(timeLeftMs)}`}
             />
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="contained" color="warning" disabled={isMoving} onClick={() => openStandings(false, 'ended')}>End game</Button>
-          <Button variant="text" color="error" onClick={() => { if (window.confirm('Leave this game? The current game and its results will be lost.')) onExit(); }}>Exit session</Button>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button variant="text" onClick={() => setRulesOpen(true)} startIcon={<span aria-hidden>📖</span>}>{LABELS.howToPlay}</Button>
+          <Button variant="outlined" color="warning" disabled={isMoving} onClick={() => openStandings(false, 'ended')}>End game</Button>
+          <Button variant="text" color="error" onClick={() => setExitOpen(true)}>Exit session</Button>
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start', gap: 3, maxWidth: 1500, mx: 'auto' }}>
-        <Box sx={{ flex: '1 1 640px', display: 'flex', justifyContent: 'center', maxWidth: 1000 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start', gap: { xs: 2, md: 2.5 }, maxWidth: 1500, mx: 'auto' }}>
+        <Box sx={{ flex: '1 1 640px', display: 'flex', justifyContent: 'center', maxWidth: 1000, minWidth: 0 }}>
           <Board board={board} players={players} onTileHover={handleTileHover} onTileLeave={clearHover}>
-            <Typography component="h2" sx={{ fontFamily: '"Fredoka", sans-serif', fontWeight: 600, fontSize: '3.2cqw', lineHeight: 1.1, textAlign: 'center' }}>{title}</Typography>
-            {module && bigTopic && <Typography sx={{ fontSize: '1.5cqw', color: 'text.secondary', fontWeight: 700, mt: '-0.8cqw' }}>{bigTopic}</Typography>}
+            <Typography component="h2" sx={{ fontFamily: '"Fredoka", sans-serif', fontWeight: 600, fontSize: 'max(18px, 3.2cqw)', lineHeight: 1.1, textAlign: 'center', textWrap: 'balance' }}>{title}</Typography>
+            {module && bigTopic && <Typography sx={{ fontSize: 'max(12px, 1.5cqw)', color: 'text.secondary', fontWeight: 700, mt: '-0.8cqw' }}>{bigTopic}</Typography>}
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 0.75, borderRadius: 99, bgcolor: 'background.paper', boxShadow: 1 }}>
-              <Box aria-hidden sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: currentPlayer.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, textShadow: '0 0 2px rgba(0,0,0,.7)' }}>{TEAM_SYMBOLS[currentPlayer.id]}</Box>
+            <Box aria-live="polite" sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 0.75, pr: 2, py: 0.6, borderRadius: 99, bgcolor: 'background.paper', boxShadow: 1, border: '2px solid', borderColor: currentPlayer.color }}>
+              <TeamDot player={currentPlayer} size={26} />
               <Typography sx={{ fontWeight: 800 }}>{currentPlayer.name}'s turn</Typography>
+              <Typography sx={{ fontWeight: 700, color: inDebt ? 'error.main' : 'text.secondary' }}>· {money(currentPlayer.money)}</Typography>
             </Box>
 
             <Dice values={dice} rollId={rollId} />
@@ -776,14 +851,21 @@ export default function GameScreen({
               variant="contained"
               size="large"
               onClick={handleRoll}
-              disabled={isMoving || timeUp}
-              sx={{ bgcolor: currentPlayer.color, color: '#fff', px: 5, py: 1.25, fontSize: '1.1rem', boxShadow: 3, '&:hover': { bgcolor: currentPlayer.color, filter: 'brightness(0.92)' }, textShadow: '0 1px 2px rgba(0,0,0,.35)' }}
+              disabled={timeUp}
+              aria-disabled={isMoving || undefined}
+              sx={{
+                bgcolor: TEAM_INK[currentPlayer.id], color: 'common.white', px: 5, py: 1.25, fontSize: '1.15rem', boxShadow: 3, minWidth: 220,
+                '&:hover': { bgcolor: TEAM_INK[currentPlayer.id], filter: 'brightness(1.12)' },
+                ...(isMoving ? { opacity: 0.75, cursor: 'progress' } : {}),
+              }}
             >
               {rollLabel}
             </Button>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined" disabled={isMoving} onClick={openLabManager}>🏗️ {LABELS.upgrades}</Button>
-              <Button variant="outlined" color="warning" disabled={isMoving} onClick={openChaosSelect}>⚡ Use chaos ({currentPlayer.chaosTokens})</Button>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Button variant="outlined" disabled={isMoving} onClick={openLabManager} startIcon={<span aria-hidden>⭐</span>}>{LABELS.upgrades}</Button>
+              <Button variant="outlined" color="secondary" disabled={isMoving} onClick={openChaosSelect} startIcon={<span aria-hidden>⚡</span>}>
+                Chaos tokens: {currentPlayer.chaosTokens}
+              </Button>
             </Box>
 
             <Box sx={{ minHeight: '7cqw', width: '80%', maxWidth: 420 }}>
@@ -792,29 +874,32 @@ export default function GameScreen({
                   <Typography variant="body2" sx={{ fontWeight: 800 }}>{hoverTile.type === 'property' ? `${hoverTile.sub} · ${hoverTile.name}` : hoverTile.name}</Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                     {LABELS.tileTypes[hoverTile.type] || hoverTile.type}
-                    {hoverTile.owner != null && ` · Owner: ${players[hoverTile.owner]?.name ?? LABELS.rivalTeam}`}
+                    {hoverTile.price > 0 && ` · ${money(hoverTile.price)}`}
+                    {hoverTile.owner != null ? ` · Owner: ${ownerName(hoverTile.owner)}` : (hoverTile.price > 0 ? ' · For sale' : '')}
                   </Typography>
-                  {(hoverTile.type === 'property' || hoverTile.type === 'sequencing_core') && (
+                  {(hoverTile.type === 'property' || hoverTile.type === 'sequencing_core') && hoverTile.owner != null && (
                     <Typography variant="caption" sx={{ display: 'block' }}>
-                      Rent now: <strong>${hoverTile.rent}</strong> (base ${hoverTile.baseRent} × {hoverTile.multiplier.toFixed(1)})
+                      Rent now: <strong>{money(hoverTile.rent)}</strong> (base {money(hoverTile.baseRent)} × {hoverTile.multiplier.toFixed(1)}{hoverTile.level ? `, level ${hoverTile.level}` : ''})
                     </Typography>
                   )}
                 </Box>
               ) : (
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>Hover or tab to a tile for details.</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
+                  Hover over or tab to a tile for details. New here? <Box component="button" type="button" onClick={() => setRulesOpen(true)} sx={{ font: 'inherit', color: 'primary.main', textDecoration: 'underline', background: 'none', border: 0, p: 0, cursor: 'pointer' }}>See how to play</Box>.
+                </Typography>
               )}
             </Box>
             <Typography sx={{ fontSize: 'max(11px, 1.1cqw)', color: 'text.secondary' }}>© Hans Ghezzi · Science Around the Board</Typography>
           </Board>
         </Box>
 
-        <Box sx={{ flex: '0 1 340px', minWidth: 280, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box component="aside" aria-label="Teams and game log" sx={{ flex: '1 1 260px', maxWidth: { lg: 380 }, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 2, alignItems: 'start' }}>
           <TeamPanel players={players} board={board} turn={turn} moneyFloats={moneyFloats} />
           <Card sx={{ p: 2 }}>
-            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800 }}>Game log</Typography>
-            <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, maxHeight: 220, overflowY: 'auto', fontSize: '0.8rem', color: 'text.secondary' }}>
+            <Typography variant="overline" component="h2" color="text.secondary" sx={{ fontWeight: 800 }}>Game log</Typography>
+            <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, maxHeight: 260, overflowY: 'auto', fontSize: '0.85rem', color: 'text.secondary' }}>
               {logs.map((l, i) => (
-                <Box component="li" key={i} sx={{ py: 0.5, borderBottom: '1px solid', borderColor: 'divider', color: i === 0 ? 'text.primary' : undefined, fontWeight: i === 0 ? 700 : 400 }}>{l}</Box>
+                <Box component="li" key={i} sx={{ py: 0.6, borderBottom: '1px solid', borderColor: 'divider', color: i === 0 ? 'text.primary' : undefined, fontWeight: i === 0 ? 700 : 400 }}>{l}</Box>
               ))}
             </Box>
           </Card>
@@ -822,102 +907,121 @@ export default function GameScreen({
       </Box>
 
       <Modal open={modalOpen} disableEscapeKeyDown>
-        <Box sx={{ ...modalStyle, ...(activeCard?.data?.color ? { borderTopColor: activeCard.data.color } : {}) }}>
-          {activeCard?.type === 'LIQUIDATION' && modalStage === 'LIQUIDATION' && (
-            <>
-                <Typography variant="h4" color="error" gutterBottom>{LABELS.outOfMoney}</Typography>
-                <Typography variant="body1" paragraph>
-                    Your team is <strong>${activeCard.debt}</strong> in debt. Sell properties or remove upgrades to get back above $0.
-                </Typography>
-                <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, mb: 2.5 }}>
-                    {activeCard.assets.map(t => {
-                        const isDowngrade = t.level > 0;
-                        const sellValue = Math.floor((isDowngrade ? (t.houseCost||t.price) : t.price) * 0.5);
-                        
-                        const actionLabel = isDowngrade ? `DOWNGRADE GROUP (Lvl ${t.level}->${t.level-1})` : "SELL DEED";
-                        
-                        return (
-                            <Box key={t.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
-                                <div>
-                                    <strong>{t.name}</strong> ({t.sub})
-                                    <Typography variant="caption" color="text.secondary">Lvl {t.level}</Typography>
-                                </div>
-                                <Button variant="contained" color="error" size="small" onClick={() => handleSellAsset(t)}>
-                                    {actionLabel} (+${sellValue} per tile)
-                                </Button>
-                            </Box>
-                        )
-                    })}
+        <Box role="dialog" aria-modal="true" aria-labelledby={TITLE_ID} sx={{ ...modalStyle, ...(dialogTile?.color ? { borderTopColor: dialogTile.color } : {}) }}>
+          {showDialogTop && <DialogTop tile={dialogTile} player={currentPlayer} />}
+
+          {activeCard?.type === 'LIQUIDATION' && modalStage === 'LIQUIDATION' && (() => {
+            const rows = [];
+            const groupsSeen = new Set();
+            activeCard.assets.forEach((a) => {
+              const t = board.find((b) => b.id === a.id) || a;
+              if (t.level > 0) {
+                const key = `${t.group}|${t.sub}`;
+                if (groupsSeen.has(key)) return;
+                groupsSeen.add(key);
+                const n = getSubgroupTiles(board, t).length;
+                rows.push({ t, kind: 'downgrade', value: downgradeSubgroup(board, t, currentPlayer.id).refund, n });
+              } else rows.push({ t, kind: 'sell', value: sellDeed(board, t).value });
+            });
+            return (
+              <>
+                <Typography id={TITLE_ID} variant="h4" component="h2" color="error" gutterBottom>{LABELS.outOfMoney}</Typography>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', p: 1.5, mb: 2, borderRadius: 2, bgcolor: 'error.light' }}>
+                  <Typography sx={{ fontWeight: 800 }}>Cash: <Box component="span" sx={{ color: 'error.main' }}>{money(currentPlayer.money)}</Box></Typography>
+                  <Typography>Raise <strong>{money(Math.max(0, -currentPlayer.money))}</strong> to get back to $0 and end your turn.</Typography>
                 </Box>
-            </>
-          )}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Sell a tile for half its price, or remove one upgrade level from a whole colour group for half its upgrade cost.</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {rows.map(({ t, kind, value, n }) => (
+                    <Box key={t.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, border: '1px solid', borderColor: 'divider', borderLeft: `6px solid ${t.color}`, borderRadius: 2 }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 800 }}>{tileLabel(t)}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {t.type === 'property' ? t.group : LABELS.tileTypes[t.type]}
+                          {kind === 'downgrade' ? ` · ${n} tiles · level ${t.level}` : ` · bought for ${money(t.price)}`}
+                        </Typography>
+                      </Box>
+                      <Button variant="contained" color="error" onClick={() => handleSellAsset(t)} sx={{ flexShrink: 0 }}>
+                        {kind === 'downgrade' ? 'Downgrade group' : 'Sell deed'} {signedMoney(value)}
+                      </Button>
+                    </Box>
+                  ))}
+                </Box>
+              </>
+            );
+          })()}
 
           {activeCard?.type === 'GRANT' && modalStage === 'GRANT_INTRO' && (
             <>
-                <Typography variant="h4" color="error" gutterBottom>{LABELS.bankrupt}</Typography>
-                <Typography variant="body1" paragraph>
-                    Your team is <strong>${activeCard.debt}</strong> in debt and selling everything still wouldn't cover it.
-                </Typography>
-                <Typography variant="body1" paragraph>
-                    You can take the <strong>{LABELS.rescueQuiz}</strong>: 3 questions. Answer at least 2 correctly to be rescued.
-                </Typography>
-                <Alert severity="warning" sx={{ mb: 3 }}>
-                    Each team gets <strong>one</strong> rescue per game. If approved, your debt is cleared and you receive $500.
-                    If denied, or if you go bankrupt again later, your team is eliminated and its properties return to the bank.
-                </Alert>
-                <Button fullWidth variant="contained" onClick={startGrantExam}>START THE RESCUE QUIZ</Button>
+              <Typography id={TITLE_ID} variant="h4" component="h2" color="error" gutterBottom><span aria-hidden>🛟 </span>{LABELS.bankrupt}</Typography>
+              <Typography sx={{ mb: 1.5 }}>
+                Your team is <strong>{money(activeCard.debt)}</strong> in debt, and selling everything still wouldn't cover it.
+              </Typography>
+              <Typography sx={{ mb: 2 }}>
+                One last chance: the <strong>{LABELS.rescueQuiz}</strong>. Answer <strong>2 of 3</strong> questions correctly and your debt is cleared, plus {money(ECONOMY.rescueBonus)} to keep playing.
+              </Typography>
+              <Alert severity="warning" sx={{ mb: 3 }}>
+                Each team gets <strong>one</strong> rescue per game. If you don't pass, or you go bankrupt again later, your team is out and its tiles return to the bank.
+              </Alert>
+              <Button fullWidth size="large" variant="contained" autoFocus onClick={startGrantExam}>Start the rescue quiz</Button>
             </>
           )}
 
           {modalStage === 'GRANT_QUIZ' && quizState.active && (
             <>
-              <Typography variant="overline">{LABELS.rescueQuiz}: Question {quizState.qIndex + 1} of {quizState.questions.length}</Typography>
-              <LinearProgress variant="determinate" value={(quizState.qIndex / quizState.questions.length) * 100} sx={{ mb: 3 }} />
+              <QuizProgress title={LABELS.rescueQuiz} quiz={quizState} need={quizState.targetScore} rescue />
               {renderQuestion(quizState.questions[quizState.qIndex], handleQuizAnswer, {
-                variant: 'h6', key: `grant-${quizState.qIndex}`,
+                key: `grant-${quizState.qIndex}`,
                 reveal: quizState.waiting ? { ...quizState.result, response: quizState.selected } : null,
               })}
               {quizState.waiting && (
-                <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
-                  <Typography variant="subtitle2" fontWeight="bold" color={quizState.isCorrect ? 'success.main' : 'error.main'}>
-                    {quizState.isCorrect ? 'Correct!' : 'Incorrect'}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 2 }}>{quizState.questions[quizState.qIndex].explanation || 'No explanation provided.'}</Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button variant="contained" onClick={handleNextQuestion}>
-                      {quizState.qIndex < quizState.questions.length - 1 ? 'NEXT QUESTION' : 'FINISH QUIZ'}
-                    </Button>
-                  </Box>
-                </Box>
+                <OutcomePanel feedback={{ tone: quizState.isCorrect ? 'good' : 'bad', title: quizState.isCorrect ? 'Correct!' : 'Not quite', explanation: quizState.questions[quizState.qIndex].explanation || '' }}>
+                  <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
+                    {quizState.qIndex < quizState.questions.length - 1 ? 'Next question' : 'Finish quiz'}
+                  </Button>
+                </OutcomePanel>
               )}
             </>
           )}
 
           {modalStage === 'GRANT_RESULT' && (
-            <>
-                <Typography variant="h5" color="success.main">{LABELS.rescued}</Typography>
-                <Typography variant="body1" paragraph>{feedback}</Typography>
-                <Button fullWidth variant="contained" onClick={passTurn}>KEEP PLAYING</Button>
-            </>
+            <OutcomePanel feedback={feedback} titleId={TITLE_ID} big>
+              <Button fullWidth size="large" variant="contained" autoFocus onClick={passTurn}>Keep playing</Button>
+            </OutcomePanel>
           )}
 
-          {activeCard?.type === 'WIN' && modalStage === 'WIN' && (
-            <>
-              <Typography variant="h3" align="center">🏆</Typography>
-              <Typography variant="h4" align="center" color="primary">VICTORY!</Typography>
-              <Typography variant="h6" align="center">{activeCard.msg}</Typography>
-              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={() => openStandings(true, 'last_standing')}>SEE FINAL STANDINGS</Button>
-            </>
-          )}
+          {activeCard?.type === 'WIN' && modalStage === 'WIN' && (() => {
+            const winner = activePlayers(players)[0];
+            return (
+              <Box sx={{ textAlign: 'center', py: 1 }}>
+                <motion.div initial={{ scale: 0.3, rotate: -15 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 12 }}>
+                  <Box aria-hidden sx={{ fontSize: 84, lineHeight: 1 }}>🏆</Box>
+                </motion.div>
+                <Typography id={TITLE_ID} variant="h3" component="h2" color="primary" sx={{ mt: 1 }}>Victory!</Typography>
+                {winner && (
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mt: 1.5, px: 2, py: 0.75, borderRadius: 99, border: '2px solid', borderColor: winner.color }}>
+                    <TeamDot player={winner} size={28} />
+                    <Typography variant="h6" component="p">{winner.name}</Typography>
+                  </Box>
+                )}
+                <Typography sx={{ mt: 1.5 }}>{activeCard.msg}</Typography>
+                <Button fullWidth size="large" variant="contained" autoFocus sx={{ mt: 3 }} onClick={() => openStandings(true, 'last_standing')}>See final standings</Button>
+              </Box>
+            );
+          })()}
 
           {activeCard?.type === 'ELIMINATED' && modalStage === 'ELIMINATED' && (
             <>
-              <Typography variant="h4" color="error" gutterBottom>{LABELS.eliminated}</Typography>
-              <Typography variant="body1" paragraph>
-                <strong>{activeCard.name}</strong> could not cover its debts and has been <strong>eliminated</strong>. Its properties return to the bank.
+              <Typography id={TITLE_ID} variant="h4" component="h2" color="error" gutterBottom>{LABELS.eliminated}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
+                {players[activeCard.playerId] && <TeamDot player={players[activeCard.playerId]} />}
+                <Typography sx={{ fontWeight: 800, textDecoration: 'line-through' }}>{activeCard.name}</Typography>
+              </Box>
+              <Typography sx={{ mb: 1 }}>
+                <strong>{activeCard.name}</strong> could not cover its debts and is out of the game. Its tiles return to the bank, ready to be bought again.
               </Typography>
-              <Typography variant="body2" color="textSecondary" paragraph>Reason: {activeCard.reason}</Typography>
-              <Button fullWidth variant="contained" onClick={continueAfterElimination}>CONTINUE</Button>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Reason: {activeCard.reason}.</Typography>
+              <Button fullWidth size="large" variant="contained" autoFocus onClick={continueAfterElimination}>Continue</Button>
             </>
           )}
 
@@ -926,38 +1030,45 @@ export default function GameScreen({
             const leader = standings[0];
             const tied = standings.filter((r) => !r.eliminated && r.netWorth === leader?.netWorth);
             const reasonText = {
-              time: "Time's up! The team with the highest net worth (cash + property value) wins.",
+              time: "Time's up! The team with the highest net worth (cash + tile value) wins.",
               last_standing: 'Last team standing!',
               eliminated: 'No teams remain.',
-              ended: 'Ending the game now ranks teams by net worth (cash + property value).',
+              ended: 'Ending the game now ranks teams by net worth (cash + tile value).',
             }[activeCard.reason];
+            const medal = ['🥇', '🥈', '🥉'];
             return (
               <>
-                <Typography variant="h4" gutterBottom>Final Standings</Typography>
-                <Typography variant="body1" paragraph>{reasonText}</Typography>
+                <Typography id={TITLE_ID} variant="h4" component="h2" gutterBottom>Final Standings</Typography>
+                <Typography sx={{ mb: 2 }}>{reasonText}</Typography>
                 {players.length > 1 && leader && !leader.eliminated && (
-                  <Alert severity="success" sx={{ mb: 2 }}>
-                    🏆 {tied.length > 1 ? `Tie: ${tied.map((t) => t.name).join(' & ')}` : `${leader.name} wins`} with a net worth of ${leader.netWorth}.
+                  <Alert severity="success" icon={<span aria-hidden>🏆</span>} sx={{ mb: 2, fontWeight: 700 }}>
+                    {tied.length > 1 ? `It's a tie: ${tied.map((t) => t.name).join(' & ')}` : `${leader.name} wins`} with a net worth of {money(leader.netWorth)}.
                   </Alert>
                 )}
-                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 2, '& td, & th': { p: 1, borderBottom: '1px solid', borderColor: 'divider', textAlign: 'right' }, '& td:nth-of-type(2), & th:nth-of-type(2)': { textAlign: 'left' } }}>
-                  <thead><tr><th>#</th><th>Team</th><th>Cash</th><th>Property</th><th>Net worth</th></tr></thead>
+                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 2, '& td, & th': { p: 1, borderBottom: '1px solid', borderColor: 'divider', textAlign: 'right' }, '& th': { fontSize: '0.85rem', color: 'text.secondary' }, '& td:nth-of-type(2), & th:nth-of-type(2)': { textAlign: 'left' } }}>
+                  <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Final standings by net worth</caption>
+                  <thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col">Cash</th><th scope="col">Tiles</th><th scope="col">Net worth</th></tr></thead>
                   <tbody>
                     {standings.map((r) => (
-                      <tr key={r.id}>
-                        <td>{r.rank}</td>
-                        <td><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: r.color, marginRight: 6 }} />{r.name}{r.eliminated ? ' (eliminated)' : ''}</td>
-                        <td>${r.cash}</td>
-                        <td>${r.assets}</td>
-                        <td><strong>${r.netWorth}</strong></td>
-                      </tr>
+                      <Box component="tr" key={r.id} sx={{ bgcolor: r.rank === 1 && !r.eliminated && players.length > 1 ? 'action.selected' : undefined, color: r.eliminated ? 'text.secondary' : undefined }}>
+                        <td><span aria-hidden>{!r.eliminated && players.length > 1 ? `${medal[r.rank - 1] || ''} ` : ''}</span>{r.rank}</td>
+                        <td>
+                          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                            <TeamDot player={players[r.id]} size={20} />
+                            <strong>{r.name}</strong>{r.eliminated ? ' (eliminated)' : ''}
+                          </Box>
+                        </td>
+                        <td>{money(r.cash)}</td>
+                        <td>{money(r.assets)}</td>
+                        <td><strong>{money(r.netWorth)}</strong></td>
+                      </Box>
                     ))}
                   </tbody>
                 </Box>
                 <Alert severity="info" sx={{ mb: 2 }}>Next: the post-game survey. Then send or download your results on the final screen.</Alert>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  {!activeCard.forced && <Button fullWidth variant="outlined" onClick={() => setModalOpen(false)}>BACK TO GAME</Button>}
-                  <Button fullWidth variant="contained" color="success" onClick={() => handleEndGame(activeCard.reason)}>CONTINUE TO POST-SURVEY</Button>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  {!activeCard.forced && <Button sx={{ flex: '1 1 160px' }} size="large" variant="outlined" onClick={() => setModalOpen(false)}>Back to game</Button>}
+                  <Button sx={{ flex: '1 1 220px' }} size="large" variant="contained" color="success" autoFocus onClick={() => handleEndGame(activeCard.reason)}>Continue to post-survey</Button>
                 </Box>
               </>
             );
@@ -965,190 +1076,261 @@ export default function GameScreen({
 
           {activeCard?.type === 'MILESTONE' && modalStage === 'MILESTONE_INTRO' && (
             <>
-              <Typography variant="h4" color="primary">{activeCard.data.name}</Typography>
-              <Typography variant="body1" paragraph>Acquire Milestone? 5/6 correct required.</Typography>
+              <Typography id={TITLE_ID} variant="h4" component="h2" color="primary"><span aria-hidden>🏆 </span>{activeCard.data.name} milestone</Typography>
+              <Typography sx={{ mt: 1, mb: 2 }}>This corner is free. Capture it by passing a 6-question exam.</Typography>
+              <Box component="ul" sx={{ m: 0, mb: 2, pl: 2.5, '& li': { mb: 0.75 } }}>
+                <li>Get <strong>5 of 6</strong> right. Your second mistake ends the exam.</li>
+                <li>Pass: pay <strong>{money(activeCard.data.price)}</strong>, own the corner (rivals pay {money(activeCard.data.baseRent)} when they land) and earn a <strong>⚡ {LABELS.chaosToken.toLowerCase()}</strong>.</li>
+                <li>Don't pass: nothing is charged.</li>
+              </Box>
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                <Button fullWidth variant="contained" onClick={() => startQuiz(activeCard.data, 'MILESTONE_ACQUIRE')}>START EXAM</Button>
-                <Button fullWidth variant="outlined" onClick={() => { setModalOpen(false); passTurn(); }}>DECLINE</Button>
+                <Button fullWidth size="large" variant="contained" autoFocus onClick={() => startQuiz(activeCard.data, 'MILESTONE_ACQUIRE')}>Start exam</Button>
+                <Button fullWidth size="large" variant="outlined" onClick={() => { setModalOpen(false); passTurn(); }}>Decline</Button>
               </Box>
             </>
           )}
 
-          {activeCard?.type === 'MILESTONE_CHALLENGE' && modalStage === 'MILESTONE_CHALLENGE_INTRO' && (
-            <>
-              <Typography variant="h4" color="error">⚠️ {LABELS.rivalMilestone}</Typography>
-              <Typography variant="body1">Base fee: <strong>${board.find((t) => t.id === activeCard.data.id)?.baseRent}</strong></Typography>
-              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                <Button fullWidth variant="contained" color="warning" onClick={() => startQuiz(activeCard.data, 'MILESTONE_CHALLENGE')}>ACCEPT CHALLENGE</Button>
-                <Button fullWidth variant="outlined" onClick={payMilestoneFee}>PAY FULL</Button>
-              </Box>
-            </>
-          )}
+          {activeCard?.type === 'MILESTONE_CHALLENGE' && modalStage === 'MILESTONE_CHALLENGE_INTRO' && (() => {
+            const fee = board.find((t) => t.id === activeCard.data.id)?.baseRent || 0;
+            return (
+              <>
+                <Typography id={TITLE_ID} variant="h4" component="h2" color="error"><span aria-hidden>⚠️ </span>{LABELS.rivalMilestone}</Typography>
+                <Typography sx={{ mt: 1, mb: 2 }}>
+                  <strong>{ownerName(activeCard.ownerId)}</strong> owns {activeCard.data.name}. The landing fee is <strong>{money(fee)}</strong>.
+                </Typography>
+                <Stakes good={`pass the 6-question exam (5 right) and pay half: ${money(Math.floor(fee / 2))}.`} bad={`fail it and pay the full ${money(fee)}.`} />
+                <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Button sx={{ flex: '1 1 200px' }} size="large" variant="contained" color="warning" autoFocus onClick={() => startQuiz(activeCard.data, 'MILESTONE_CHALLENGE')}>Accept challenge</Button>
+                  <Button sx={{ flex: '1 1 200px' }} size="large" variant="outlined" onClick={payMilestoneFee}>Pay full fee ({money(fee)})</Button>
+                </Box>
+              </>
+            );
+          })()}
 
           {modalStage === 'QUIZ_START' && quizState.active && quizState.mode !== 'GRANT' && (
             <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                {/* NUMBERING */}
-                <Typography variant="overline">Question {quizState.qIndex + 1} of {quizState.questions.length}</Typography>
-                <Button size="small" color="error" onClick={() => finishQuiz(false)}>QUIT</Button>
-              </Box>
-              <LinearProgress variant="determinate" value={(quizState.qIndex / quizState.questions.length) * 100} sx={{ mb: 3 }} />
-              
+              <QuizProgress
+                title={`Milestone exam · ${quizTile?.name || ''}`}
+                quiz={quizState}
+                need={quizState.targetScore}
+                onQuit={quizState.waiting ? null : () => finishQuiz(false)}
+              />
               {renderQuestion(quizState.questions[quizState.qIndex], handleQuizAnswer, {
-                variant: 'h6', key: `quiz-${quizState.qIndex}`,
+                key: `quiz-${quizState.qIndex}`,
                 reveal: quizState.waiting ? { ...quizState.result, response: quizState.selected } : null,
               })}
-
-              {/* NEW: EXPLANATION + NEXT BUTTON */}
-              {quizState.waiting && (
-                 <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2, borderLeft: `4px solid ${quizState.isCorrect ? THEME.success : THEME.danger}` }}>
-                    <Typography variant="subtitle2" fontWeight="bold" color={quizState.isCorrect ? "success.main" : "error.main"}>
-                        {quizState.isCorrect ? "Correct!" : "Incorrect"}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                        {quizState.questions[quizState.qIndex].explanation || "No explanation provided."}
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button variant="contained" onClick={handleNextQuestion}>
-                            {quizState.qIndex < quizState.questions.length - 1 ? "NEXT QUESTION" : "FINISH EXAM"}
-                        </Button>
-                    </Box>
-                 </Box>
-              )}
+              {quizState.waiting && (() => {
+                const over = quizState.mistakes >= quizState.maxMistakes;
+                const last = quizState.qIndex >= quizState.questions.length - 1;
+                return (
+                  <OutcomePanel feedback={{
+                    tone: quizState.isCorrect ? 'good' : 'bad',
+                    title: quizState.isCorrect ? 'Correct!' : 'Not quite',
+                    detail: over ? 'That was your second mistake, so the exam ends here.' : (!quizState.isCorrect ? 'One mistake used. One more ends the exam.' : ''),
+                    explanation: quizState.questions[quizState.qIndex].explanation || '',
+                  }}>
+                    <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
+                      {over || last ? 'Finish exam' : 'Next question'}
+                    </Button>
+                  </OutcomePanel>
+                );
+              })()}
             </>
           )}
 
           {modalStage === 'MILESTONE_SUCCESS' && (
-            <>
-              <Typography variant="h5" align="center" color="success.main">SUCCESS!</Typography>
-              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>
-            </>
+            <Box sx={{ textAlign: 'center' }}>
+              <motion.div initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}>
+                <Box aria-hidden sx={{ fontSize: 72, lineHeight: 1 }}>🏆</Box>
+              </motion.div>
+              <Typography id={TITLE_ID} variant="h4" component="h2" color="success.main" sx={{ mt: 1 }}>Milestone captured!</Typography>
+              <Typography sx={{ mt: 1 }}>
+                {quizState.score} of {quizState.questions.length} correct. <strong>{currentPlayer.name}</strong> now owns {quizTile?.name} ({signedMoney(-(quizTile?.price || 0))}) and earns a ⚡ {LABELS.chaosToken.toLowerCase()}.
+              </Typography>
+              <Button fullWidth size="large" variant="contained" autoFocus sx={{ mt: 3 }} onClick={passTurn}>Continue</Button>
+            </Box>
           )}
 
           {modalStage === 'MILESTONE_FAIL' && (
-            <>
-              <Typography variant="h5" align="center" color="error">FAILED</Typography>
-              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>
-            </>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography id={TITLE_ID} variant="h4" component="h2" color="error" sx={{ mt: 1 }}>Exam not passed</Typography>
+              <Typography sx={{ mt: 1 }}>
+                {quizState.score} of {quizState.questions.length} correct (you needed {quizState.targetScore}). Nothing is charged: try again next time you land here.
+              </Typography>
+              <Button fullWidth size="large" variant="contained" autoFocus sx={{ mt: 3 }} onClick={passTurn}>Continue</Button>
+            </Box>
           )}
 
           {activeCard?.type === 'QUESTION' && modalStage === 'QUESTION' && (
             <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">{LABELS.questionTitle} · {activeCard.data.type === 'property' ? activeCard.data.sub : activeCard.data.name}</Typography>
-              </Box>
-              <Divider sx={{ my: 2 }} />
-              
+              <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 1.5 }}>{LABELS.questionTitle} · {tileLabel(activeCard.data)}</Typography>
+              <Stakes good={`you may buy this tile for ${money(activeCard.data.price)}.`} bad={`your team pays ${money(ECONOMY.wrongAnswerPenalty)}.`} />
               {renderQuestion(activeCard.q, handleAnswer)}
             </>
           )}
 
-          {activeCard?.type === 'QUESTION' && modalStage === 'DECISION' && (
-            <>
-              <Typography variant="h5" color="success.main">✅ Correct!</Typography>
-              {feedback && (
-                <Box sx={{ mt: 1.5, mb: 2, p: 2, borderRadius: 2, bgcolor: 'action.hover', borderLeft: '4px solid', borderColor: 'success.main' }}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{feedback}</Typography>
-                </Box>
-              )}
-              <Divider />
-              <Typography sx={{ my: 2 }}>{LABELS.buyPrompt(activeCard.data.price)}</Typography>
-              {currentPlayer.money < activeCard.data.price && (
-                <Alert severity="warning">Not enough cash: your team has ${currentPlayer.money}.</Alert>
-              )}
-              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                <Button fullWidth variant="contained" onClick={handleBuy} disabled={currentPlayer.money < activeCard.data.price}>{LABELS.buy.toUpperCase()}</Button>
-                <Button fullWidth variant="outlined" onClick={passTurn}>SKIP</Button>
-              </Box>
-            </>
-          )}
+          {activeCard?.type === 'QUESTION' && modalStage === 'DECISION' && (() => {
+            const tile = activeCard.data;
+            const canAfford = currentPlayer.money >= tile.price;
+            const rentWhenOwned = rentIf(tile, { owner: currentPlayer.id });
+            return (
+              <>
+                <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 1.5 }}>{LABELS.questionTitle} · {tileLabel(tile)}</Typography>
+                {renderAnswered()}
+                <OutcomePanel feedback={feedback}>
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>{LABELS.buyPrompt(tile.price)}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Your team has {money(currentPlayer.money)}{canAfford ? `, leaving ${money(currentPlayer.money - tile.price)}` : ''}.
+                      {' '}Rivals who land here would pay {money(rentWhenOwned)}{tile.type === 'property' ? ', more once you own the whole colour group' : ''}.
+                    </Typography>
+                    {!canAfford && <Alert severity="warning" sx={{ mt: 1.5 }}>Not enough cash to buy this tile.</Alert>}
+                    <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
+                      <Button fullWidth size="large" variant="contained" autoFocus={canAfford} aria-describedby={OUTCOME_ID} onClick={handleBuy} disabled={!canAfford}>{LABELS.buy} for {money(tile.price)}</Button>
+                      <Button fullWidth size="large" variant="outlined" autoFocus={!canAfford} onClick={passTurn}>{LABELS.skip}</Button>
+                    </Box>
+                  </Box>
+                </OutcomePanel>
+              </>
+            );
+          })()}
 
           {activeCard?.type === 'MSG' && modalStage === 'MSG' && (
             <>
-              <Typography variant="h5" gutterBottom>{activeCard.data.name}</Typography>
-              <Typography variant="body1">{activeCard.msg}</Typography>
-              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>
+              <Typography id={TITLE_ID} variant="h5" component="h2" gutterBottom>{tileLabel(activeCard.data)}</Typography>
+              <Typography sx={{ fontSize: '1.1rem' }}>{activeCard.msg}</Typography>
+              <Button fullWidth size="large" variant="contained" autoFocus sx={{ mt: 3 }} onClick={passTurn}>Continue</Button>
             </>
           )}
 
           {activeCard?.type === 'MISHAP' && modalStage === 'MISHAP' && (
-            <>
-              <Typography variant="h5" gutterBottom>🃏 {LABELS.chanceCard}</Typography>
-              <Typography variant="body1">{activeCard.msg}</Typography>
-              {activeCard.data.fact && <Alert severity="info" sx={{ mt: 2 }}><Typography variant="body2">{activeCard.data.fact}</Typography></Alert>}
-              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>
-            </>
+            <Box sx={{ textAlign: 'center' }}>
+              <motion.div initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ duration: 0.45 }}>
+                <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1 }}>🃏</Box>
+                <Typography id={TITLE_ID} variant="h4" component="h2" sx={{ mt: 1 }}>{LABELS.chanceCard}</Typography>
+                <Typography sx={{ mt: 1.5, fontSize: '1.15rem', fontWeight: 700 }}>{activeCard.msg}</Typography>
+                {activeCard.amount ? (
+                  <Box sx={{ display: 'inline-block', mt: 2, px: 2.5, py: 0.75, borderRadius: 99, fontWeight: 900, fontSize: '1.4rem', bgcolor: activeCard.amount > 0 ? 'success.light' : 'error.light', color: activeCard.amount > 0 ? 'success.main' : 'error.main' }}>
+                    {signedMoney(activeCard.amount)}
+                  </Box>
+                ) : null}
+              </motion.div>
+              {activeCard.data.fact && (
+                <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, bgcolor: 'info.light', textAlign: 'left' }}>
+                  <Typography variant="overline" sx={{ fontWeight: 800, color: 'info.main', lineHeight: 1.5 }}>Did you know?</Typography>
+                  <Typography>{activeCard.data.fact}</Typography>
+                </Box>
+              )}
+              <Button fullWidth size="large" variant="contained" autoFocus sx={{ mt: 3 }} onClick={passTurn}>Continue</Button>
+            </Box>
           )}
 
           {modalStage === 'FEEDBACK_INCORRECT' && activeCard?.type !== 'MISHAP' && activeCard?.type !== 'WIN' && (
             <>
-              {(() => {
-                const good = /^(Correct|Impressive|Chaos success)/.test(feedback || '');
-                const bad = /^(Incorrect|Chaos failed|Quiz Failed)/.test(feedback || '');
-                const [headline, ...rest] = (feedback || '').split('\n\n');
-                return (
-                  <>
-                    <Typography variant="h5" color={good ? 'success.main' : bad ? 'error.main' : 'text.primary'}>
-                      {good ? '✅ Correct!' : bad ? '❌ Not quite' : 'Notice'}
-                    </Typography>
-                    <Typography variant="body1" sx={{ mt: 2, fontWeight: 700 }}>{headline}</Typography>
-                    {rest.length > 0 && (
-                      <Box sx={{ mt: 2, p: 2, borderRadius: 2, bgcolor: 'action.hover', borderLeft: '4px solid', borderColor: good ? 'success.main' : bad ? 'error.main' : 'divider' }}>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{rest.join('\n\n')}</Typography>
-                      </Box>
-                    )}
-                  </>
-                );
-              })()}
-              <Button fullWidth variant="contained" sx={{ mt: 3 }} onClick={passTurn}>CONTINUE</Button>
+              {lastAnswer ? (
+                <>
+                  <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 1.5 }}>{resultHeading()}</Typography>
+                  {renderAnswered()}
+                  <OutcomePanel feedback={feedback}>
+                    <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={passTurn}>Continue</Button>
+                  </OutcomePanel>
+                </>
+              ) : (
+                <OutcomePanel feedback={feedback} titleId={TITLE_ID} big>
+                  <Button fullWidth size="large" variant="contained" autoFocus onClick={passTurn}>Continue</Button>
+                </OutcomePanel>
+              )}
             </>
           )}
 
-          {activeCard?.type === 'UPGRADE_OFFER' && (
-            <>
-              <Typography variant="h5">{LABELS.upgradeTitle}</Typography>
-              <Button fullWidth variant="contained" onClick={handleUpgrade} sx={{ mt: 2 }}>{LABELS.upgrade.toUpperCase()}</Button>
-              <Button fullWidth onClick={() => setModalOpen(false)} sx={{ mt: 1 }}>CANCEL</Button>
-            </>
-          )}
+          {activeCard?.type === 'UPGRADE_OFFER' && (() => {
+            const tile = board.find((t) => t.id === activeCard.data.id) || activeCard.data;
+            const g = ownedGroups.find((x) => x.tile.group === tile.group && x.tile.sub === tile.sub);
+            if (!g) return null;
+            const rentNow = computeRent(board, tile);
+            const rentAfter = rentIf(tile, { level: g.next }, true);
+            const canPay = currentPlayer.money >= g.cost;
+            return (
+              <>
+                <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 2 }}>{LABELS.upgradeTitle}: {tile.sub}</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 2, p: 2, borderRadius: 2, bgcolor: 'action.hover', textAlign: 'center' }}>
+                  <Box>
+                    <Typography variant="overline" color="text.secondary">Now</Typography>
+                    <Stars level={g.level} />
+                    <Typography sx={{ fontWeight: 800 }}>Rent {money(rentNow)}</Typography>
+                  </Box>
+                  <Box aria-hidden sx={{ fontSize: 28, color: 'text.secondary' }}>→</Box>
+                  <Box>
+                    <Typography variant="overline" color="text.secondary">After</Typography>
+                    <Stars level={g.next} />
+                    <Typography sx={{ fontWeight: 800, color: 'success.main' }}>Rent {money(rentAfter)}</Typography>
+                  </Box>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                  Rent is per tile, for all {g.size} {tile.sub} tiles. Your team has {money(currentPlayer.money)}.
+                </Typography>
+                {!canPay && <Alert severity="warning" sx={{ mt: 1.5 }}>Not enough cash for this upgrade.</Alert>}
+                <Button fullWidth size="large" variant="contained" autoFocus={canPay} disabled={!canPay || !g.canLevel} onClick={handleUpgrade} sx={{ mt: 2 }}>{LABELS.upgrade} for {money(g.cost)}</Button>
+                <Button fullWidth size="large" autoFocus={!canPay} onClick={() => setModalOpen(false)} sx={{ mt: 1 }}>Cancel</Button>
+              </>
+            );
+          })()}
 
           {activeCard?.type === 'RENT_DEFENSE' && modalStage === 'QUESTION' && (
             <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6" sx={{ color: THEME.danger }}>Rent Due: ${activeCard.rent}</Typography>
-              </Box>
-              <Box sx={{ bgcolor: 'info.light', p: 2, borderRadius: 2, mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ color: 'info.main', fontWeight: 'bold' }}>{activeCard.payerName} (You) must answer!</Typography>
-              </Box>
-              <Divider sx={{ my: 2 }} />
-              
+              <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 0.5 }}>Rent due: <Box component="span" sx={{ color: 'error.main' }}>{money(activeCard.rent)}</Box></Typography>
+              <Typography sx={{ mb: 1.5 }}>
+                <strong>{activeCard.ownerName}</strong> owns {tileLabel(activeCard.data)}. Answer to cut the rent in half.
+              </Typography>
+              <Stakes good={`pay only ${money(Math.floor(activeCard.rent / 2))}.`} bad={`pay the full ${money(activeCard.rent)}.`} />
               {renderQuestion(activeCard.q, handleRentChallengeAnswer, { imageMaxHeight: 200 })}
             </>
           )}
 
-          {modalStage === 'CHAOS_SELECT' && activeCard?.type === 'CHAOS_SELECT' && (
-            <>
-              <Typography variant="h5" gutterBottom>Use Chaos Token</Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                <Button variant="contained" color="secondary" onClick={handleBuyChaosToken}>BUY CHAOS TOKEN ($500)</Button>
-              </Box>
-              <Typography variant="body2" sx={{ mb: 2 }}>Or select a property to challenge (Cost: 1 Token).</Typography>
-              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {chaosTargets(board, currentPlayer.id).map((t) => (
-                  <Box key={t.id} sx={{ p: 1, mb: 1, display: 'flex', justifyContent: 'space-between', border: `1px solid ${t.color}`, borderRadius: 1 }}>
-                    <div><strong>{t.name}</strong> ({t.sub})</div>
-                    <Button size="small" variant="contained" onClick={() => handleSelectChaosTarget(t)}>CHALLENGE</Button>
+          {modalStage === 'CHAOS_SELECT' && activeCard?.type === 'CHAOS_SELECT' && (() => {
+            const targets = chaosTargets(board, currentPlayer.id);
+            const tokens = currentPlayer.chaosTokens;
+            const buyBlocked = !chaosTokensForSale(board) ? 'Unlocks once all 4 milestones have been captured.' : currentPlayer.money < ECONOMY.chaosTokenPrice ? `Your team needs ${money(ECONOMY.chaosTokenPrice)}.` : '';
+            return (
+              <>
+                <Typography id={TITLE_ID} variant="h5" component="h2" gutterBottom><span aria-hidden>⚡ </span>Chaos tokens</Typography>
+                <Typography sx={{ mb: 2 }}>
+                  Your team has <strong>{tokens} token{tokens === 1 ? '' : 's'}</strong>. Spend one to challenge for a rival's tile: answer its question right to take it for half price. Answer wrong and you pay a small penalty.
+                </Typography>
+                {tokens === 0 && <Alert severity="info" sx={{ mb: 2 }}>Capture a milestone (corner tile) to earn a token.</Alert>}
+                {targets.length === 0 ? (
+                  <Typography color="text.secondary" sx={{ mb: 2 }}>No rival tiles to challenge yet.</Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 320, overflowY: 'auto', mb: 2 }}>
+                    {targets.map((t) => (
+                      <Box key={t.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, border: '1px solid', borderColor: 'divider', borderLeft: `6px solid ${t.color}`, borderRadius: 2 }}>
+                        <TeamDot player={players[t.owner]} size={22} />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 800 }}>{t.sub} {t.level > 0 && <Stars level={t.level} inline />}</Typography>
+                          <Typography variant="body2" color="text.secondary">{t.group} · owned by {ownerName(t.owner)} · take it for {money(chaosStealCost(t))}</Typography>
+                        </Box>
+                        <Button variant="contained" disabled={tokens <= 0} onClick={() => handleSelectChaosTarget(t)} aria-label={`Challenge for ${t.sub} owned by ${ownerName(t.owner)}`}>Challenge</Button>
+                      </Box>
+                    ))}
                   </Box>
-                ))}
-              </div>
-              <Button fullWidth sx={{ mt: 2 }} onClick={() => setModalOpen(false)}>CANCEL</Button>
-            </>
-          )}
+                )}
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                  <Box sx={{ flex: '1 1 200px' }}>
+                    <Typography sx={{ fontWeight: 800 }}>Buy a token for {money(ECONOMY.chaosTokenPrice)}</Typography>
+                    <Typography variant="body2" color="text.secondary">{buyBlocked || 'Available now.'}</Typography>
+                  </Box>
+                  <Button variant="outlined" color="secondary" disabled={Boolean(buyBlocked)} onClick={handleBuyChaosToken}>Buy token</Button>
+                </Box>
+                <Button fullWidth size="large" autoFocus sx={{ mt: 2 }} onClick={() => setModalOpen(false)}>Cancel</Button>
+              </>
+            );
+          })()}
 
           {modalStage === 'CHAOS_QUESTION' && activeCard?.type === 'CHAOS_CHALLENGE' && (
             <>
-              <Typography variant="h6">Chaos Challenge</Typography>
-              <Typography variant="body2" sx={{ mb: 2 }}>Target: {activeCard.data?.name}</Typography>
+              <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 0.5 }}>Chaos challenge · {tileLabel(activeCard.data)}</Typography>
+              <Typography sx={{ mb: 1.5 }}>Owned by <strong>{ownerName(activeCard.data?.owner)}</strong>. One question decides it.</Typography>
+              <Stakes good={`take the tile for ${money(chaosStealCost(activeCard.data))}.`} bad={`pay a ${money(chaosFailPenalty(activeCard.data))} penalty.`} />
               {renderQuestion(activeCard.q, handleChaosAnswer)}
             </>
           )}
@@ -1156,26 +1338,208 @@ export default function GameScreen({
       </Modal>
 
       <Modal open={manageOpen} onClose={() => setManageOpen(false)}>
-        <Box sx={modalStyle}>
-          <Typography variant="h5">{LABELS.upgrades}</Typography>
-          <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: 10 }}>
-            {board.map((tile) => {
-              if (tile.owner === turn && tile.type === 'property') {
-                const groupTiles = getSubgroupTiles(board, tile);
-                const allOwned = groupTiles.every((t) => t.owner === turn);
+        <Box role="dialog" aria-modal="true" aria-labelledby="upgrades-title" sx={modalStyle}>
+          <DialogTop player={currentPlayer} />
+          <Typography id="upgrades-title" variant="h5" component="h2" gutterBottom><span aria-hidden>⭐ </span>{LABELS.upgrades}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Own every tile of a colour group to upgrade it. Each level multiplies the rent rivals pay: 1× → 3× → 6× → 10× → 20×.
+          </Typography>
+          {ownedGroups.length === 0 ? (
+            <Alert severity="info">Your team doesn't own any tiles yet. Answer a property question correctly to buy one.</Alert>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 360, overflowY: 'auto' }}>
+              {ownedGroups.map((g) => {
+                const reason = !g.full ? `Own all ${g.size} to upgrade (${g.owned}/${g.size})` : g.level >= 4 ? 'Maximum level' : !g.canLevel ? 'Levels must be even first' : currentPlayer.money < g.cost ? `Needs ${money(g.cost)}` : '';
                 return (
-                  <Box key={tile.id} sx={{ p: 1, mb: 1, display: 'flex', justifyContent: 'space-between', border: `1px solid ${tile.color}`, borderRadius: 1 }}>
-                    <div><strong>{tile.name}</strong> ({tile.sub}) Lvl {tile.level}</div>
-                    <Button size="small" variant="contained" disabled={!allOwned} onClick={() => { setActiveCard({ type: 'UPGRADE_OFFER', data: tile }); setManageOpen(false); setModalOpen(true); }}>UPGRADE</Button>
+                  <Box key={g.tile.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, border: '1px solid', borderColor: 'divider', borderLeft: `6px solid ${g.tile.color}`, borderRadius: 2 }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 800 }}>{g.tile.sub} <Stars level={g.level} inline /></Typography>
+                      <Typography variant="body2" color="text.secondary">{g.tile.group} · {g.owned} of {g.size} owned{reason ? ` · ${reason}` : ` · next level ${money(g.cost)}`}</Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      disabled={Boolean(reason)}
+                      aria-label={`Upgrade ${g.tile.sub}`}
+                      onClick={() => { setActiveCard({ type: 'UPGRADE_OFFER', data: g.tile }); setManageOpen(false); setModalOpen(true); }}
+                    >
+                      Upgrade
+                    </Button>
                   </Box>
                 );
-              }
-              return null;
-            })}
-          </div>
-          <Button fullWidth onClick={() => setManageOpen(false)} sx={{ mt: 2 }}>CLOSE</Button>
+              })}
+            </Box>
+          )}
+          <Button fullWidth size="large" autoFocus onClick={() => setManageOpen(false)} sx={{ mt: 2 }}>Close</Button>
         </Box>
       </Modal>
+
+      <Dialog open={rulesOpen} onClose={() => setRulesOpen(false)} aria-labelledby="rules-title" maxWidth="sm" fullWidth>
+        <DialogTitle id="rules-title">{LABELS.howToPlay}</DialogTitle>
+        <DialogContent dividers>
+          <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'flex', flexDirection: 'column', gap: 1.75 }}>
+            {RULES.map((r) => (
+              <Box component="li" key={r.title} sx={{ display: 'flex', gap: 1.5 }}>
+                <Box aria-hidden sx={{ fontSize: 24, lineHeight: 1.2, width: 32, textAlign: 'center', flexShrink: 0 }}>{r.icon}</Box>
+                <Box>
+                  <Typography sx={{ fontWeight: 800 }}>{r.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">{r.text}</Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between', px: 3 }}>
+          <Button href="./guide/students.html" target="_blank" rel="noopener">Full student guide<span aria-hidden>&nbsp;↗</span><Box component="span" sx={SR_ONLY}> (opens in a new tab)</Box></Button>
+          <Button variant="contained" onClick={() => setRulesOpen(false)}>Got it</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={exitOpen} onClose={() => setExitOpen(false)} aria-labelledby="exit-title" aria-describedby="exit-text">
+        <DialogTitle id="exit-title">Leave this game?</DialogTitle>
+        <DialogContent>
+          <Typography id="exit-text">The current game and its results will be lost. To finish properly, use End game instead.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button autoFocus onClick={() => setExitOpen(false)}>Stay in the game</Button>
+          <Button color="error" variant="contained" onClick={() => { setExitOpen(false); onExit(); }}>Leave game</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+    </MotionConfig>
+  );
+}
+
+// ------------------------------------------------------------------
+//  PRESENTATION HELPERS
+// ------------------------------------------------------------------
+
+/** Round team token: symbol on a deep team colour (white text stays readable). */
+function TeamDot({ player, size = 24 }) {
+  if (!player) return null;
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        width: size, height: size, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        bgcolor: TEAM_INK[player.id] || player.color, color: 'common.white', fontSize: Math.round(size * 0.5), lineHeight: 1,
+        boxShadow: `0 0 0 2px ${player.color}`,
+      }}
+    >
+      {TEAM_SYMBOLS[player.id]}
+    </Box>
+  );
+}
+
+function Stars({ level = 0, inline = false }) {
+  return (
+    <Box component="span" role="img" aria-label={`Level ${level} of 4`} sx={{ color: 'warning.main', letterSpacing: 1, fontSize: inline ? '0.9rem' : '1.3rem', display: inline ? 'inline' : 'block', whiteSpace: 'nowrap' }}>
+      {'★'.repeat(level)}<Box component="span" sx={{ color: 'text.disabled' }}>{'☆'.repeat(Math.max(0, 4 - level))}</Box>
+    </Box>
+  );
+}
+
+/** Top strip of every game dialog: which tile, and whose turn. */
+function DialogTop({ tile, player }) {
+  const kind = tile ? ({ property: tile.group, sequencing_core: LABELS.tileTypes.sequencing_core, milestone: 'Milestone', chance: LABELS.chanceTile }[tile.type] || '') : '';
+  const name = tile ? (tile.type === 'property' ? tile.sub : tile.name) : '';
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, mb: 2, pb: 1.5, borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+        {tile && <Box aria-hidden sx={{ width: 14, height: 14, borderRadius: 1, bgcolor: tile.color, flexShrink: 0 }} />}
+        {tile && <Typography variant="body2" sx={{ fontWeight: 800 }}>{name}</Typography>}
+        {kind && kind !== name && <Typography variant="body2" color="text.secondary">· {kind}</Typography>}
+      </Box>
+      {player && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TeamDot player={player} size={22} />
+          <Typography variant="body2" sx={{ fontWeight: 800 }}>{player.name}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: player.money < 0 ? 'error.main' : 'text.secondary' }}>{money(player.money)}</Typography>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+/** What a right and a wrong answer mean, shown before the question. */
+function Stakes({ good, bad }) {
+  const cell = (ok, text) => (
+    <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: ok ? 'success.light' : 'error.light', display: 'flex', gap: 1, alignItems: 'baseline' }}>
+      <Box component="span" aria-hidden sx={{ color: ok ? 'success.main' : 'error.main', fontWeight: 900 }}>{ok ? '✓' : '✗'}</Box>
+      <Typography variant="body2"><strong>{ok ? 'Right:' : 'Wrong:'}</strong> {text}</Typography>
+    </Box>
+  );
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mb: 2.5 }}>
+      {cell(true, good)}
+      {cell(false, bad)}
+    </Box>
+  );
+}
+
+/** Result of an answer or event, with the explanation (the teaching moment) and the next action. */
+function OutcomePanel({ feedback, titleId, big = false, children }) {
+  if (!feedback) return children || null;
+  const tone = feedback.tone || 'neutral';
+  const c = tone === 'good' ? 'success' : tone === 'bad' ? 'error' : 'info';
+  return (
+    <Box sx={{ mt: big ? 0 : 2.5, p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: '2px solid', borderColor: `${c}.main`, bgcolor: 'action.hover' }}>
+      <Box id={OUTCOME_ID} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+        <motion.div initial={{ scale: 0.4, rotate: -25 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 14 }}>
+          <Box aria-hidden sx={{ width: big ? 48 : 40, height: big ? 48 : 40, borderRadius: '50%', bgcolor: `${c}.main`, color: `${c}.contrastText`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: big ? 26 : 22 }}>
+            {tone === 'good' ? '✓' : tone === 'bad' ? '✗' : 'i'}
+          </Box>
+        </motion.div>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography id={titleId} variant={big ? 'h4' : 'h5'} component={titleId ? 'h2' : 'p'} sx={{ color: `${c}.main`, lineHeight: 1.2 }}>{feedback.title}</Typography>
+          {feedback.detail && <Typography sx={{ mt: 0.5, fontWeight: 700 }}>{feedback.detail}</Typography>}
+        </Box>
+      </Box>
+      {feedback.explanation && (
+        <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="overline" component="p" color="text.secondary" sx={{ fontWeight: 800, lineHeight: 1.6 }}>Why</Typography>
+          <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{feedback.explanation}</Typography>
+        </Box>
+      )}
+      {feedback.note && <Alert severity="warning" sx={{ mt: 2 }}>{feedback.note}</Alert>}
+      {children && <Box sx={{ mt: 2.5 }}>{children}</Box>}
+    </Box>
+  );
+}
+
+/** Exam header: title, question count and one pip per question. */
+function QuizProgress({ title, quiz, need, onQuit, rescue = false }) {
+  const total = quiz.questions.length;
+  const history = quiz.history || [];
+  const mistakesLeft = Math.max(0, (quiz.maxMistakes || 2) - 1 - (quiz.mistakes || 0));
+  const status = rescue
+    ? `Need ${need} of ${total} correct · ${quiz.score} so far`
+    : `Need ${need} of ${total} · ${mistakesLeft > 0 ? `${mistakesLeft} mistake allowed` : 'no more mistakes allowed'}`;
+  return (
+    <Box sx={{ mb: 2.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+        <Typography id={TITLE_ID} variant="h6" component="h2">{title}</Typography>
+        {onQuit && <Button size="small" color="error" onClick={onQuit}>Give up</Button>}
+      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', mt: 1 }}>
+        <Box role="img" aria-label={`${history.filter(Boolean).length} right, ${history.filter((h) => h === false).length} wrong, question ${quiz.qIndex + 1} of ${total}`} sx={{ display: 'flex', gap: 0.75 }}>
+          {Array.from({ length: total }, (_, i) => {
+            const h = history[i];
+            const state = h === true ? 'right' : h === false ? 'wrong' : i === quiz.qIndex ? 'current' : 'todo';
+            const filled = state === 'right' || state === 'wrong';
+            const c = state === 'right' ? 'success' : 'error';
+            return (
+              <Box key={i} sx={{
+                width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900,
+                border: '2px solid', borderColor: filled ? `${c}.main` : state === 'current' ? 'primary.main' : 'divider',
+                bgcolor: filled ? `${c}.main` : 'transparent', color: filled ? `${c}.contrastText` : state === 'current' ? 'primary.main' : 'text.secondary',
+              }}>
+                {state === 'right' ? '✓' : state === 'wrong' ? '✗' : i + 1}
+              </Box>
+            );
+          })}
+        </Box>
+        <Typography variant="body2" sx={{ fontWeight: 700 }} color="text.secondary">Question {quiz.qIndex + 1} of {total} · {status}</Typography>
+      </Box>
     </Box>
   );
 }
