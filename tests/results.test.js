@@ -52,18 +52,18 @@ describe("summarizeTeams", () => {
 
   it("counts survey scores and copies the final result per team", () => {
     const summary = summarizeTeams({ preRows, postRows, gameRows, playerCount: 2, members: [" Ana, Sam ", ""] });
-    expect(summary[0]).toEqual({ playerIndex: 0, team: "Red Team", members: "Ana, Sam", preScore: 1, postScore: 2, surveyQuestions: 2, rank: 2, netWorth: 1800, eliminated: false });
-    expect(summary[1]).toMatchObject({ team: "Blue Team", members: "", preScore: 0, postScore: 1, rank: 1 });
+    expect(summary[0]).toEqual({ playerIndex: 0, team: "Red Player", members: "Ana, Sam", preScore: 1, postScore: 2, surveyQuestions: 2, rank: 2, netWorth: 1800, eliminated: false });
+    expect(summary[1]).toMatchObject({ team: "Blue Player", members: "", preScore: 0, postScore: 1, rank: 1 });
   });
 
-  it("calls a single team the Solo Team", () => {
-    expect(summarizeTeams({ playerCount: 1 })[0].team).toBe("Solo Team");
+  it("calls a single player the Solo Player", () => {
+    expect(summarizeTeams({ playerCount: 1 })[0].team).toBe("Solo Player");
   });
 
   it("turns the summary into TEAM_INFO rows", () => {
     const rows = teamInfoRows(summarizeTeams({ preRows, postRows, gameRows, playerCount: 2, members: ["Ana"] }), "s1");
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ eventType: "TEAM_INFO", sessionId: "s1", playerIndex: 0, playerName: "Red Team", members: "Ana" });
+    expect(rows[0]).toMatchObject({ eventType: "TEAM_INFO", sessionId: "s1", playerIndex: 0, playerName: "Red Player", members: "Ana" });
   });
 });
 
@@ -73,7 +73,7 @@ describe("buildMailto", () => {
     const link = buildMailto({ to: "a@b.edu", course: "BIOL 101", summary, filename: "sab_results_x.csv" });
     expect(link.startsWith("mailto:a@b.edu?subject=")).toBe(true);
     expect(link).toContain(encodeURIComponent("sab_results_x.csv"));
-    expect(decodeURIComponent(link)).toContain("Solo Team (Ana Lee)");
+    expect(decodeURIComponent(link)).toContain("Solo Player (Ana Lee)");
   });
 });
 

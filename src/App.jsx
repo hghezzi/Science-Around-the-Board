@@ -115,7 +115,7 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
         )}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <TeamToken index={currentPlayer} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{teamDisplayName(currentPlayer, playerCount)}{playerCount > 1 ? ` · team ${currentPlayer + 1} of ${playerCount}` : ""}</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{teamDisplayName(currentPlayer, playerCount)}{playerCount > 1 ? ` · player ${currentPlayer + 1} of ${playerCount}` : ""}</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           {isPre ? "Answer on your own; this is your starting point, not a test. The best score goes first." : "Same questions as before the game. How much have you learned?"}
@@ -276,7 +276,7 @@ function SummaryView({ playerCount, config, topic, module, preRows, postRows, ga
             <Typography color="text.secondary" sx={{ mt: 0.5 }}>Nice work! Here's how your survey scores changed.</Typography>
           </Box>
           <Box component="table" sx={{ width: "100%", borderCollapse: "collapse", my: 3, "& td, & th": { p: 1, borderBottom: "1px solid", borderColor: "divider", textAlign: "left" } }}>
-            <thead><tr><th scope="col">Team</th><th scope="col">Survey before</th><th scope="col">Survey after</th><th scope="col">Change</th></tr></thead>
+            <thead><tr><th scope="col">Player</th><th scope="col">Survey before</th><th scope="col">Survey after</th><th scope="col">Change</th></tr></thead>
             <tbody>
               {summary.map((t) => {
                 const delta = t.postScore - t.preScore;
@@ -293,7 +293,7 @@ function SummaryView({ playerCount, config, topic, module, preRows, postRows, ga
           </Box>
           <Typography variant="h6" component="h2">Who played?</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            {config.askNames ? "Required by your instructor:" : "Optional:"} type the names or student IDs of everyone on each team.
+            {config.askNames ? "Required by your instructor:" : "Optional:"} type the names or student IDs of everyone playing as each player.
           </Typography>
           {summary.map((t, i) => (
             <TextField
@@ -614,7 +614,7 @@ export default function App() {
           <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1, mb: 1 }}>🎲</Box>
           <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1, textWrap: "balance" }}>Science Around the Board</Typography>
           <Typography variant="h6" component="p" color="text.secondary" sx={{ fontWeight: 500, mb: 4, textWrap: "balance" }}>
-            Turn any course into a board-game review session: roll, answer, invest and outwit the other teams.
+            Turn any course into a board-game review session: roll, answer, invest and outwit the other players.
           </Typography>
 
           {resumeOffer && !hasData && (
@@ -732,7 +732,7 @@ export default function App() {
           <Card sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" component="h2">2 · Session length</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              The game ends when one team is left standing, or when time runs out (highest net worth wins).
+              The game ends when one player is left standing, or when time runs out (highest net worth wins).
             </Typography>
             <ToggleButtonGroup value={sessionMinutes} exclusive onChange={(_, v) => v !== null && setSessionMinutes(v)} fullWidth color="primary">
               {[0, 30, 45, 60, 90].map((m) => <ToggleButton key={m} value={m} sx={{ fontWeight: 800 }}>{m === 0 ? "No timer" : `${m} min`}</ToggleButton>)}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ECONOMY, QUIZ_RULES, MAX_LEVEL, shuffle, pickRandom, drawQuestions,
+  ECONOMY, QUIZ_RULES, MAX_LEVEL, startingMoney, shuffle, pickRandom, drawQuestions,
   canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
   liquidationValue, bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, acquireTile, assetValue, tilePaid,
   chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale, computeRent, netWorth,
@@ -17,10 +17,15 @@ const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
 
 describe("economy constants (documented in the Instructor Guide)", () => {
   it("match the published rules", () => {
-    expect(ECONOMY).toMatchObject({ startMoney: 1500, rentScale: 2.5, lapBonus: 200, wrongAnswerPenalty: 20, chaosTokenPrice: 500, rescueBonus: 500 });
+    expect(ECONOMY).toMatchObject({ startMoney: { 1: 2500, 2: 2000, 3: 1500, 4: 1250 }, rentScale: 2.5, coreRentStep: 50, milestoneFee: 250, lapBonus: 200, wrongAnswerPenalty: 20, chaosTokenPrice: 500, rescueBonus: 500 });
     expect(QUIZ_RULES.milestone).toEqual({ questions: 6, pass: 5, maxMistakes: 2 });
     expect(QUIZ_RULES.rescue).toEqual({ questions: 3, pass: 2 });
     expect(MAX_LEVEL).toBe(4);
+  });
+
+  it("gives fewer players more starting cash", () => {
+    expect([1, 2, 3, 4].map(startingMoney)).toEqual([2500, 2000, 1500, 1250]);
+    expect(startingMoney(7)).toBe(1250);
   });
 });
 
@@ -189,7 +194,7 @@ describe("a full game's economy on the demo board", () => {
   it("charges rent by tile type", () => {
     const owned = board.map((t) => ({ ...t, owner: 0 }));
     expect(computeRent(owned, owned[1])).toBe(50); // sub1 property, full set, level 0
-    expect(computeRent(owned, owned[4])).toBe(300); // core
+    expect(computeRent(owned, owned[4])).toBe(200); // core: $50 × the 4 cores owned
     const partial = board.map((t, i) => (i === 5 ? { ...t, owner: 0 } : t));
     expect(computeRent(partial, partial[5])).toBe(40); // half rent without the full set
   });

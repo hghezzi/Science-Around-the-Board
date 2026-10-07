@@ -21,7 +21,11 @@ export function ownsFullSubgroup(board, tile, ownerId) {
 export function getRentMultiplier(board, tile) {
   if (!tile) return 0;
   if (tile.type === 'milestone') return 1.0;
-  if (tile.type === 'sequencing_core') return 1.0;
+  // Core tiles: $50 for each of the 4 core tiles the owner holds ($50, $100, $150, $200).
+  if (tile.type === 'sequencing_core') {
+    if (tile.owner == null) return 0;
+    return board.filter((t) => t.type === 'sequencing_core' && t.owner === tile.owner).length;
+  }
   if (tile.type !== 'property') return 1.0;
 
   const ownerId = tile.owner;
@@ -144,8 +148,13 @@ export function bestPreSurveyPlayer(preRows, playerCount, rng = Math.random) {
 // ------------------------------------------------------------------
 
 export const ECONOMY = {
-  startMoney: 1500,
-  rentScale: 2.5, // every base rent is 2.5× its original value (property 50% of price, core $300, milestone $625)
+  // Starting cash by number of players. Fewer players get more rolls and more tiles
+  // each, so they need more cash; these keep the pressure on cash similar for 2–4
+  // players (simulated with these rules). Solo play has no rent income.
+  startMoney: { 1: 2500, 2: 2000, 3: 1500, 4: 1250 },
+  rentScale: 2.5, // property base rent is 2.5 × 20% = 50% of the price
+  coreRentStep: 50, // a core tile's rent is $50 per core tile its owner holds
+  milestoneFee: 250, // landing on a rival's milestone (half after a passed expert challenge)
   lapBonus: 200, // passing (or landing on) START
   wrongAnswerPenalty: 20, // wrong answer on an unowned tile
   chaosTokenPrice: 500, // only once all four milestones are owned
@@ -153,6 +162,9 @@ export const ECONOMY = {
   saleShare: 0.5, // liquidation: selling a deed or an upgrade returns half of what was paid for it
   chaosStealShare: 0.5, // a successful Chaos Challenge buys the tile at half its price
 };
+
+/** Starting cash for each player in a game with `playerCount` players. */
+export const startingMoney = (playerCount) => ECONOMY.startMoney[playerCount] ?? ECONOMY.startMoney[4];
 
 export const MAX_LEVEL = 4;
 

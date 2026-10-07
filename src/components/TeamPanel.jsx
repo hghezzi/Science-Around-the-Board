@@ -10,7 +10,7 @@ export default function TeamPanel({ players, board, turn, moneyFloats }) {
   const best = Math.max(1, ...players.map((p) => netWorth(p, board)));
   return (
     <Card sx={{ p: 2 }}>
-      <Typography variant="overline" component="h2" color="text.secondary" sx={{ fontWeight: 800 }}>Teams</Typography>
+      <Typography variant="overline" component="h2" color="text.secondary" sx={{ fontWeight: 800 }}>Players</Typography>
       <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0, mt: 0.5, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 1 }}>
         {players.map((p, i) => {
           const active = turn === i && !p.eliminated;
