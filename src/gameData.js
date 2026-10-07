@@ -252,10 +252,11 @@ function makeTile(def, id) {
   return tile;
 }
 
-// Base rents are scaled by ECONOMY.rentScale (2.5×): property 50% of its price, core $300, milestone $625.
+// Property rent is 50% of the price (20% × ECONOMY.rentScale). A core tile's base is $50,
+// multiplied by how many core tiles its owner holds (gameRules.js); a rival milestone costs $250.
 function getBaseRent(def) {
   if (def.type === "property") return Math.floor((def.price || 0) * 0.2 * ECONOMY.rentScale);
-  if (def.type === "sequencing_core") return Math.floor(120 * ECONOMY.rentScale);
-  if (def.type === "milestone") return Math.floor(250 * ECONOMY.rentScale);
+  if (def.type === "sequencing_core") return ECONOMY.coreRentStep;
+  if (def.type === "milestone") return ECONOMY.milestoneFee;
   return 0;
 }

@@ -20,7 +20,7 @@ import { matchesTopicAndModule } from './tsvBoardBuilder';
 import { BOARD_SIZE } from './gameData';
 import {
   getSubgroupTiles, getRentMultiplier, computeRent, rankPlayers, nextActivePlayer, activePlayers,
-  ECONOMY, QUIZ_RULES, pickRandom, canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
+  ECONOMY, QUIZ_RULES, startingMoney, pickRandom, canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
   bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, acquireTile, chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale,
 } from './gameRules';
 import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
@@ -82,7 +82,7 @@ function generatePlayers(count) {
     name: teamDisplayName(i, count),
     color: TEAM_COLORS[i],
     position: 0,
-    money: ECONOMY.startMoney,
+    money: startingMoney(count),
     jailed: false,
     chaosTokens: 0,
     rescueUsed: false,
@@ -309,7 +309,7 @@ export default function GameScreen({
 
   // A team that cannot pay its debts leaves the game; its tiles return to the bank.
   const eliminatePlayer = (playerId, reason) => {
-    const name = playersRef.current[playerId]?.name || 'Team';
+    const name = playersRef.current[playerId]?.name || 'Player';
     setBoard((prev) => releaseTiles(prev, playerId));
     setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, eliminated: true, eliminatedAt: totalTurnsRef.current, money: 0 } : p)));
     addLog(`${name} has been eliminated.`);
@@ -323,9 +323,9 @@ export default function GameScreen({
     const all = playersRef.current;
     const remaining = activePlayers(all);
     if (all.length > 1 && remaining.length === 1) {
-      setActiveCard({ type: 'WIN', msg: `${remaining[0].name} is the last team standing!` });
+      setActiveCard({ type: 'WIN', msg: `${remaining[0].name} is the last player standing!` });
       setModalStage('WIN');
-      addLog(`VICTORY: ${remaining[0].name} is the last team standing.`);
+      addLog(`VICTORY: ${remaining[0].name} is the last player standing.`);
     } else if (remaining.length === 0) {
       openStandings(true, 'eliminated');
     } else {
@@ -384,7 +384,7 @@ export default function GameScreen({
     const debt = Math.max(0, -player.money);
     handleTransaction(player.id, debt + ECONOMY.rescueBonus, { action: 'EMERGENCY_GRANT', notes: 'Rescue Quiz passed' });
     setPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, rescueUsed: true } : p)));
-    setFeedback({ tone: 'good', title: LABELS.rescued, detail: `Your ${money(debt)} debt is cleared and you receive ${money(ECONOMY.rescueBonus)} to keep playing.`, note: "This was your team's only rescue: if you go bankrupt again, you are out." });
+    setFeedback({ tone: 'good', title: LABELS.rescued, detail: `Your ${money(debt)} debt is cleared and you receive ${money(ECONOMY.rescueBonus)} to keep playing.`, note: "This was your only rescue: if you go bankrupt again, you are out." });
     setModalStage('GRANT_RESULT');
   };
 
@@ -599,7 +599,7 @@ export default function GameScreen({
       setFeedback({ tone: 'good', title: 'Correct!', explanation: q.explanation || '' });
       setModalStage('DECISION');
     } else {
-      setFeedback({ tone: 'bad', title: 'Not quite', detail: `That costs your team ${money(ECONOMY.wrongAnswerPenalty)}.`, explanation: q.explanation || '' });
+      setFeedback({ tone: 'bad', title: 'Not quite', detail: `That costs you ${money(ECONOMY.wrongAnswerPenalty)}.`, explanation: q.explanation || '' });
       handleTransaction(turnRef.current, -ECONOMY.wrongAnswerPenalty, { action: 'QUESTION_PENALTY', tileId: tile.id, tileName: tile.name, notes: 'Incorrect on acquisition question' });
       setModalStage('FEEDBACK_INCORRECT');
     }
@@ -668,7 +668,7 @@ export default function GameScreen({
     if (result.correct) {
       const cost = chaosStealCost(tile);
       // The token is spent either way (no refund); the Challenge button is disabled when the team can't pay.
-      if (player.money < cost) { setFeedback({ tone: 'neutral', title: 'Correct, but not enough cash', detail: `Taking this tile costs ${money(cost)} and your team has ${money(player.money)}. The token is used up.`, explanation: q.explanation || '' }); setModalStage('FEEDBACK_INCORRECT'); return; }
+      if (player.money < cost) { setFeedback({ tone: 'neutral', title: 'Correct, but not enough cash', detail: `Taking this tile costs ${money(cost)} and you have ${money(player.money)}. The token is used up.`, explanation: q.explanation || '' }); setModalStage('FEEDBACK_INCORRECT'); return; }
       handleTransaction(player.id, -cost, { action: 'CHAOS_STEAL', tileId: tile.id, tileName: tile.name });
       if (tile.owner != null) handleTransaction(tile.owner, cost, { action: 'CHAOS_SELL', tileId: tile.id, tileName: tile.name });
       setBoard((prev) => acquireTile(prev, tile, player.id, cost));
@@ -845,7 +845,9 @@ export default function GameScreen({
       </Box>
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start', gap: { xs: 2, md: 2.5 }, maxWidth: 1500, mx: 'auto' }}>
-        <Box sx={{ flex: '1 1 640px', display: 'flex', justifyContent: 'center', maxWidth: 1000, minWidth: 0 }}>
+        {/* On screens narrower than the board (phones), the board scrolls sideways inside this box
+            instead of widening the page, so dialogs and the player panel still fit the screen. */}
+        <Box sx={{ flex: '1 1 640px', display: 'flex', justifyContent: 'safe center', maxWidth: 1000, minWidth: 0, overflowX: 'auto', pb: 1 }}>
           <Board board={board} players={players} onTileHover={handleTileHover} onTileLeave={clearHover}>
             <Typography component="h2" sx={{ fontFamily: '"Fredoka", sans-serif', fontWeight: 600, fontSize: 'max(18px, 3.2cqw)', lineHeight: 1.1, textAlign: 'center', textWrap: 'balance' }}>{title}</Typography>
             {module && bigTopic && <Typography sx={{ fontSize: 'max(12px, 1.5cqw)', color: 'text.secondary', fontWeight: 700, mt: '-0.8cqw' }}>{bigTopic}</Typography>}
@@ -890,7 +892,9 @@ export default function GameScreen({
                   </Typography>
                   {(hoverTile.type === 'property' || hoverTile.type === 'sequencing_core') && hoverTile.owner != null && (
                     <Typography variant="caption" sx={{ display: 'block' }}>
-                      Rent now: <strong>{money(hoverTile.rent)}</strong> (base {money(hoverTile.baseRent)} × {hoverTile.multiplier.toFixed(1)}{hoverTile.level ? `, level ${hoverTile.level}` : ''})
+                      Rent now: <strong>{money(hoverTile.rent)}</strong>{hoverTile.type === 'sequencing_core'
+                        ? ` (${money(hoverTile.baseRent)} for each of the owner's ${hoverTile.multiplier} core tile${hoverTile.multiplier === 1 ? '' : 's'})`
+                        : ` (base ${money(hoverTile.baseRent)} × ${hoverTile.multiplier.toFixed(1)}${hoverTile.level ? `, level ${hoverTile.level}` : ''})`}
                     </Typography>
                   )}
                 </Box>
@@ -904,7 +908,7 @@ export default function GameScreen({
           </Board>
         </Box>
 
-        <Box component="aside" aria-label="Teams and game log" sx={{ flex: '1 1 260px', maxWidth: { lg: 380 }, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 2, alignItems: 'start' }}>
+        <Box component="aside" aria-label="Players and game log" sx={{ flex: '1 1 260px', maxWidth: { lg: 380 }, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 2, alignItems: 'start' }}>
           <TeamPanel players={players} board={board} turn={turn} moneyFloats={moneyFloats} />
           <Card sx={{ p: 2 }}>
             <Typography variant="overline" component="h2" color="text.secondary" sx={{ fontWeight: 800 }}>Game log</Typography>
@@ -966,13 +970,13 @@ export default function GameScreen({
             <>
               <Typography id={TITLE_ID} variant="h4" component="h2" color="error" gutterBottom><span aria-hidden>🛟 </span>{LABELS.bankrupt}</Typography>
               <Typography sx={{ mb: 1.5 }}>
-                Your team is <strong>{money(activeCard.debt)}</strong> in debt, and selling everything still wouldn't cover it.
+                You are <strong>{money(activeCard.debt)}</strong> in debt, and selling everything still wouldn't cover it.
               </Typography>
               <Typography sx={{ mb: 2 }}>
                 One last chance: the <strong>{LABELS.rescueQuiz}</strong>. Answer <strong>2 of 3</strong> questions correctly and your debt is cleared, plus {money(ECONOMY.rescueBonus)} to keep playing.
               </Typography>
               <Alert severity="warning" sx={{ mb: 3 }}>
-                Each team gets <strong>one</strong> rescue per game. If you don't pass, or you go bankrupt again later, your team is out and its tiles return to the bank.
+                Each player gets <strong>one</strong> rescue per game. If you don't pass, or you go bankrupt again later, you are out and your tiles return to the bank.
               </Alert>
               <Button fullWidth size="large" variant="contained" autoFocus onClick={startGrantExam}>Start the rescue quiz</Button>
             </>
@@ -1041,10 +1045,10 @@ export default function GameScreen({
             const leader = standings[0];
             const tied = standings.filter((r) => !r.eliminated && r.netWorth === leader?.netWorth);
             const reasonText = {
-              time: "Time's up! The team with the highest net worth (cash + tile value) wins.",
-              last_standing: 'Last team standing!',
-              eliminated: 'No teams remain.',
-              ended: 'Ending the game now ranks teams by net worth (cash + tile value).',
+              time: "Time's up! The player with the highest net worth (cash + tile value) wins.",
+              last_standing: 'Last player standing!',
+              eliminated: 'No players remain.',
+              ended: 'Ending the game now ranks players by net worth (cash + tile value).',
             }[activeCard.reason];
             const medal = ['🥇', '🥈', '🥉'];
             return (
@@ -1058,7 +1062,7 @@ export default function GameScreen({
                 )}
                 <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 2, '& td, & th': { p: 1, borderBottom: '1px solid', borderColor: 'divider', textAlign: 'right' }, '& th': { fontSize: '0.85rem', color: 'text.secondary' }, '& td:nth-of-type(2), & th:nth-of-type(2)': { textAlign: 'left' } }}>
                   <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Final standings by net worth</caption>
-                  <thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col">Cash</th><th scope="col">Tiles</th><th scope="col">Net worth</th></tr></thead>
+                  <thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Cash</th><th scope="col">Tiles</th><th scope="col">Net worth</th></tr></thead>
                   <tbody>
                     {standings.map((r) => (
                       <Box component="tr" key={r.id} sx={{ bgcolor: r.rank === 1 && !r.eliminated && players.length > 1 ? 'action.selected' : undefined, color: r.eliminated ? 'text.secondary' : undefined }}>
@@ -1175,7 +1179,7 @@ export default function GameScreen({
           {activeCard?.type === 'QUESTION' && modalStage === 'QUESTION' && (
             <>
               <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 1.5 }}>{LABELS.questionTitle} · {tileLabel(activeCard.data)}</Typography>
-              <Stakes good={`you may buy this tile for ${money(activeCard.data.price)}.`} bad={`your team pays ${money(ECONOMY.wrongAnswerPenalty)}.`} />
+              <Stakes good={`you may buy this tile for ${money(activeCard.data.price)}.`} bad={`you pay ${money(ECONOMY.wrongAnswerPenalty)}.`} />
               {renderQuestion(activeCard.q, handleAnswer)}
             </>
           )}
@@ -1192,8 +1196,8 @@ export default function GameScreen({
                   <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
                     <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>{LABELS.buyPrompt(tile.price)}</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Your team has {money(currentPlayer.money)}{canAfford ? `, leaving ${money(currentPlayer.money - tile.price)}` : ''}.
-                      {' '}Rivals who land here would pay {money(rentWhenOwned)}{tile.type === 'property' ? ', more once you own the whole colour group' : ''}.
+                      You have {money(currentPlayer.money)}{canAfford ? `, leaving ${money(currentPlayer.money - tile.price)}` : ''}.
+                      {' '}Rivals who land here would pay {money(rentWhenOwned)}{tile.type === 'property' ? ', more once you own the whole colour group' : tile.type === 'sequencing_core' ? `, $${ECONOMY.coreRentStep} more for each other core tile you own` : ''}.
                     </Typography>
                     {!canAfford && <Alert severity="warning" sx={{ mt: 1.5 }}>Not enough cash to buy this tile.</Alert>}
                     <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
@@ -1278,7 +1282,7 @@ export default function GameScreen({
                   </Box>
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-                  Rent is per tile, for all {g.size} {tile.sub} tiles. Your team has {money(currentPlayer.money)}.
+                  Rent is per tile, for all {g.size} {tile.sub} tiles. You have {money(currentPlayer.money)}.
                 </Typography>
                 {!canPay && <Alert severity="warning" sx={{ mt: 1.5 }}>Not enough cash for this upgrade.</Alert>}
                 <Button fullWidth size="large" variant="contained" autoFocus={canPay} disabled={!canPay || !g.canLevel} onClick={handleUpgrade} sx={{ mt: 2 }}>{LABELS.upgrade} for {money(g.cost)}</Button>
@@ -1301,12 +1305,12 @@ export default function GameScreen({
           {modalStage === 'CHAOS_SELECT' && activeCard?.type === 'CHAOS_SELECT' && (() => {
             const targets = chaosTargets(board, currentPlayer.id);
             const tokens = currentPlayer.chaosTokens;
-            const buyBlocked = !chaosTokensForSale(board) ? 'Unlocks once all 4 milestones have been captured.' : currentPlayer.money < ECONOMY.chaosTokenPrice ? `Your team needs ${money(ECONOMY.chaosTokenPrice)}.` : '';
+            const buyBlocked = !chaosTokensForSale(board) ? 'Unlocks once all 4 milestones have been captured.' : currentPlayer.money < ECONOMY.chaosTokenPrice ? `You need ${money(ECONOMY.chaosTokenPrice)}.` : '';
             return (
               <>
                 <Typography id={TITLE_ID} variant="h5" component="h2" gutterBottom><span aria-hidden>⚡ </span>Chaos tokens</Typography>
                 <Typography sx={{ mb: 2 }}>
-                  Your team has <strong>{tokens} token{tokens === 1 ? '' : 's'}</strong>. Spend one to challenge for a rival's tile: answer its question right to take it for half price. Answer wrong and you pay a small penalty. Either way the token is used up and your turn ends. Complete sets are protected.
+                  You have <strong>{tokens} token{tokens === 1 ? '' : 's'}</strong>. Spend one to challenge for a rival's tile: answer its question right to take it for half price. Answer wrong and you pay a small penalty. Either way the token is used up and your turn ends. Complete sets are protected.
                 </Typography>
                 {tokens === 0 && <Alert severity="info" sx={{ mb: 2 }}>Capture a milestone (corner tile) to earn a token.</Alert>}
                 {targets.length === 0 ? (
@@ -1321,7 +1325,7 @@ export default function GameScreen({
                         <TeamDot player={players[t.owner]} size={22} />
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 800 }}>{t.sub} {t.level > 0 && <Stars level={t.level} inline />}</Typography>
-                          <Typography variant="body2" color="text.secondary">{t.group} · owned by {ownerName(t.owner)} · take it for {money(cost)}{short ? ` (your team needs ${money(cost)})` : ''}</Typography>
+                          <Typography variant="body2" color="text.secondary">{t.group} · owned by {ownerName(t.owner)} · take it for {money(cost)}{short ? ` (you need ${money(cost)})` : ''}</Typography>
                         </Box>
                         <Button variant="contained" disabled={tokens <= 0 || short} onClick={() => handleSelectChaosTarget(t)} aria-label={`Challenge for ${t.sub} owned by ${ownerName(t.owner)}`}>Challenge</Button>
                       </Box>
@@ -1360,7 +1364,7 @@ export default function GameScreen({
             Own every tile of a colour group to upgrade it. Each level multiplies the rent rivals pay: 1× → 3× → 6× → 10× → 20×.
           </Typography>
           {ownedGroups.length === 0 ? (
-            <Alert severity="info">Your team doesn't own any tiles yet. Answer a property question correctly to buy one.</Alert>
+            <Alert severity="info">You don't own any tiles yet. Answer a property question correctly to buy one.</Alert>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 360, overflowY: 'auto' }}>
               {ownedGroups.map((g) => {

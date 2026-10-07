@@ -23,7 +23,7 @@ Open the [game](https://hghezzi.github.io/Science-Around-the-Board/) and click *
 1. **Write your questions** in a spreadsheet: start from the [Intro Statistics example](https://hghezzi.github.io/Science-Around-the-Board/examples/intro_statistics.tsv), or let Claude draft them with the [question-writer skill](#generate-questions-with-claude).
 2. **Load the file in the game.** The built-in checker lists anything that needs fixing.
 3. **Share it with students:** as one game link (for example to a published Google Sheet), or as a file, which you can password-protect.
-4. **Play.** Up to four teams share each computer. A typical session takes 45–90 minutes, and an optional timer ends the game on time.
+4. **Play.** Up to four players share each computer (a player can be one student or a small group). A typical session takes 45–90 minutes, and an optional timer ends the game on time.
 5. **Collect results.** Students send them straight to your own Google Sheet, email them to you or download a CSV file for your course page.
 
 The [Instructor Guide](https://hghezzi.github.io/Science-Around-the-Board/guide/) walks through each step, starting with a [Quick start](https://hghezzi.github.io/Science-Around-the-Board/guide/#quick-start). It also covers the pedagogy behind the game (playful pedagogy, Bloom's taxonomy, backward design and a BOPPPS lesson plan) and how to analyse the results. Give students the [Student Guide](https://hghezzi.github.io/Science-Around-the-Board/guide/students.html): it explains the rules in five minutes.
@@ -36,14 +36,14 @@ The [Instructor Guide](https://hghezzi.github.io/Science-Around-the-Board/guide/
   - harder 6-question exams on the corner milestones;
   - your explanation shown after every answer, right or wrong.
 - **Measurement:** confidence sliders and a knowledge check before and after the game. The CSV export records every answer and transaction.
-- **Results delivery:** an optional [Google Apps Script collector](public/tools/sab-results-collector.gs) puts every team's results in your own Google Sheet. Email and CSV download are the alternatives. You set this up with a few `config` rows in the question file.
+- **Results delivery:** an optional [Google Apps Script collector](public/tools/sab-results-collector.gs) puts every player's results in your own Google Sheet. Email and CSV download are the alternatives. You set this up with a few `config` rows in the question file.
 - **Game links:** share one link and your questions load by themselves, from a published Google Sheet, a GitHub file or any public link. Build the link on the start page ("For instructors: share your questions as a link").
 - **[Password-protected files](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html):** encrypt your question file so students can't read the answers before playing.
 - **A file checker:** loading a file lists missing columns, wrong answer keys, missing themes and similar problems in plain language.
 - **Classroom-proof:**
   - autosave, so an accidental refresh offers *Resume your game?*;
   - works offline after the first visit, and can be installed as an app;
-  - light and dark mode, and team symbols (●▲■◆) as well as colours.
+  - light and dark mode, and player symbols (●▲■◆) as well as colours.
 
 ## The question file at a glance
 
@@ -98,7 +98,7 @@ npm run build      # production build in dist/
 npm run validate-tsv -- my_questions.tsv   # check a question file
 ```
 
-- `npm run smoke`: an end-to-end test (Playwright). It plays the demo with 1 to 4 teams and in dark mode, and checks the exported results, a mocked Google Sheet send, `.lock` files and links, resume after a refresh, and offline use. Run it before every deploy.
+- `npm run smoke`: an end-to-end test (Playwright). It plays the demo with 1 to 4 players and in dark mode, and checks the exported results, a mocked Google Sheet send, `.lock` files and links, resume after a refresh, and offline use. Run it before every deploy.
 - `npm run privacy`: checks that nothing loads before analytics opt-in, that unsafe share links are refused and that the Content-Security-Policy blocks nothing.
 - `npm run a11y`: accessibility checks (axe-core) on the main screens in light and dark mode. Run it against `npm run preview`.
 - `npm run guide`: rebuilds both guides from [`guide/`](guide/): fresh screenshots, web pages and PDFs. It needs Playwright's Chromium.

@@ -1,6 +1,6 @@
 # Science Around the Board (SAB)
 
-A browser-only, property-trading review game for higher education by Hans Ghezzi. It was built for UBC MICB 475 (16S rRNA / QIIME2), and the engine is meant to work for any subject. Instructors write a question file (TSV), and student teams (1–4 per computer) load it at https://hghezzi.github.io/Science-Around-the-Board/. The project goal is to keep improving the platform and make it easy for **other teaching teams** to adopt. Favour changes that keep it subject-agnostic, zero-install and privacy-preserving.
+A browser-only, property-trading review game for higher education by Hans Ghezzi. It was built for UBC MICB 475 (16S rRNA / QIIME2), and the engine is meant to work for any subject. Instructors write a question file (TSV), and students (1–4 players per computer; a player can be a small group) load it at https://hghezzi.github.io/Science-Around-the-Board/. The project goal is to keep improving the platform and make it easy for **other teaching teams** to adopt. Favour changes that keep it subject-agnostic, zero-install and privacy-preserving.
 
 License: CC BY-NC-SA 4.0 (non-commercial).
 
@@ -49,7 +49,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `SurveyView` serves both pre and post surveys. The best pre-survey scorer starts the game (`bestPreSurveyPlayer`).
   - `SummaryView`: score table, names or IDs per team (required when `config.askNames`), then Send (results sheet), Email (a `mailto:` link that also downloads the file) and Download. The CSV starts with `TEAM_INFO` rows.
 - `src/GameScreen.jsx`: a single component (~1300 lines) holding all turn logic and UI, with modal flows keyed by `modalStage` / `activeCard.type`.
-  - Start money $1500 (`ECONOMY` in `gameRules.js`); passing START +$200 (the "lap bonus"). A new game opens `RulesDialog` (quick rules from `labels.js` `RULES`).
+  - Start money by player count (`startingMoney(n)`: 2500/2000/1500/1250 for 1–4, `ECONOMY.startMoney`); passing START +$200 (the "lap bonus"). A new game opens `RulesDialog` (quick rules from `labels.js` `RULES`).
   - Question choice goes through `questionPicker.js` (unseen first, a missed question again after `REASK_AFTER_TURNS`); the shared history (`asked`) is saved with the game.
   - `checkLanding` reads `playersRef` and must not run side effects inside a state updater (StrictMode runs updaters twice in dev).
   - Autosave: `onSnapshot` fires only between turns (`turnInProgressRef` is set by the roll and cleared by `passTurn`). `resume` restores players, turn, logs, `asked` and tile `[owner, level, paid]` onto a freshly built board; tiles share question arrays, so the board itself is never serialized.
@@ -84,7 +84,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/gameData.js`:
   - Builds a fixed **36-tile** loop. Tiles 0/9/18/27 are milestones, and tile 0 (START) is Side4's milestone.
   - Each side is 3×sub1 ($100), core ($200), 3×sub2 ($160), Wildcard (internal type `chance`).
-  - Base rent is 20% of price × `ECONOMY.rentScale` (2.5), so 50% of price; a core's is 300 and a milestone's is 625.
+  - Base rent is 20% of price × `ECONOMY.rentScale` (2.5), so 50% of price; a core's base is `coreRentStep` ($50), multiplied by the number of core tiles its owner holds; a rival milestone's fee is `milestoneFee` ($250).
 - `src/gameRules.js` (pure):
   - Rent multipliers: 0.5× without the full set, otherwise 1/3/6/10/20× by level.
   - Victory helpers: `assetValue`, `netWorth`, `rankPlayers`, `nextActivePlayer`, `bestPreSurveyPlayer`.
@@ -103,7 +103,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/tsvValidator.js` (pure): instructor-facing checks that mirror what the engine needs. Shared by the UI, CLI and tests. **Update it, and its Python mirror in the skill, whenever engine assumptions change.**
 - `src/itemQuality.js` (pure): answer-option checks called by the validator. It measures test-wise cues (how often "pick the longest/shortest option" or "pick the option that repeats the question's words" would be right versus chance, absolute words only in distractors, "all of the above", a/an grammar cues, identical options, survey items that repeat board items) and errors on spreadsheet error values such as `#NAME?`. Its Python mirror lives in the skill's `validate_tsv.py`; keep rules, thresholds and messages identical (`tests/itemQuality.test.js` compares the two).
 - `src/consent.js` and `src/ConsentBanner.jsx`: Google Analytics (`G-B2Z5WS4KQR`) loads only after opt-in. The banner appears on the start page only. `public/privacy.html` is the privacy notice.
-- `src/labels.js`: all player-facing game terms (Wildcard, Buy, Upgrades, Rescue Quiz…), kept subject-neutral, plus `TEAM_NAMES` and `teamDisplayName` (a single team is "Solo Team").
+- `src/labels.js`: all player-facing game terms (Wildcard, Buy, Upgrades, Rescue Quiz…), kept subject-neutral, plus `TEAM_NAMES` ("Red Player"…) and `teamDisplayName` (a single player is "Solo Player"). In-game text says "player", never "team" (identifiers and the `TEAM_INFO` CSV code keep the old name).
 - `src/questionBank.js`: `DEFAULT_CHANCE_CARDS`, the neutral fallback wildcards used when a file has no `mishap` rows.
 - `encryptor.html` + `src/encryptor.js`: the encryptor page (a second Vite page, offline-capable), using `lockFile.js`.
 - `public/404.html`: GitHub Pages fallback; redirects unknown paths to the game, keeping `?deck=`. `public/og-image.png`: link preview, made by `scripts/make-og-image.py`.
@@ -129,9 +129,9 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 1. Instructor-configurable labels (e.g. renaming Wildcards or the currency from the TSV) are planned. `src/labels.js` is the hook.
 2. The board needs at least about 600 px of width, and phone layouts are not a target.
 3. `type=post` rows are ignored. Pre and post surveys use the same items; parallel forms are an idea.
-4. Question selection is random with repeats. Preferring unseen questions and re-asking missed ones later is an idea.
+4. Done: question selection prefers unseen questions and re-asks missed ones later (`questionPicker.js`).
 5. Instructor analytics dashboard (aggregating class CSVs locally): an idea.
-6. A "How to play" link to `guide/students.html` from inside the game (start page, board) would help students; today it is linked from the README and the Instructor Guide.
+6. Done: quick rules (`RulesDialog`) open on a new game, from the board and from the start page, with a link to `guide/students.html`.
 7. PWA: a deploy reaches students on their next visit (the service worker updates itself). If a broken version ships, deploy a fix quickly; in an emergency, `selfDestroying: true` in the VitePWA options removes the service worker.
 8. Google endpoints (Sheets links, Apps Script) can't be reached from the cloud sandbox. The smoke test mocks them and `tests/collector.test.js` uses a fake Sheet, so test the real Sheet flow by hand after deploying.
 9. Multi-device live play (each team on its own device) would need a server and accounts; not planned.

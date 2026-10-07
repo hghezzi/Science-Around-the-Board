@@ -5,8 +5,11 @@ Notable changes to Science Around the Board. The live site is deployed automatic
 ## Unreleased: public release preparation (October 2026)
 
 ### Gameplay (changes scores)
+- Starting cash by number of players: $2,500 solo, $2,000 / $1,500 / $1,250 each for 2 / 3 / 4 players (from a 3,000-game simulation per setting).
+- A rival milestone's fee is $250; a core tile's rent is $50 per core tile its owner holds (up to $200).
+- In-game wording says "player" instead of "team" (Red Player, Solo Player, "you pay…").
 - Questions: unseen ones first; a question answered wrongly returns about 6 turns later (`src/questionPicker.js`), for tiles, exams, chaos challenges and the Rescue Quiz.
-- Economy: starting cash $1,500 (was $2,500); every rent ×2.5 (property 50% of price, core $300, rival milestone fee $625).
+- Economy: property rent ×2.5 (50% of the price).
 - Net worth counts money actually spent: each tile at what its owner paid, each upgrade once per group (it was counted once per tile). Liquidation returns half of what was paid, consistently.
 - Chaos: complete sets can't be challenged; the token is spent and the turn ends either way; Challenge is disabled when the team can't pay.
 - Short answers: one typo is forgiven only in answers of 8+ characters and never in the first letter or a number.

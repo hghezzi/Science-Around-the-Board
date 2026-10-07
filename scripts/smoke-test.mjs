@@ -379,7 +379,7 @@ async function debtScenario() {
   const snapshot = {
     version: 1, savedAt: Date.now(), phase: "GAME", sessionId: "debt-test", allTsvRows: rows, imagesBase: "", gameMode: "16S", selectedModule: "QIIME2",
     playerCount: 2, sessionMinutes: 0, startPlayer: 0, playerQuestionSets: [[], []], confQ: [], preRows: [], postRows: [], gameRows: [],
-    game: { tiles, players: [team(0, "Red Team", "#e53935", 2, 200), team(1, "Blue Team", "#1e88e5", 0, 1500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
+    game: { tiles, players: [team(0, "Red Player", "#e53935", 2, 20), team(1, "Blue Player", "#1e88e5", 0, 1500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
   };
   await page.addInitScript((s) => {
     if (!sessionStorage.getItem("seeded")) { localStorage.setItem("sab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
@@ -391,14 +391,14 @@ async function debtScenario() {
   await page.getByRole("button", { name: /^Resume$/ }).click();
   await page.getByRole("button", { name: /^Roll/ }).click();
   const dialog = page.locator(".MuiModal-root").last();
-  await dialog.getByText(/Rent due: \$300/i).waitFor({ timeout: 10000 });
+  await dialog.getByText(/Rent due: \$50/i).waitFor({ timeout: 10000 });
   if (!(await answerQuestion(dialog))) fail("debt: couldn't answer the rent question");
   await dialog.getByRole("button", { name: /^Continue$/i }).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no feedback dialog (${(await page.locator("body").innerText()).slice(0, 300)})`));
   if (/Out of money/i.test(await dialog.innerText())) fail("debt: liquidation replaced the rent feedback");
   await dialog.getByRole("button", { name: /^Continue$/i }).click();
   await page.getByText(/Out of money/).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no liquidation after the feedback (${(await page.locator("body").innerText()).slice(0, 600)})`));
   await page.getByRole("button", { name: /^Sell deed/i }).click();
-  await page.getByText(/Blue Team's turn/).waitFor({ timeout: 5000 }).catch(() => fail("debt: the turn didn't pass after clearing the debt"));
+  await page.getByText(/Blue Player's turn/).waitFor({ timeout: 5000 }).catch(() => fail("debt: the turn didn't pass after clearing the debt"));
   await context.close();
 }
 
@@ -431,7 +431,11 @@ async function bankruptScenario() {
       await page.waitForTimeout(500);
       if (!/Smoke fun fact/.test(await modal.innerText())) fail("bankrupt: the Wildcard was replaced before the team could read it");
       await modal.getByRole("button", { name: /^Continue$/i }).click();
-      await page.getByText(/Bankrupt!/).first().waitFor({ timeout: 5000 }).catch(() => fail("bankrupt: no Rescue Quiz offer after the Wildcard"));
+      // First bankruptcy: the Rescue Quiz is offered. After a passed rescue, a second one eliminates the player.
+      await page.getByText(/Bankrupt!|Player eliminated/).first().waitFor({ timeout: 5000 }).catch(() => {});
+      const after = await page.locator(".MuiModal-root").last().innerText().catch(() => "");
+      if (/Player eliminated/.test(after) && !/after using the Rescue Quiz/.test(after)) fail(`bankrupt: eliminated without a Rescue Quiz (${after.slice(0, 200)})`);
+      else if (!/Bankrupt!|Player eliminated/.test(after)) fail(`bankrupt: no Rescue Quiz offer after the Wildcard (${after.slice(0, 200)})`);
       continue;
     }
     if (/Victory!/i.test(text)) { await context.close(); return; }

@@ -31,9 +31,16 @@ describe("rent rules", () => {
     });
   });
 
-  it("uses a flat multiplier for milestones and cores", () => {
+  it("uses a flat multiplier for milestones, and counts the owner's core tiles for cores", () => {
     expect(getRentMultiplier([], { type: "milestone" })).toBe(1);
-    expect(getRentMultiplier([], { type: "sequencing_core" })).toBe(1);
+    const core = (id, owner) => ({ id, type: "sequencing_core", owner, baseRent: 50 });
+    const board = [core(0, 1), core(1, 1), core(2, 2), core(3, null)];
+    expect(getRentMultiplier(board, board[0])).toBe(2);
+    expect(getRentMultiplier(board, board[2])).toBe(1);
+    expect(getRentMultiplier(board, board[3])).toBe(0);
+    expect(computeRent(board, board[0])).toBe(100);
+    const all = board.map((t) => ({ ...t, owner: 1 }));
+    expect(computeRent(all, all[0])).toBe(200);
   });
 });
 
