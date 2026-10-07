@@ -431,7 +431,11 @@ async function bankruptScenario() {
       await page.waitForTimeout(500);
       if (!/Smoke fun fact/.test(await modal.innerText())) fail("bankrupt: the Wildcard was replaced before the team could read it");
       await modal.getByRole("button", { name: /^Continue$/i }).click();
-      await page.getByText(/Bankrupt!/).first().waitFor({ timeout: 5000 }).catch(() => fail("bankrupt: no Rescue Quiz offer after the Wildcard"));
+      // First bankruptcy: the Rescue Quiz is offered. After a passed rescue, a second one eliminates the player.
+      await page.getByText(/Bankrupt!|Player eliminated/).first().waitFor({ timeout: 5000 }).catch(() => {});
+      const after = await page.locator(".MuiModal-root").last().innerText().catch(() => "");
+      if (/Player eliminated/.test(after) && !/after using the Rescue Quiz/.test(after)) fail(`bankrupt: eliminated without a Rescue Quiz (${after.slice(0, 200)})`);
+      else if (!/Bankrupt!|Player eliminated/.test(after)) fail(`bankrupt: no Rescue Quiz offer after the Wildcard (${after.slice(0, 200)})`);
       continue;
     }
     if (/Victory!/i.test(text)) { await context.close(); return; }
