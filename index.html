@@ -2,18 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <meta name="color-scheme" content="light dark" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <!-- Production builds add a Content-Security-Policy here (vite.config.js). -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#2563eb" />
+    <title>Science Around the Board – a board-game review session for any course</title>
+    <meta name="description" content="A free, browser-only board game for classroom review. Instructors write the questions in one spreadsheet file; student teams buy, defend and upgrade tiles by answering them, with pre- and post-game surveys and results for the instructor." />
+    <link rel="canonical" href="https://hghezzi.github.io/Science-Around-the-Board/" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <title>Science Around the Board</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Science Around the Board" />
+    <meta property="og:title" content="Science Around the Board" />
+    <meta property="og:description" content="A board-game review session for any course: your questions, student teams, instant explanations and a pre/post survey. Free, in the browser, no accounts." />
+    <meta property="og:url" content="https://hghezzi.github.io/Science-Around-the-Board/" />
+    <meta property="og:image" content="https://hghezzi.github.io/Science-Around-the-Board/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Science Around the Board game board, with team tiles around the edge and dice in the centre." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Science Around the Board" />
+    <meta name="twitter:description" content="A board-game review session for any course. Free, in the browser, no accounts." />
+    <meta name="twitter:image" content="https://hghezzi.github.io/Science-Around-the-Board/og-image.png" />
+    <meta name="twitter:image:alt" content="The Science Around the Board game board, with team tiles around the edge and dice in the centre." />
 
     <!-- Google Analytics loads only after opt-in: see src/consent.js -->
-    <script type="module" crossorigin src="/Science-Around-the-Board/assets/index-BUB9pGYu.js"></script>
-    <link rel="stylesheet" crossorigin href="/Science-Around-the-Board/assets/index-D9jafQYa.css">
-  <link rel="manifest" href="/Science-Around-the-Board/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/Science-Around-the-Board/registerSW.js"></script></head>
+    <script type="module" crossorigin src="/Science-Around-the-Board/assets/main-C3woHnR6.js"></script>
+    <link rel="modulepreload" crossorigin href="/Science-Around-the-Board/assets/lockFile-GKVCcLNO.js">
+    <link rel="modulepreload" crossorigin href="/Science-Around-the-Board/assets/vendor-DtpFfw2m.js">
+    <link rel="stylesheet" crossorigin href="/Science-Around-the-Board/assets/main-D9jafQYa.css">
+  <link rel="manifest" href="/Science-Around-the-Board/manifest.webmanifest"></head>
   <body>
+    <noscript>
+      <p style="font-family: sans-serif; padding: 16px">Science Around the Board needs JavaScript. Please turn it on, or use an up-to-date browser such as Chrome, Edge, Firefox or Safari.</p>
+    </noscript>
     <div id="root"></div>
   </body>
 </html>

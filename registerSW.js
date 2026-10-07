@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/Science-Around-the-Board/sw.js', { scope: '/Science-Around-the-Board/' })})}

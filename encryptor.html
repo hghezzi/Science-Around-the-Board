@@ -1,150 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Question Encryptor – Science Around the Board</title>
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <style>
-        :root {
-            color-scheme: light dark;
-            --bg: #eef2f6; --card: #ffffff; --text: #1e293b; --muted: #55627a; --border: #dbe2ea;
-            --field: #f8fafc; --accent: #2563eb; --accent-hover: #1d4ed8; --heading: #1e3a8a;
-            --success: #166534; --error: #b91c1c; --chip: #e2e8f0;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #0f172a; --card: #1e293b; --text: #e8edf4; --muted: #b8c4d4; --border: #334155;
-                --field: #0f172a; --accent: #3b82f6; --accent-hover: #2563eb; --heading: #bfdbfe;
-                --success: #4ade80; --error: #f87171; --chip: #334155;
-            }
-        }
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            display: flex; justify-content: center; align-items: center;
-            min-height: 100vh; margin: 0; padding: 16px;
-            color: var(--text);
-        }
-        .container {
-            background: var(--card); border: 1px solid var(--border);
-            padding: 2.5rem; border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-            width: 100%; max-width: 480px; text-align: center;
-        }
-        h1 { margin-top: 0; color: var(--heading); font-size: 1.8rem; }
-        p { color: var(--muted); margin-bottom: 2rem; line-height: 1.5; }
-        .form-group { display: flex; flex-direction: column; gap: 1.2rem; }
-        input[type="text"] {
-            width: 100%; padding: 14px; font-size: 16px;
-            border: 2px solid var(--border); border-radius: 8px;
-            background: var(--field); color: var(--text); transition: border-color 0.2s;
-        }
-        input[type="text"]:focus { outline: none; border-color: var(--accent); }
-        input[type="file"] {
-            width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 8px;
-            background: var(--field); color: var(--text); text-align: center; cursor: pointer;
-        }
-        input[type="file"]:hover { border-color: var(--muted); }
-        input[type="file"]::file-selector-button {
-            margin-right: 15px; border: none; background: var(--chip); color: var(--text);
-            padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
-        }
-        .btn-encrypt {
-            background: var(--accent); color: white; border: none; padding: 16px; font-size: 16px;
-            font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px;
-            transition: transform 0.1s, background 0.2s;
-        }
-        .btn-encrypt:hover { background: var(--accent-hover); transform: translateY(-1px); }
-        .btn-encrypt:active { transform: translateY(1px); }
-        #status { margin-top: 20px; font-size: 0.9rem; min-height: 20px; }
-        .success { color: var(--success); }
-        .error { color: var(--error); }
-        a { color: var(--accent); }
-    </style>
-</head>
+  <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Encrypt a Science Around the Board question file with a class password, so the answer key isn't readable at a glance." />
+  <meta name="robots" content="noindex" />
+  <title>Question Encryptor – Science Around the Board</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #eef2f6; --card: #ffffff; --text: #1e293b; --muted: #55627a; --border: #dbe2ea;
+      --field: #f8fafc; --accent: #2563eb; --accent-hover: #1d4ed8; --heading: #1e3a8a;
+      --success: #166534; --error: #b91c1c; --chip: #e2e8f0; --on-accent: #ffffff; --link: #1d4ed8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a; --card: #1e293b; --text: #e8edf4; --muted: #b8c4d4; --border: #334155;
+        --field: #0f172a; --accent: #3b82f6; --accent-hover: #2563eb; --heading: #bfdbfe;
+        --success: #4ade80; --error: #f87171; --chip: #334155; --on-accent: #0b1220; --link: #93c5fd;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg); color: var(--text);
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; margin: 0; padding: 16px;
+    }
+    main {
+      background: var(--card); border: 1px solid var(--border);
+      padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      width: 100%; max-width: 520px;
+    }
+    h1 { margin-top: 0; color: var(--heading); font-size: 1.8rem; text-align: center; }
+    p, li { color: var(--muted); line-height: 1.5; }
+    .lead { text-align: center; margin-bottom: 1.5rem; }
+    form { display: flex; flex-direction: column; gap: 1rem; }
+    label { font-weight: 600; display: flex; flex-direction: column; gap: 6px; }
+    input[type="text"] {
+      width: 100%; padding: 14px; font-size: 16px;
+      border: 2px solid var(--border); border-radius: 8px;
+      background: var(--field); color: var(--text);
+    }
+    input[type="text"]:focus-visible, input[type="file"]:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    input[type="file"] {
+      width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 8px;
+      background: var(--field); color: var(--text); cursor: pointer;
+    }
+    input[type="file"]::file-selector-button {
+      margin-right: 15px; border: none; background: var(--chip); color: var(--text);
+      padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
+    }
+    .hint { font-weight: 400; font-size: 0.85rem; color: var(--muted); }
+    button {
+      background: var(--accent); color: var(--on-accent); border: none; padding: 16px; font-size: 16px;
+      font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 6px;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.6; cursor: progress; }
+    #status { margin: 1rem 0 0; min-height: 1.5em; text-align: center; }
+    .success { color: var(--success); }
+    .error { color: var(--error); }
+    details { margin-top: 1.5rem; }
+    summary { cursor: pointer; font-weight: 600; }
+    a { color: var(--link); }
+    footer { margin-top: 1.5rem; text-align: center; font-size: 0.9rem; }
+    .tips { text-align: left; font-size: 0.9rem; line-height: 1.5; padding-left: 1.2rem; }
+    .tips li { margin-bottom: 0.35rem; }
+    code { font-size: 0.9em; }
+  </style>
+  <script type="module" crossorigin src="/Science-Around-the-Board/assets/encryptor-ad9SB97j.js"></script>
+  <link rel="modulepreload" crossorigin href="/Science-Around-the-Board/assets/lockFile-GKVCcLNO.js">
+<link rel="manifest" href="/Science-Around-the-Board/manifest.webmanifest"></head>
 <body>
+  <main>
+    <h1>Question Encryptor</h1>
+    <p class="lead">Lock your question file with a class password, so students can't read the answer key by opening the file.</p>
 
-    <div class="container">
-        <h1>Question Encryptor</h1>
-        <p>Prepare your custom question file for secure distribution to students.</p>
+    <form id="form" novalidate>
+      <label>Class password
+        <input type="text" id="password" autocomplete="off" spellcheck="false" minlength="8" required aria-describedby="pw-hint" />
+        <span class="hint" id="pw-hint">At least 8 characters. A short phrase works well, for example <em>purple-otter-sings</em>. Avoid the course code.</span>
+      </label>
+      <label>Question file (.tsv)
+        <input type="file" id="fileInput" accept=".tsv,.txt" required />
+      </label>
+      <button type="submit" id="go">Download .lock file</button>
+    </form>
 
-        <div class="form-group">
-            <input type="text" id="password" placeholder="Create a Class Password" autocomplete="off" />
+    <p id="status" role="status" aria-live="polite"></p>
 
-            <input type="file" id="fileInput" accept=".tsv,.txt">
+    <ul class="tips">
+      <li>Load the plain <code>.tsv</code> in the game first to check it, then encrypt it.</li>
+      <li>Passwords are case-sensitive. Keep your original <code>.tsv</code>: a <code>.lock</code> file can't be opened without its password.</li>
+      <li>Give students the <code>.lock</code> file and the password; the game asks for the password when they open it.</li>
+    </ul>
 
-            <button class="btn-encrypt" onclick="encryptFile()">Download .lock File</button>
-        </div>
+    <details>
+      <summary>How secure is this?</summary>
+      <ul>
+        <li>The file is encrypted in this browser with AES-256-GCM, using a key derived from the password (PBKDF2-SHA256, 600,000 rounds). Nothing is uploaded.</li>
+        <li>It keeps the answers out of sight of anyone who opens or shares the file without the password.</li>
+        <li>It is <strong>not</strong> a way to keep answers secret from your class: every student who has the password can unlock the file, and the game shows each answer after it is played.</li>
+        <li>A weak password can be guessed by someone determined. Use a phrase, not a single word.</li>
+      </ul>
+    </details>
 
-        <p id="status"></p>
-    </div>
-
-    <script>
-        function encryptFile() {
-            const fileInput = document.getElementById('fileInput');
-            const password = document.getElementById('password').value;
-            const status = document.getElementById('status');
-
-            // Reset status styling
-            status.className = '';
-            status.innerText = '';
-
-            if (!password) {
-                status.innerText = "⚠️ Please set a password first.";
-                status.className = 'error';
-                document.getElementById('password').focus();
-                return;
-            }
-
-            if (!fileInput.files.length) {
-                status.innerText = "⚠️ Please select a .tsv file.";
-                status.className = 'error';
-                return;
-            }
-
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                try {
-                    const content = e.target.result;
-                    if (!content) throw new Error("File is empty");
-
-                    // Encrypt
-                    const encrypted = CryptoJS.AES.encrypt(content, password).toString();
-                    
-                    // Generate Filename
-                    const originalName = fileInput.files[0].name.replace(/\.(tsv|txt)$/i, "");
-                    const filename = `${originalName}.lock`;
-
-                    // Create Download
-                    const blob = new Blob([encrypted], {type: "text/plain"});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    status.innerText = `✅ Success! Downloaded "${filename}"`;
-                    status.className = 'success';
-                } catch (err) {
-                    console.error(err);
-                    status.innerText = "❌ Error encrypting file.";
-                    status.className = 'error';
-                }
-            };
-
-            reader.onerror = function() {
-                status.innerText = "❌ Error reading file.";
-                status.className = 'error';
-            };
-
-            reader.readAsText(fileInput.files[0]);
-        }
-    </script>
+    <footer><a href="./">← Back to the game</a> · <a href="./guide/#optional-encrypting-your-questions-file">Instructor guide</a></footer>
+  </main>
 </body>
 </html>
