@@ -10,6 +10,7 @@
 
 import { buildBoardQuestionSet } from "./tsvBoardBuilder";
 import { LABELS } from "./labels";
+import { ECONOMY } from "./gameRules";
 
 /**
  * Build a full board for a given topic + module using TSV rows.
@@ -23,8 +24,8 @@ export function buildBoardFromTsv(topicKey, tsvRows, module) {
   return createBoard(QS);
 }
 
-// Legacy hook if something still calls this.
-export const getBoardByTopic = () => createBoard(null);
+/** Tiles on the loop. Movement wraps around this many tiles. */
+export const BOARD_SIZE = 36;
 
 // -------------------------------------------------------------------
 //  MAIN BOARD GENERATION (36-tile layout)
@@ -44,8 +45,12 @@ function createBoard(QS) {
   // CONFIGURATION
   // ---------------------------------------------------------
 
-  // 1. Define the sides in order: Bottom -> Left -> Top -> Right
-  const sides = [data.Side1, data.Side2, data.Side3, data.Side4];
+  // 1. Define the sides in order: Bottom -> Left -> Top -> Right.
+  // A file with fewer than 4 themes (the validator reports it) still gets a
+  // full 36-tile loop: missing sides become placeholder tiles with no questions.
+  const sides = [data.Side1, data.Side2, data.Side3, data.Side4].map(
+    (side, i) => side || { name: `Side ${i + 1}`, sub1: null, sub2: null, quiz: [] }
+  );
 
   // 2. Define themes corresponding to those sides
   // Band colours for [subtheme 1, subtheme 2] on each side (readable in light and dark).
@@ -87,7 +92,6 @@ function createBoard(QS) {
       color,
       price,
       questions,
-      manual: null,
     };
   }
 
@@ -106,7 +110,6 @@ function createBoard(QS) {
       type: "chance",
       name: LABELS.chanceTile,
       color: "#fb7185",
-      fixedAmount: -100,
     };
   }
 
@@ -115,8 +118,6 @@ function createBoard(QS) {
    * Pattern: 3 × Subtheme1 → Core → 3 × Subtheme2 → Wildcard
    */
   function generateSideInterior(sideData, themeVisual, coreData) {
-    if (!sideData) return [];
-
     const themeName = sideData.name || "Theme";
     const sub1 = sideData.sub1 || { name: "Subtheme A", questions: [] };
     const sub2 = sideData.sub2 || { name: "Subtheme B", questions: [] };
@@ -216,6 +217,7 @@ function createBoard(QS) {
 
   // (The next tile would be Tile 0/Start again)
 
+  if (raw.length !== BOARD_SIZE) throw new Error(`Board has ${raw.length} tiles, expected ${BOARD_SIZE}`);
   return raw.map((def, id) => makeTile(def, id));
 }
 
@@ -240,7 +242,6 @@ function makeTile(def, id) {
     quiz: def.quiz || [],
 
     price: def.price || 0,
-    fixedAmount: def.fixedAmount || 0,
     isStart: Boolean(def.isStart),
 
     baseRent: getBaseRent(def),
@@ -251,9 +252,10 @@ function makeTile(def, id) {
   return tile;
 }
 
+// Base rents are scaled by ECONOMY.rentScale (2.5×): property 50% of its price, core $300, milestone $625.
 function getBaseRent(def) {
-  if (def.type === "property") return Math.floor((def.price || 0) * 0.2);
-  if (def.type === "sequencing_core") return 120;
-  if (def.type === "milestone") return 250;
+  if (def.type === "property") return Math.floor((def.price || 0) * 0.2 * ECONOMY.rentScale);
+  if (def.type === "sequencing_core") return Math.floor(120 * ECONOMY.rentScale);
+  if (def.type === "milestone") return Math.floor(250 * ECONOMY.rentScale);
   return 0;
 }

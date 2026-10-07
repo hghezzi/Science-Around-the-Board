@@ -41,7 +41,7 @@ export function Pawn({ player, size = "2.6cqw" }) {
       layoutId={`pawn-${player.id}`}
       transition={{ duration: 0.18, ease: "linear" }}
       title={player.name}
-      aria-label={player.name}
+      aria-hidden
       style={{
         width: size,
         height: size,
@@ -49,9 +49,9 @@ export function Pawn({ player, size = "2.6cqw" }) {
         minHeight: 14,
         borderRadius: "50%",
         background: player.color,
-        border: "2px solid #fff",
+        border: `2px solid ${v("common.white")}`,
         boxShadow: `0 2px 4px ${v("board.shadow")}`,
-        color: "#fff",
+        color: v("common.white"),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -70,6 +70,7 @@ function OwnerBadge({ owner }) {
   return (
     <span
       title={`Owned by ${owner.name}`}
+      aria-hidden
       style={{
         position: "absolute",
         top: 2,
@@ -80,8 +81,8 @@ function OwnerBadge({ owner }) {
         minHeight: 12,
         borderRadius: "50%",
         background: owner.color,
-        color: "#fff",
-        fontSize: "1.1cqw",
+        color: v("common.white"),
+        fontSize: "max(8px, 1.1cqw)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -110,6 +111,7 @@ function Tile({ tile, index, owner, pawns, onHover, onLeave }) {
     tile.price ? `price $${tile.price}` : null,
     owner ? `owned by ${owner.name}` : null,
     tile.level ? `level ${tile.level}` : null,
+    pawns.length ? `${pawns.map((p) => p.name).join(" and ")} ${pawns.length > 1 ? "are" : "is"} here` : null,
   ].filter(Boolean).join(", ");
 
   return (
@@ -153,7 +155,7 @@ function Tile({ tile, index, owner, pawns, onHover, onLeave }) {
       <div
         style={{
           fontWeight: 800,
-          fontSize: `calc(${isCorner ? 1.5 : 1.38}cqw * ${fit.toFixed(3)})`,
+          fontSize: `max(8.5px, calc(${isCorner ? 1.6 : 1.5}cqw * ${fit.toFixed(3)}))`,
           lineHeight: 1.15,
           padding: "0 0.4cqw",
           maxWidth: "100%",
@@ -168,7 +170,7 @@ function Tile({ tile, index, owner, pawns, onHover, onLeave }) {
         {label}
       </div>
       {tile.isStart && (
-        <div style={{ marginTop: 2, fontSize: "1.15cqw", fontWeight: 800, color: "#fff", background: "#dc2626", borderRadius: 4, padding: "0 4px", letterSpacing: "0.05em" }}>
+        <div style={{ marginTop: 2, fontSize: "max(8px, 1.15cqw)", fontWeight: 800, color: v("error.contrastText"), background: v("error.main"), borderRadius: 4, padding: "0 4px", letterSpacing: "0.05em" }}>
           START · +$200
         </div>
       )}
@@ -176,7 +178,7 @@ function Tile({ tile, index, owner, pawns, onHover, onLeave }) {
         <div aria-hidden style={{ fontSize: "1.2cqw", letterSpacing: -1 }}>{"⭐".repeat(tile.level)}</div>
       )}
       {tile.price > 0 && !tile.isStart && (
-        <div style={{ marginTop: 1, fontSize: "1.25cqw", fontWeight: 700, color: v("board.muted") }}>${tile.price}</div>
+        <div style={{ marginTop: 1, fontSize: "max(8px, 1.3cqw)", fontWeight: 700, color: v("board.muted") }}>${tile.price}</div>
       )}
 
       {pawns.length > 0 && (
@@ -208,17 +210,7 @@ export default function Board({ board, players, onTileHover, onTileLeave, childr
         boxShadow: `0 12px 36px ${v("board.shadow")}`,
       }}
     >
-      {board.map((tile, index) => (
-        <Tile
-          key={tile.id}
-          tile={tile}
-          index={index}
-          owner={tile.owner != null && tile.owner !== 99 ? players[tile.owner] : null}
-          pawns={players.filter((p) => p.position === index && !p.eliminated)}
-          onHover={() => onTileHover(tile)}
-          onLeave={onTileLeave}
-        />
-      ))}
+      {/* Centre first in the DOM so keyboard users reach the dice before the 36 tiles. */}
       <div
         style={{
           gridRow: "2 / 10",
@@ -237,6 +229,17 @@ export default function Board({ board, players, onTileHover, onTileLeave, childr
       >
         {children}
       </div>
+      {board.map((tile, index) => (
+        <Tile
+          key={tile.id}
+          tile={tile}
+          index={index}
+          owner={tile.owner != null && tile.owner !== 99 ? players[tile.owner] : null}
+          pawns={players.filter((p) => p.position === index && !p.eliminated)}
+          onHover={() => onTileHover(tile)}
+          onLeave={onTileLeave}
+        />
+      ))}
     </div>
   );
 }

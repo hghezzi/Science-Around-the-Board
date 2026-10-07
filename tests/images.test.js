@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveImage } from "../src/images.js";
+import { resolveImage, isUploaded } from "../src/images.js";
 
 describe("resolveImage", () => {
   it("prefers uploads, then URLs, then the hosted questionImages folder", () => {
@@ -18,5 +18,22 @@ describe("resolveImage with an image folder link", () => {
     expect(resolveImage("plot 1.png", { "plot 1.png": "blob:x" }, base)).toBe("blob:x");
     expect(resolveImage("https://x.org/a.png", {}, base)).toBe("https://x.org/a.png");
     expect(resolveImage("a.png")).toBe("./questionImages/a.png");
+  });
+});
+
+describe("resolveImage matching uploads", () => {
+  it("matches uploads ignoring letter case and any folder written in the TSV", () => {
+    const uploads = { "fig1.png": "blob:1" };
+    expect(resolveImage("Fig1.PNG", uploads)).toBe("blob:1");
+    expect(resolveImage("images/fig1.png", uploads)).toBe("blob:1");
+    expect(resolveImage("fig2.png", uploads)).toBe("./questionImages/fig2.png");
+    expect(isUploaded("FIG1.png", uploads)).toBe(true);
+    expect(isUploaded("fig2.png", uploads)).toBe(false);
+    expect(isUploaded("", uploads)).toBe(false);
+  });
+
+  it("encodes hosted file names and ignores blank names", () => {
+    expect(resolveImage("my plot#1.png")).toBe("./questionImages/my%20plot%231.png");
+    expect(resolveImage("   ")).toBeNull();
   });
 });

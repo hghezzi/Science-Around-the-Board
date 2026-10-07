@@ -41,7 +41,7 @@ import { assetValue, netWorth, rankPlayers, nextActivePlayer, bestPreSurveyPlaye
 
 describe("victory helpers", () => {
   const board = [
-    { id: 0, owner: 0, price: 100, level: 2, houseCost: 100 },
+    { id: 0, type: "property", group: "G", sub: "a", owner: 0, price: 100, level: 2, houseCost: 100 },
     { id: 1, owner: 1, price: 500, level: 0, houseCost: 0 },
     { id: 2, owner: null, price: 160, level: 0, houseCost: 160 },
   ];
@@ -52,7 +52,7 @@ describe("victory helpers", () => {
     { id: 3, name: "Orange", money: 0, eliminated: true, eliminatedAt: 7 },
   ];
 
-  it("values assets at price plus upgrades", () => {
+  it("values assets at the money spent: price plus upgrades", () => {
     expect(assetValue(board, 0)).toBe(300);
     expect(netWorth(players[0], board)).toBe(1300);
     expect(netWorth(players[2], board)).toBe(0);

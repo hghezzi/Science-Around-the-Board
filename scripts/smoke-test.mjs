@@ -5,11 +5,13 @@
 // Pick scenarios with SCENARIOS=teams,dark and the number of rolls with ROLLS=10.
 import { preview } from "vite";
 import { chromium } from "playwright";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import CryptoJS from "crypto-js";
+import { encryptLockFile } from "../src/lockFile.js";
+import { parseTsv } from "../src/tsvParser.js";
 
 const ROLLS = Number(process.env.ROLLS || 10);
-const server = await preview({ preview: { port: 4181, strictPort: false }, logLevel: "error" });
+const server = await preview({ preview: { port: Number(process.env.SMOKE_PORT || process.env.PORT || 4181), strictPort: false }, logLevel: "error" });
 const BASE = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const failures = [];
@@ -18,7 +20,7 @@ const fail = (msg) => { failures.push(msg); console.log(`  ✗ ${msg}`); };
 // Buttons the bot may press in game dialogs, in order of preference.
 const DIALOG_BUTTONS = [/^Next question/i, /^Finish exam/i, /^Finish quiz/i, /^Start exam/i, /^Accept challenge/i,
   /^Start the rescue quiz/i, /^Keep playing/i, /^See final standings/i, /^Sell deed/i, /^Downgrade/i,
-  /^Buy$/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full$/i, /^Cancel$/i];
+  /^Buy\b/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full/i, /^Cancel$/i];
 
 // Service workers are blocked except in the offline scenario: requests they answer
 // from their cache would bypass page.route() mocks.
@@ -26,6 +28,8 @@ async function newPage(colorScheme = "light", { serviceWorkers = "block" } = {})
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme, acceptDownloads: true, serviceWorkers });
   const page = await context.newPage();
   page.on("pageerror", (e) => fail(`page error: ${e.message}`));
+  // The production Content-Security-Policy must never block anything the game needs.
+  page.on("console", (m) => { if (m.type() === "error" && /Content Security Policy/i.test(m.text())) fail(`CSP: ${m.text().slice(0, 160)}`); });
   page.on("dialog", (d) => d.accept().catch(() => {}));
   return { context, page };
 }
@@ -43,7 +47,7 @@ async function setupGame(page, teams) {
   // Topic BEFORE team count: this order used to leave extra players without survey questions.
   await page.getByRole("button", { name: /^16S/ }).click();
   await page.getByRole("button", { name: /Confirm selection/i }).click();
-  await page.getByRole("button", { name: teams === 1 ? /^Solo$/ : new RegExp(`^${teams} teams$`) }).click();
+  await page.getByRole("button", { name: teams === 1 ? /^Solo$/ : new RegExp(`^${teams} players$`) }).click();
   await page.getByRole("button", { name: /Start game/ }).click();
 }
 
@@ -150,6 +154,14 @@ function checkCsv(rows, teams, label) {
   if (info !== teams) fail(`${label}: CSV has ${info} TEAM_INFO rows (expected ${teams})`);
 }
 
+// The board is showing. A new game opens with the quick rules: close them.
+async function gameStarted(page) {
+  await page.getByText("Game log").waitFor();
+  const gotIt = page.getByRole("button", { name: /^Got it$/ });
+  await gotIt.waitFor({ timeout: 2000 }).then(() => gotIt.click()).catch(() => {});
+  await page.getByRole("dialog", { name: /How to play/ }).waitFor({ state: "detached", timeout: 5000 }).catch(() => {});
+}
+
 async function teamScenario(teams, colorScheme = "light") {
   const label = `${colorScheme} ${teams} team(s)`;
   console.log(`▶ ${label}`);
@@ -157,7 +169,7 @@ async function teamScenario(teams, colorScheme = "light") {
   await openDemo(page);
   await setupGame(page, teams);
   await doSurvey(page, teams, `${label} pre`);
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   await playTurns(page, label);
   await finishGame(page, teams, label);
   checkCsv(await downloadCsv(page), teams, label);
@@ -184,7 +196,7 @@ async function resultsScenario() {
   if (!(await page.getByText(/Results will be sent to your instructor/).count())) fail("results: start page doesn't mention sending results");
   await setupGame(page, 1);
   await doSurvey(page, 1, "results pre");
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   await finishGame(page, 1, "results");
   const send = page.getByRole("button", { name: /Send results to instructor/ });
   if (await send.isEnabled()) fail("results: Send should be disabled until names are typed");
@@ -196,6 +208,11 @@ async function resultsScenario() {
     if (posted.app !== "science-around-the-board" || posted.course !== "Smoke Test 101") fail("results: payload is missing the app or course");
     if (posted.summary?.[0]?.members !== "Test Student") fail("results: summary is missing the student name");
     if (!(posted.rows?.length > 10)) fail("results: payload has too few rows");
+    // The Apps Script collector drops columns whose names aren't simple, and caps their number.
+    const keys = new Set([...(posted.summary || []), ...(posted.rows || [])].flatMap((r) => Object.keys(r)));
+    const odd = [...keys].filter((k) => !/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(k));
+    if (odd.length) fail(`results: the collector would drop these columns: ${odd.join(", ")}`);
+    if (keys.size + 5 > 80) fail(`results: ${keys.size} columns, more than the collector keeps`);
   }
   const email = page.getByRole("link", { name: /Email results to instructor/ });
   const href = (await email.count()) ? await email.getAttribute("href") : "";
@@ -218,7 +235,17 @@ async function filesScenario() {
   await dialog.getByText(/password didn't work/).waitFor();
   await dialog.getByLabel(/Class password/).fill("Class-Pass");
   await dialog.getByRole("button", { name: "Unlock" }).click();
-  await page.getByText(/Loaded 177 questions/).waitFor({ timeout: 10000 });
+  await page.getByText(/Loaded 183 questions/).waitFor({ timeout: 10000 });
+  await page.getByRole("button", { name: /Use a different file/ }).click();
+  // Files from the current encryptor (PBKDF2 + AES-GCM).
+  const lock2 = await encryptLockFile(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "Class-Pass-2");
+  await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions2.lock", mimeType: "text/plain", buffer: Buffer.from(lock2) });
+  await dialog.getByLabel(/Class password/).fill("Class-Pass");
+  await dialog.getByRole("button", { name: "Unlock" }).click();
+  await dialog.getByText(/password didn't work/).waitFor({ timeout: 10000 });
+  await dialog.getByLabel(/Class password/).fill("Class-Pass-2");
+  await dialog.getByRole("button", { name: "Unlock" }).click();
+  await page.getByText(/Loaded 183 questions/).waitFor({ timeout: 10000 });
   await page.waitForTimeout(1500); // image checks run in the background
   if (await page.getByText(/couldn't be found/).count()) fail("files: the demo reports missing images, but all its images are hosted");
   await page.getByRole("button", { name: /Use a different file/ }).click();
@@ -249,15 +276,15 @@ async function resumeScenario() {
   await openDemo(page, `${BASE}?deck=demo`);
   await setupGame(page, 2);
   await doSurvey(page, 2, "resume pre");
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   await playTurns(page, "resume", 3);
   const turn = page.getByText(/^Turn \d+$/);
   const before = await turn.textContent();
-  const worth = page.getByText(/^Net worth -?\$\d+$/); // team panel only (tile cards also show prices)
+  const worth = page.getByText(/^Net worth [-−]?\$[\d,]+$/); // team panel only (tile cards also show prices)
   const worthBefore = await worth.allTextContents();
   await page.reload();
   await page.getByRole("button", { name: /^Resume$/ }).click();
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   const after = await turn.textContent();
   if (before !== after) fail(`resume: came back at "${after}", expected "${before}"`);
   const worthAfter = await worth.allTextContents();
@@ -300,17 +327,139 @@ async function offlineScenario() {
   await page.getByText(/Loaded \d+ questions/).waitFor({ timeout: 10000 });
   await setupGame(page, 1);
   await doSurvey(page, 1, "offline pre");
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
+  // The encryptor works offline too.
+  await page.goto(`${BASE}encryptor.html`);
+  if (!(await page.getByRole("heading", { name: "Question Encryptor" }).count())) fail("offline: the encryptor didn't open offline");
+  await context.close();
+}
+
+// A new deploy: an idle start page reloads by itself; with a file loaded, a notice offers Reload.
+async function updateScenario() {
+  console.log("▶ new version available");
+  const swPath = "dist/sw.js";
+  const original = readFileSync(swPath, "utf8");
+  const { context, page } = await newPage("light", { serviceWorkers: "allow" });
+  try {
+    await page.goto(BASE);
+    await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+    await page.reload();
+    const deploy = (n) => writeFileSync(swPath, `${original}\n// smoke-test deploy ${n}\n`);
+    const checkForUpdate = () => page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
+    // 1. Nothing loaded yet: the page reloads into the new version without asking.
+    await page.evaluate(() => { window.__oldPage = true; });
+    deploy(1);
+    await checkForUpdate();
+    await page.waitForFunction(() => !window.__oldPage, null, { timeout: 20000 }).catch(() => fail("update: an idle start page didn't reload into the new version"));
+    // 2. A file is loaded: never reload by surprise, show the notice instead.
+    const noThanks = page.getByRole("button", { name: "No thanks" });
+    if (await noThanks.count()) await noThanks.click();
+    await page.getByRole("button", { name: /Play the demo/ }).click();
+    await page.getByText(/Loaded \d+ questions/).waitFor({ timeout: 10000 });
+    await page.evaluate(() => { window.__oldPage = true; });
+    deploy(2);
+    await checkForUpdate();
+    await page.getByText(/A new version of the game is ready/).waitFor({ timeout: 20000 }).catch(() => fail("update: no notice about the new version"));
+    if (!(await page.evaluate(() => window.__oldPage))) fail("update: the page reloaded while a file was loaded");
+  } finally {
+    writeFileSync(swPath, original);
+    await context.close();
+  }
+}
+
+// Debt is settled only after the feedback that caused it: a saved game is injected
+// (Red at tile 2 with $10, owning a milestone; Blue owns the core on tile 4) and
+// Math.random is fixed so the dice roll 1 + 1.
+async function debtScenario() {
+  console.log("▶ debt after rent (deterministic)");
+  const { context, page } = await newPage();
+  const rows = parseTsv(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"));
+  const team = (id, name, color, position, money) => ({ id, name, color, position, money, jailed: false, chaosTokens: 0, rescueUsed: false, eliminated: false });
+  const tiles = Array.from({ length: 36 }, (_, i) => [i === 4 ? 1 : i === 9 ? 0 : null, 0]);
+  const snapshot = {
+    version: 1, savedAt: Date.now(), phase: "GAME", sessionId: "debt-test", allTsvRows: rows, imagesBase: "", gameMode: "16S", selectedModule: "QIIME2",
+    playerCount: 2, sessionMinutes: 0, startPlayer: 0, playerQuestionSets: [[], []], confQ: [], preRows: [], postRows: [], gameRows: [],
+    game: { tiles, players: [team(0, "Red Team", "#e53935", 2, 200), team(1, "Blue Team", "#1e88e5", 0, 1500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
+  };
+  await page.addInitScript((s) => {
+    if (!sessionStorage.getItem("seeded")) { localStorage.setItem("sab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
+    Math.random = () => 0;
+  }, JSON.stringify(snapshot));
+  await page.goto(BASE);
+  const noThanks = page.getByRole("button", { name: "No thanks" });
+  if (await noThanks.count()) await noThanks.click();
+  await page.getByRole("button", { name: /^Resume$/ }).click();
+  await page.getByRole("button", { name: /^Roll/ }).click();
+  const dialog = page.locator(".MuiModal-root").last();
+  await dialog.getByText(/Rent due: \$300/i).waitFor({ timeout: 10000 });
+  if (!(await answerQuestion(dialog))) fail("debt: couldn't answer the rent question");
+  await dialog.getByRole("button", { name: /^Continue$/i }).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no feedback dialog (${(await page.locator("body").innerText()).slice(0, 300)})`));
+  if (/Out of money/i.test(await dialog.innerText())) fail("debt: liquidation replaced the rent feedback");
+  await dialog.getByRole("button", { name: /^Continue$/i }).click();
+  await page.getByText(/Out of money/).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no liquidation after the feedback (${(await page.locator("body").innerText()).slice(0, 600)})`));
+  await page.getByRole("button", { name: /^Sell deed/i }).click();
+  await page.getByText(/Blue Team's turn/).waitFor({ timeout: 5000 }).catch(() => fail("debt: the turn didn't pass after clearing the debt"));
+  await context.close();
+}
+
+// A Wildcard that bankrupts the team: its text must stay readable, then the
+// Rescue Quiz follows, and failing it eliminates the team (last team standing wins).
+async function bankruptScenario() {
+  console.log("▶ bankruptcy and rescue quiz");
+  const { context, page } = await newPage();
+  await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+    const response = await route.fetch();
+    const lines = (await response.text()).replace(/\s+$/, "").split(/\r?\n/);
+    const header = lines[0].split("\t");
+    const mishap = header.map((h) => ({ id: "m_crash", question: "Total disaster! (-$5000)", explanation: "Smoke fun fact.", bigTopic: "16S", module: "QIIME2", type: "mishap" }[h] ?? "")).join("\t");
+    await route.fulfill({ response, body: `${[...lines.filter((l) => !/\tmishap\t/.test(l)), mishap].join("\r\n")}\r\n` });
+  });
+  await openDemo(page);
+  await setupGame(page, 2);
+  await doSurvey(page, 2, "bankrupt pre");
+  await gameStarted(page);
+  for (let step = 0; step < 300; step++) {
+    const modal = page.locator(".MuiModal-root").last();
+    if (!(await page.locator(".MuiModal-root").count())) {
+      const roll = page.getByRole("button", { name: /^Roll/ });
+      if (await roll.isEnabled()) { await roll.click(); await page.locator(".MuiModal-root").first().waitFor({ timeout: 10000 }).catch(() => {}); }
+      else await page.waitForTimeout(200);
+      continue;
+    }
+    const text = await modal.innerText();
+    if (/Total disaster/.test(text)) {
+      await page.waitForTimeout(500);
+      if (!/Smoke fun fact/.test(await modal.innerText())) fail("bankrupt: the Wildcard was replaced before the team could read it");
+      await modal.getByRole("button", { name: /^Continue$/i }).click();
+      await page.getByText(/Bankrupt!/).first().waitFor({ timeout: 5000 }).catch(() => fail("bankrupt: no Rescue Quiz offer after the Wildcard"));
+      continue;
+    }
+    if (/Victory!/i.test(text)) { await context.close(); return; }
+    // Answer wrong on purpose: pick the last option (fails some rescue quizzes).
+    const options = modal.getByRole("button", { name: /^[A-D]\./ });
+    if ((await options.count()) && (await options.first().isEnabled())) { await options.last().click(); continue; }
+    if (await answerQuestion(modal)) continue;
+    let clicked = false;
+    for (const name of [/^Next question/i, /^Finish quiz/i, /^Finish exam/i, /^Start the rescue quiz/i, /^Keep playing/i, /^Continue$/i, /^Skip$/i, /^Decline$/i, /^Pay full/i]) {
+      const button = modal.getByRole("button", { name }).first();
+      if ((await button.count()) && (await button.isEnabled())) { await button.click(); clicked = true; break; }
+    }
+    if (!clicked) await page.waitForTimeout(200);
+  }
+  fail("bankrupt: no team was eliminated after 300 steps");
   await context.close();
 }
 
 const SCENARIOS = {
+  debt: debtScenario,
+  bankrupt: bankruptScenario,
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),
   results: resultsScenario,
   files: filesScenario,
   resume: resumeScenario,
   offline: offlineScenario,
+  update: updateScenario,
 };
 const selected = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
 for (const name of selected) {

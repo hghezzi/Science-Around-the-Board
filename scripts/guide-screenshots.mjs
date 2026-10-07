@@ -56,7 +56,7 @@ async function captureSummary() {
   await p.click("text=No thanks");
   await p.click("text=Play the demo");
   await p.click("text=Continue to game setup");
-  await p.click('button:has-text("2 teams")');
+  await p.click('button:has-text("2 players")');
   await p.click("text=16S");
   await p.click("text=Confirm Selection");
   await p.click('button:has-text("Start game")');
@@ -70,6 +70,7 @@ async function captureSummary() {
     }
   };
   await survey("Start Game");
+  await p.click('button:has-text("Got it")'); // the quick rules a new game opens with
   await p.click('button:has-text("End game")');
   await p.click('button:has-text("CONTINUE TO POST-SURVEY")');
   await survey("Finish Surveys");
@@ -106,7 +107,7 @@ try {
   await page.click("text=Play the demo");
   await shot("02-file-check");
   await page.click("text=Continue to game setup");
-  await page.click('button:has-text("2 teams")');
+  await page.click('button:has-text("2 players")');
   await page.click("text=16S");
   await page.waitForTimeout(450);
   await page.getByText("Select module").locator("..").screenshot({ path: `${OUT}/03-module.png` });
@@ -125,6 +126,12 @@ try {
     for (let k = 0; k < n; k++) await opts.nth(k).click();
     await page.click(i === 0 ? 'button:has-text("Next Player")' : 'button:has-text("Start Game")');
   }
+  // A new game opens with the quick rules.
+  await page.getByRole("button", { name: "Got it" }).waitFor();
+  await page.waitForTimeout(400);
+  await shot("06-rules");
+  await page.click('button:has-text("Got it")');
+  await page.waitForTimeout(400);
   await shot("06-board");
 
   let gotQuestion = false;

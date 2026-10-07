@@ -54,7 +54,7 @@ Every format is marked simply correct or incorrect.
 | `multi` | option1–4, `correctIndex` like `1,3` | checkboxes plus Submit | the selection matches **exactly** |
 | `numeric` | `answer` (e.g. `1500`), optional `tolerance` | number box | within tolerance (commas allowed: `1,500`) |
 | `order` | option1–4 **in the correct order** | shuffled list with ↑/↓ buttons | the order matches exactly |
-| `text` | `answer` e.g. `beta|beta diversity|β` | text box | it matches an accepted answer, ignoring case, punctuation and extra spaces. One typo is forgiven on answers of 5 or more characters |
+| `text` | `answer` e.g. `beta|beta diversity|β` | text box | it matches an accepted answer, ignoring case, punctuation and extra spaces. One typo is forgiven on answers of 8 or more characters, but not in the first letter or in a number, so short terms such as `alkane` must be exact |
 
 Tips:
 - For `multi`, say "(Select all that apply)" in the prompt, and use 2–3 correct answers out of 4.
@@ -101,7 +101,8 @@ Pass `--bigTopic` and `--module` to build_tsv.py to fill those columns on every 
 - No tabs or line breaks inside cells; build_tsv.py replaces them with spaces.
 - `type` values must be lowercase (survey and confidence rows are matched exactly).
 - Correct answers must not depend on option position ("both A and C"), because options are shuffled. Use the `multi` format instead.
-- Avoid "All of the above" and "None of the above" for the same reason.
+- Avoid "All of the above" and "None of the above" for the same reason, and never refer to "option C" in an explanation; name the option's content instead.
+- Spreadsheets turn a cell that starts with `-`, `+`, `=` or `@` into a formula, so `--p-sampling-depth` becomes `#NAME?` after a round trip through Excel or Google Sheets. Wrap commands and flags in backticks (`` `--p-sampling-depth` ``), or type an apostrophe first when editing in a spreadsheet. The validator reports `#NAME?`, `#REF!` and similar values as errors.
 - Keep prompts under about 300 characters; teams read them aloud under time pressure.
 - An encrypted `.lock` file can't be validated. Validate the plain `.tsv` first, then encrypt.
 
