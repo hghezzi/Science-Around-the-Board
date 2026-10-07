@@ -11,7 +11,14 @@ SAB is formative review: low stakes, immediate feedback, repeated retrieval. Que
 | milestone | apply / analyze / evaluate | scenarios: "A student sees result R after doing S. What is the most likely cause?", "Which change would fix…", "Which experimental design answers question Q?" |
 | survey | the same LOs as the board, mixed levels | parallel items, not copies of board questions |
 
-Milestones are the mastery gate (5 of 6). Make them reward understanding, not trivia: one concept per question, a realistic context, and one clearly best answer.
+Milestones are the mastery gate (5 of 6, and the second mistake ends the exam). Make them reward understanding, not trivia: one concept per question, a realistic context, and one clearly best answer.
+
+- **Formats serve the tile, not the quota.** On a milestone, a `text`, `numeric` or `order` item must make students apply the idea: scenario → name the process (good); definition → name the term (property only); a count or date to recall (property only); a sequence they could only memorise (property only). If a format gives only recall for a theme, put it on property tiles.
+- Prefer 4-option items in milestones: a true/false item is a 50% guess in the highest-stakes mechanic.
+
+## Level
+
+Match the detail to the audience. For introductory courses, test the core concepts and the canonical examples; ask for a name, number or date only when knowing it is itself part of an LO (1789 in a French Revolution course, yes; how many départements, no). Upper-year and professional courses can go further into exceptions, methods and edge cases.
 
 ## Stems
 
@@ -25,6 +32,9 @@ Milestones are the mastery gate (5 of 6). Make them reward understanding, not tr
 - Every distractor should be something a real student might believe: a common misconception, a confusion between two related terms, a step done in the wrong order, an off-by-one, the right idea in the wrong context.
 - Don't use joke options, "all/none of the above", or options that overlap.
 - Plausible doesn't mean tricky: there must be one defensible correct answer, as an expert would agree.
+- **Calculation items as multiple choice**: each distractor is the result of one named error (a flipped ratio, a forgotten conversion, the wrong formula), and the explanation names that error.
+- **"What should you do?" items** (nursing, social work, teaching, ethics, communication): distractors are actions a well-meaning novice actually takes (the right action at the wrong time, a partial step, an outdated practice, a reassuring but closed question), never misconduct or nonsense that common sense rules out.
+- **A known error from the course materials** (once the instructor has confirmed it) makes a strong distractor or a false true/false statement.
 
 ## Don't let the answer give itself away (cues)
 
@@ -39,6 +49,8 @@ Writers, human or AI, naturally make the correct answer the longest, most carefu
 | **grammar** | rule out options that don't fit "…is an" or a plural stem | End stems with "?" and make every option fit the stem grammatically. |
 | **convergence** | pick the option that shares the most parts with the others | Vary distractors along more than one dimension. |
 | **option references** | "all of the above", "both A and B", "option 2" | Never: options are shuffled. Use the `multi` format instead. |
+| **true/false** | statements with "always"/"never" are false; hedged ones ("can", "may") are true | Use absolute and hedged wording in true and false statements alike, and keep True and False about 50/50. |
+| **select-all count** | "it's always two" | Vary the number of correct options (1 to 4); the validator warns when one count dominates. |
 
 Example (from the 16S demo, before and after):
 
@@ -59,13 +71,16 @@ Shown immediately after every answer, this is where the learning happens.
 
 ## Survey questions (pre/post)
 
-- They measure learning, so they must cover the LOs evenly and match the board's difficulty.
-- Write them **separately** from board questions: same concepts, different items. If students see the exact item during play, post-test gains measure memory of that item.
-- Use mostly mcq so scores are comparable.
+The survey measures learning, so it must cover the LOs evenly and match the board's difficulty.
+
+- Each survey item targets a board LO **with a different item**: a new scenario, context or direction, and different wording for the correct answer (e.g. board: "Which metric uses the phylogeny?"; survey: "Two samples have the same 50 ASVs at similar abundances, but in one they all belong to one genus. Which alpha metric differs most?"). Changing only the numbers isn't enough: if students rehearse the same item during play, the post-test gain measures memory of that item.
+- Use mostly 4-option multiple choice; avoid true/false, whose 50% guess rate adds noise to a 10-item measure.
+- Fill `theme` on survey rows so gains can be read per LO.
 
 ## Confidence statements
 
-- 3 statements, one per major LO cluster: "I am confident I can [verb] [skill]."
+- 4–5 statements: one per theme, plus the core skill if it is an LO. "I am confident I can [verb] [one skill]."
+- One skill per statement. Never join two with "and" ("calculate Km **and** design an assay"): a student confident in only one half has no right slider position, and the pre/post change can't be traced to an LO.
 - Use concrete verbs (explain, choose, interpret, troubleshoot), not "understand".
 
 ## Wildcards (`mishap` rows)
@@ -73,6 +88,7 @@ Shown immediately after every answer, this is where the learning happens.
 - Short, vivid events themed to the subject (or general study life), with explicit amounts: `(-$100)`, `(+$150)`.
 - Use the `explanation` for a genuine fun fact or practical lesson tied to the course (a classic lab mistake, a historical anecdote, a best practice).
 - Roughly 2/3 penalties and 1/3 rewards, mostly $50–$200.
+- On a module about a distressing topic (suicide, abuse, trauma), keep the wildcards neutral or about practice and self-care, never jokes about the topic. Mishap rows are filtered by module, so each module can have its own tone (`sensitive-content.md`).
 
 ## Quality pass before building
 
@@ -84,11 +100,8 @@ For each batch, run the **blind-student test** (mandatory): cover the stem and r
 - [ ] Does the explanation address the tempting distractor?
 - [ ] Is it tied to an LO, and at the right difficulty for its tile?
 - [ ] Are correct positions balanced, with no duplicate or near-duplicate items across board and survey?
+- [ ] Does any item's options or explanation answer another item in the same pool, or contradict another item in the file?
 - [ ] Is the correct option within about ±20% of the distractors' length, and is it the longest in no more than about a quarter of the batch?
 - [ ] Do absolute words appear in correct answers as often as in distractors (or nowhere)?
 - [ ] Does the explanation refer to options by their content, never by letter or position ("option C")? Options are shuffled.
 - [ ] Would a spreadsheet mangle any cell? Text starting with `-`, `+`, `=` or `@` (e.g. `--p-sampling-depth`) becomes a formula (`#NAME?`) in Excel or Sheets; wrap commands in backticks.
-
-## Survey items: parallel, not identical
-
-The pre/post survey measures learning, so each survey item should target a board LO **with a different item**: a new scenario, numbers or direction (e.g. board: "Which metric uses the phylogeny?"; survey: "Two samples have the same 50 ASVs at similar abundances, but in one they all belong to one genus. Which alpha metric differs most?"). A survey item that is a paraphrase of a board item measures memory of that item. Transfer items also show whether students can *use* the idea.

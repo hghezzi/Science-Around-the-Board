@@ -15,8 +15,8 @@
 import { getAllTopics, getModulesForTopic } from "./tsvParser.js";
 import { matchesTopicAndModule } from "./tsvBoardBuilder.js";
 import { FORMATS, parseFormat, parseIndexList, parseNumber, parseTolerance, hasExplicitMishapAmount, normalizeText } from "./questionFormats.js";
-import { CONFIG_KEYS, EMAIL_PATTERN } from "./config.js";
-import { checkItemQuality, formatCueSummary } from "./itemQuality.js";
+import { CONFIG_KEYS, EMAIL_PATTERN, readConfig } from "./config.js";
+import { checkItemQuality, formatCueSummary, formatMultiSummary } from "./itemQuality.js";
 
 export const KNOWN_TYPES = ["property", "milestone", "core", "mishap", "survey", "confidence", "config"];
 const QUIZ_TYPES = ["property", "milestone", "core", "survey"];
@@ -53,6 +53,35 @@ function checkConfigRow(row, label, errors, warnings) {
   if (key === "ask_names" && !["yes", "no", "y", "n", "true", "false", "1", "0"].includes(value.toLowerCase())) warnings.push('Config "ask_names" should be yes or no.');
 }
 
+/**
+ * Where the end screen sends results, as the game reads the config rows. Config rows
+ * route student names and scores off the student's computer, so the CLI report
+ * always prints this line for the instructor to check.
+ */
+export function describeDelivery(rows) {
+  const cfg = readConfig(rows);
+  const to = [];
+  if (cfg.resultsUrl) to.push(`the Google Sheet at ${cfg.resultsUrl}`);
+  if (cfg.instructorEmail) to.push(`an email to ${cfg.instructorEmail} (students attach the file)`);
+  const where = to.length ? to.join(" and ") : "nowhere; students only download the results file (CSV)";
+  const course = cfg.course ? ` Course label: ${cfg.course}.` : "";
+  return `Results are sent to: ${where}. Students type names or IDs: ${cfg.askNames ? "yes" : "no"}.${course}`;
+}
+
+function countFormats(rows) {
+  const counts = { mcq: 0, trueFalse: 0, multi: 0, numeric: 0, order: 0, text: 0 };
+  rows.forEach((row) => {
+    if (!QUIZ_TYPES.includes((row.type || "").trim().toLowerCase())) return;
+    const format = parseFormat(row.format);
+    if (!format) return;
+    counts[format]++;
+    if (format === "mcq" && [row.option1, row.option2, row.option3, row.option4].filter((o) => o && o.length > 0).length === 2) counts.trueFalse++;
+  });
+  return counts;
+}
+
+const formatLine = (f) => `mcq ${f.mcq} (true/false ${f.trueFalse}), multi ${f.multi}, numeric ${f.numeric}, order ${f.order}, text ${f.text}`;
+
 function summarizeLabels(labels, max = 5) {
   if (labels.length <= max) return labels.join(", ");
   return `${labels.slice(0, max).join(", ")} and ${labels.length - max} more`;
@@ -72,7 +101,7 @@ export function validateQuestionRows(rows, headers) {
 
   if (!rows.length) {
     errors.push("The file has no question rows (it needs a header line plus at least one row).");
-    return { errors, warnings, games: [], images: [], formatCounts, cues: null };
+    return { errors, warnings, games: [], images: [], formatCounts, cues: null, delivery: "" };
   }
 
   // ---------- Headers ----------
@@ -175,81 +204,84 @@ export function validateQuestionRows(rows, headers) {
   if (vagueMishap.length) warnings.push(`Mishap without an explicit amount such as (+$100) or (-$50): ${summarizeLabels(vagueMishap)}. The default +$50 / -$100 will be used.`);
   if (noExplanation.length) warnings.push(`No explanation: ${summarizeLabels(noExplanation)}. Explanations are shown after every answer and are the main teaching moment.`);
 
-  // ---------- Answer-option quality (cues that give answers away) ----------
-  const quality = checkItemQuality(rows);
+  // ---------- The games (bigTopic + module) players can pick ----------
+  const scopes = [];
+  let topics = getAllTopics(rows);
+  if (!topics.length) topics = [null];
+  topics.forEach((topic) => {
+    let modules = topic ? getModulesForTopic(rows, topic) : [];
+    if (!modules.length) modules = [null];
+    modules.forEach((module) => {
+      const name = [topic, module].filter(Boolean).join(" / ") || "(all rows)";
+      scopes.push({ name, topic, module, rows: rows.filter((r) => matchesTopicAndModule(r, topic, module)) });
+    });
+  });
+
+  // ---------- Answer-option quality (cues that give answers away), per game ----------
+  const quality = checkItemQuality(rows, scopes);
   errors.push(...quality.errors);
   warnings.push(...quality.warnings);
 
   // ---------- Per-game (bigTopic + module) checks ----------
   const games = [];
-  let topics = getAllTopics(rows);
-  if (!topics.length) topics = [null];
+  scopes.forEach(({ name, topic, module, rows: scoped }, gameIndex) => {
+    const ofType = (t) => scoped.filter((r) => (r.type || "").trim().toLowerCase() === t);
 
-  topics.forEach((topic) => {
-    let modules = topic ? getModulesForTopic(rows, topic) : [];
-    if (!modules.length) modules = [null];
-
-    modules.forEach((module) => {
-      const name = [topic, module].filter(Boolean).join(" / ") || "(all rows)";
-      const scoped = rows.filter((r) => matchesTopicAndModule(r, topic, module));
-      const ofType = (t) => scoped.filter((r) => (r.type || "").trim().toLowerCase() === t);
-
-      const boardRows = scoped.filter((r) => ["property", "milestone"].includes((r.type || "").trim().toLowerCase()));
-      const themes = [];
-      boardRows.forEach((r) => {
-        const th = (r.theme || "").trim();
-        if (th && !themes.includes(th)) themes.push(th);
-      });
-
-      const game = { name, topic, module, themes: [], counts: {} };
-      KNOWN_TYPES.forEach((t) => { game.counts[t] = ofType(t).length; });
-
-      if (themes.length < BOARD_SIDES) {
-        errors.push(`[${name}] The board needs ${BOARD_SIDES} themes (one per side) but found ${themes.length}${themes.length ? `: ${themes.join(", ")}` : ""}. The board will be incomplete and the game can break.`);
-      } else if (themes.length > BOARD_SIDES) {
-        warnings.push(`[${name}] Found ${themes.length} themes; only the first ${BOARD_SIDES} are used (${themes.slice(0, BOARD_SIDES).join(", ")}). Ignored: ${themes.slice(BOARD_SIDES).join(", ")}.`);
-      }
-
-      themes.slice(0, BOARD_SIDES).forEach((theme) => {
-        const themeRows = scoped.filter((r) => (r.theme || "").trim() === theme);
-        const props = themeRows.filter((r) => (r.type || "").trim().toLowerCase() === "property");
-        const miles = themeRows.filter((r) => (r.type || "").trim().toLowerCase() === "milestone");
-        const subs = [];
-        props.forEach((r) => {
-          const st = (r.subtheme || "").trim();
-          if (st && !subs.includes(st)) subs.push(st);
-        });
-        const subCounts = subs.map((st) => ({
-          name: st,
-          questions: props.filter((r) => (r.subtheme || "").trim() === st).length,
-        }));
-        game.themes.push({ name: theme, subthemes: subCounts, milestoneQuestions: miles.length });
-
-        if (props.length === 0) {
-          errors.push(`[${name}] Theme "${theme}" has no property questions, so its 6 property tiles cannot ask anything.`);
-        } else if (subs.length < SUBTHEMES_PER_SIDE) {
-          warnings.push(`[${name}] Theme "${theme}" has ${subs.length} subtheme(s); each side uses ${SUBTHEMES_PER_SIDE}. Both property groups will reuse the same questions.`);
-        } else if (subs.length > SUBTHEMES_PER_SIDE) {
-          warnings.push(`[${name}] Theme "${theme}" has ${subs.length} subthemes; only the first ${SUBTHEMES_PER_SIDE} are used. Ignored: ${subs.slice(SUBTHEMES_PER_SIDE).join(", ")}.`);
-        }
-        if (miles.length === 0) {
-          errors.push(`[${name}] Theme "${theme}" has no milestone questions, so its corner exam cannot start.`);
-        } else if (miles.length < MILESTONE_QUIZ_SIZE) {
-          warnings.push(`[${name}] Theme "${theme}" has ${miles.length} milestone question(s); exams ask ${MILESTONE_QUIZ_SIZE}, so questions will repeat within an exam.`);
-        }
-      });
-
-      if (game.counts.core === 0) warnings.push(`[${name}] No "core" questions; the 4 core tiles will show a generic event instead of a question.`);
-      if (game.counts.mishap === 0) warnings.push(`[${name}] No "mishap" rows; the built-in general wildcards will be used.`);
-      if (game.counts.survey === 0) warnings.push(`[${name}] No "survey" questions; the pre/post knowledge check will be empty.`);
-      else if (game.counts.survey < SURVEY_QUIZ_SIZE) warnings.push(`[${name}] Only ${game.counts.survey} survey question(s); each player normally gets ${SURVEY_QUIZ_SIZE}.`);
-      if (game.counts.confidence === 0) warnings.push(`[${name}] No "confidence" rows; the pre/post surveys will have no confidence sliders.`);
-
-      games.push(game);
+    const boardRows = scoped.filter((r) => ["property", "milestone"].includes((r.type || "").trim().toLowerCase()));
+    const themes = [];
+    boardRows.forEach((r) => {
+      const th = (r.theme || "").trim();
+      if (th && !themes.includes(th)) themes.push(th);
     });
+
+    const game = { name, topic, module, themes: [], counts: {}, formatCounts: countFormats(scoped), cues: quality.cues.games ? quality.cues.games[gameIndex] : null };
+    KNOWN_TYPES.forEach((t) => { game.counts[t] = ofType(t).length; });
+
+    if (themes.length < BOARD_SIDES) {
+      errors.push(`[${name}] The board needs ${BOARD_SIDES} themes (one per side) but found ${themes.length}${themes.length ? `: ${themes.join(", ")}` : ""}. The board will be incomplete and the game can break.`);
+    } else if (themes.length > BOARD_SIDES) {
+      warnings.push(`[${name}] Found ${themes.length} themes; only the first ${BOARD_SIDES} are used (${themes.slice(0, BOARD_SIDES).join(", ")}). Ignored: ${themes.slice(BOARD_SIDES).join(", ")}.`);
+    }
+
+    themes.slice(0, BOARD_SIDES).forEach((theme) => {
+      const themeRows = scoped.filter((r) => (r.theme || "").trim() === theme);
+      const props = themeRows.filter((r) => (r.type || "").trim().toLowerCase() === "property");
+      const miles = themeRows.filter((r) => (r.type || "").trim().toLowerCase() === "milestone");
+      const subs = [];
+      props.forEach((r) => {
+        const st = (r.subtheme || "").trim();
+        if (st && !subs.includes(st)) subs.push(st);
+      });
+      const subCounts = subs.map((st) => ({
+        name: st,
+        questions: props.filter((r) => (r.subtheme || "").trim() === st).length,
+      }));
+      game.themes.push({ name: theme, subthemes: subCounts, milestoneQuestions: miles.length });
+
+      if (props.length === 0) {
+        errors.push(`[${name}] Theme "${theme}" has no property questions, so its 6 property tiles cannot ask anything.`);
+      } else if (subs.length < SUBTHEMES_PER_SIDE) {
+        warnings.push(`[${name}] Theme "${theme}" has ${subs.length} subtheme(s); each side uses ${SUBTHEMES_PER_SIDE}. Both property groups will reuse the same questions.`);
+      } else if (subs.length > SUBTHEMES_PER_SIDE) {
+        warnings.push(`[${name}] Theme "${theme}" has ${subs.length} subthemes; only the first ${SUBTHEMES_PER_SIDE} are used. Ignored: ${subs.slice(SUBTHEMES_PER_SIDE).join(", ")}.`);
+      }
+      if (miles.length === 0) {
+        errors.push(`[${name}] Theme "${theme}" has no milestone questions, so its corner exam cannot start.`);
+      } else if (miles.length < MILESTONE_QUIZ_SIZE) {
+        warnings.push(`[${name}] Theme "${theme}" has ${miles.length} milestone question(s); exams ask ${MILESTONE_QUIZ_SIZE}, so questions will repeat within an exam.`);
+      }
+    });
+
+    if (game.counts.core === 0) warnings.push(`[${name}] No "core" questions; the 4 core tiles will show a generic event instead of a question.`);
+    if (game.counts.mishap === 0) warnings.push(`[${name}] No "mishap" rows; the built-in general wildcards will be used.`);
+    if (game.counts.survey === 0) warnings.push(`[${name}] No "survey" questions; the pre/post knowledge check will be empty.`);
+    else if (game.counts.survey < SURVEY_QUIZ_SIZE) warnings.push(`[${name}] Only ${game.counts.survey} survey question(s); each player normally gets ${SURVEY_QUIZ_SIZE}.`);
+    if (game.counts.confidence === 0) warnings.push(`[${name}] No "confidence" rows; the pre/post surveys will have no confidence sliders.`);
+
+    games.push(game);
   });
 
-  return { errors, warnings, games, images: [...images], formatCounts, cues: quality.cues };
+  return { errors, warnings, games, images: [...images], formatCounts, cues: quality.cues, delivery: describeDelivery(rows) };
 }
 
 /** Format a validation result as plain text (CLI output). */
@@ -263,11 +295,14 @@ export function formatValidationReport(result) {
     });
     const c = g.counts;
     lines.push(`  core: ${c.core}, mishap: ${c.mishap}, survey: ${c.survey}, confidence: ${c.confidence}`);
+    if (result.games.length > 1) {
+      lines.push(`  formats: ${formatLine(g.formatCounts)}`);
+      [formatCueSummary(g.cues), formatMultiSummary(g.cues)].filter(Boolean).forEach((l) => lines.push(`  ${l}`));
+    }
   });
   const f = result.formatCounts;
-  if (f) lines.push(`Formats: mcq ${f.mcq} (true/false ${f.trueFalse}), multi ${f.multi}, numeric ${f.numeric}, order ${f.order}, text ${f.text}`);
-  const cueLine = formatCueSummary(result.cues);
-  if (cueLine) lines.push(cueLine);
+  if (f) lines.push(`Formats: ${formatLine(f)}`);
+  [formatCueSummary(result.cues), formatMultiSummary(result.cues), result.delivery].filter(Boolean).forEach((l) => lines.push(l));
   if (result.images.length) lines.push(`Images referenced (${result.images.length}): ${result.images.join(", ")}`);
   lines.push("");
   result.errors.forEach((e) => lines.push(`ERROR: ${e}`));

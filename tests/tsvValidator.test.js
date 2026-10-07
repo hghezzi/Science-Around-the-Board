@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { parseTsv, parseTsvHeaders } from "../src/tsvParser.js";
-import { validateQuestionRows } from "../src/tsvValidator.js";
+import { validateQuestionRows, formatValidationReport } from "../src/tsvValidator.js";
 import { DEMO_TSV, HEADER, makeTsv } from "./helpers.js";
 
 vi.spyOn(console, "log").mockImplementation(() => {});
@@ -160,5 +160,28 @@ describe("config rows and format counts", () => {
     expect(f.mcq).toBeGreaterThan(100);
     ["multi", "numeric", "order", "text"].forEach((k) => expect(f[k]).toBeGreaterThanOrEqual(1));
     expect(validate(makeTsv()).formatCounts).toEqual({ mcq: 43, trueFalse: 0, multi: 0, numeric: 0, order: 0, text: 0 }); // 4 themes x (2 + 6) + 1 core + 10 survey
+  });
+});
+
+describe("results delivery line", () => {
+  const cfg = (...pairs) => pairs.map(([k, v]) => [k, v, "", "", "", "", "", "", "", "", "", "", "config", ""].join("\t"));
+  const delivery = (...pairs) => validate(makeTsv({ extra: cfg(...pairs) })).delivery;
+
+  it("says when results are only downloaded", () => {
+    expect(delivery()).toBe("Results are sent to: nowhere; students only download the results file (CSV). Students type names or IDs: no.");
+  });
+
+  it("names the Sheet and email the game will use, and whether names are asked", () => {
+    expect(delivery(["instructor_email", "prof@uni.edu"])).toBe("Results are sent to: an email to prof@uni.edu (students attach the file). Students type names or IDs: yes.");
+    expect(delivery(["results_url", "https://script.google.com/macros/s/X/exec"], ["ask_names", "no"], ["course", "BIOL 1"]))
+      .toBe("Results are sent to: the Google Sheet at https://script.google.com/macros/s/X/exec. Students type names or IDs: no. Course label: BIOL 1.");
+  });
+
+  it("leaves out a destination the game would ignore", () => {
+    expect(delivery(["results_url", "http://example.com/collect"])).toMatch(/^Results are sent to: nowhere/);
+  });
+
+  it("is printed in the report", () => {
+    expect(formatValidationReport(validate(makeTsv()))).toMatch(/\nResults are sent to: nowhere/);
   });
 });
