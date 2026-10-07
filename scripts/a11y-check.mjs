@@ -6,9 +6,10 @@ import { chromium } from "playwright";
 import { AxeBuilder } from "@axe-core/playwright";
 import CryptoJS from "crypto-js";
 import { readFileSync } from "node:fs";
+import { startPeerServer, routePeerJs, WEBRTC_ARGS } from "./lib/local-peer-server.mjs";
 
 const BASE = process.argv[2] || "http://localhost:4173/Science-Around-the-Board/";
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: WEBRTC_ARGS });
 let failures = 0;
 // An encrypted copy of the demo, to open the password dialog.
 const LOCK = CryptoJS.AES.encrypt(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "a11y-test").toString();
@@ -98,6 +99,57 @@ for (const scheme of ["light", "dark"]) {
   await audit(page, `${scheme} summary`);
   await context.close();
 }
+// Online play: the host's lobby and survey wait, and a player's device (join form, lobby,
+// survey, board while someone else plays, and the error for a wrong code).
+const peers = await startPeerServer();
+for (const scheme of ["light", "dark"]) {
+  const make = async () => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme, serviceWorkers: "block" });
+    await routePeerJs(context, peers.port);
+    return { context, page: await context.newPage() };
+  };
+  const { context: hc, page: host } = await make();
+  const { context: gc, page: guest } = await make();
+  await host.goto(BASE);
+  await host.click("text=No thanks");
+  await host.getByRole("button", { name: "Enter a code" }).click();
+  await audit(host, `${scheme} join form`);
+  await host.click("text=Play the demo");
+  await host.click("text=Continue to game setup");
+  await host.click('button:has-text("2 players")');
+  await host.click("text=16S");
+  await host.click("text=Confirm Selection");
+  await host.getByRole("button", { name: /On their own devices/ }).click();
+  await audit(host, `${scheme} setup (online)`);
+  await host.getByRole("button", { name: /Open the online room/ }).click();
+  await host.getByText("The room is open").waitFor({ timeout: 20000 });
+  const link = await host.getByLabel("Join link").inputValue();
+  await guest.goto(link);
+  await guest.getByText("Who are you playing as?").waitFor({ timeout: 30000 });
+  await audit(guest, `${scheme} device lobby`);
+  await guest.getByRole("button", { name: "Play as Blue Player" }).click();
+  await host.getByRole("button", { name: "Play on this computer" }).first().click();
+  await audit(host, `${scheme} host lobby`);
+  await host.getByRole("button", { name: /Start the game/ }).click();
+  await host.click('button:has-text("Continue to Questions")');
+  await host.click('button:has-text("Done")');
+  await host.getByText("Players are answering on their own devices").waitFor();
+  await audit(host, `${scheme} survey wait`);
+  await guest.click('button:has-text("Continue to Questions")');
+  await audit(guest, `${scheme} device survey`);
+  await guest.click('button:has-text("Send my answers")');
+  await guest.getByText("Game log").waitFor({ timeout: 20000 });
+  await guest.getByRole("button", { name: "Got it" }).click();
+  await audit(guest, `${scheme} device board`);
+  await hc.close(); await gc.close();
+  const { context: wc, page: wrong } = await make();
+  await wrong.goto(`${BASE}?join=ABC-DEF`);
+  await wrong.getByText(/No game with this code is open/).waitFor({ timeout: 30000 });
+  await audit(wrong, `${scheme} wrong code`);
+  await wc.close();
+}
+peers.close();
+
 await browser.close();
 console.log(failures ? `\n${failures} serious/critical issue(s).` : "\nNo serious accessibility issues found.");
 process.exit(failures ? 1 : 0);

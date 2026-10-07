@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url'
 //   - scripts: our own bundle, plus Google Analytics after opt-in (src/consent.js);
 //   - connect: question files and image folders can live on any https host (?deck=, ?images=),
 //     results go to the instructor's Apps Script, and analytics beacons go to Google;
+//   - online play (only when chosen): the PeerJS signalling service over wss://0.peerjs.com;
+//     the game data itself goes device to device (WebRTC, which CSP doesn't govern);
 //   - styles: MUI/Emotion inject <style> tags, so 'unsafe-inline' is needed for styles only;
 //   - workers: the service worker, and canvas-confetti's blob: worker.
 const CSP = {
@@ -18,7 +20,7 @@ const CSP = {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https:",
+    "connect-src 'self' https: wss://0.peerjs.com",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",

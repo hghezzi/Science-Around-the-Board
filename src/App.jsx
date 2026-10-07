@@ -6,8 +6,7 @@ import { lockFormat, decryptLockFile } from "./lockFile";
 import { setUpdateReloadSafe } from "./pwa";
 import { parseTsv, getAllTopics, getModulesForTopic } from "./tsvParser";
 import { validateQuestionRows } from "./tsvValidator";
-import { checkAnswer } from "./questionFormats";
-import { buildSurveySets, buildConfidenceQuestions } from "./surveys";
+import { buildSurveySets, buildConfidenceQuestions, surveyRows } from "./surveys";
 import { readConfig } from "./config";
 import { saveSnapshot, loadSnapshot, clearSnapshot } from "./autosave";
 import { toCsv, resultsFilename, summarizeTeams, teamInfoRows, makeSessionId, buildPayload, sendResults, buildMailto, downloadText } from "./results";
@@ -19,14 +18,20 @@ import ConsentBanner from "./ConsentBanner";
 import PasswordDialog from "./components/PasswordDialog";
 import InstallButton from "./components/InstallButton";
 import RulesDialog from "./components/RulesDialog";
+import SurveyView from "./SurveyView";
+import JoinCodeForm from "./online/JoinCodeForm";
+import { HostLobby, SurveyWait } from "./online/HostScreens";
+import { useHostRoom } from "./online/useHostRoom";
+import { makeRoomCode, normalizeRoomCode, formatRoomCode, hideAnswer, publicBoard, cleanAnswers, cleanSliders } from "./online/protocol";
+import TeamToken from "./components/TeamToken";
 import { DECK_SHORTCUTS, buildShareLink, isUnpublishedSheet, normalizeDeckUrl, normalizeImagesBase, readDeckParams } from "./deckLinks";
 import { TEAM_COLORS, TEAM_SYMBOLS, TEAM_INK } from "./theme";
-import { teamDisplayName } from "./labels";
 
 // The board (and its animation library) loads after the start page, which keeps the first
 // visit fast. It is fetched in the background right away, so it is ready before a game starts.
 const loadGameScreen = () => import("./GameScreen");
 const GameScreen = lazyWithReload(loadGameScreen);
+const GuestApp = lazyWithReload(() => import("./online/GuestApp"));
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // question files are a few hundred kB at most
 const TOO_BIG = "This file is too large to be a question file (over 5 MB).";
 
@@ -35,154 +40,6 @@ import {
   Box, Slider, Divider, Modal, Alert, Paper, TextField, Accordion, AccordionSummary, AccordionDetails,
 } from "@mui/material";
 
-/** Team symbol on its deep team colour. */
-function TeamToken({ index, size = 22 }) {
-  return (
-    <Box aria-hidden sx={{ width: size, height: size, borderRadius: "50%", bgcolor: TEAM_INK[index], color: "common.white", fontSize: Math.round(size * 0.5), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 0 0 2px ${TEAM_COLORS[index]}`, verticalAlign: "middle" }}>
-      {TEAM_SYMBOLS[index]}
-    </Box>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* SURVEY VIEWS                                                               */
-/* -------------------------------------------------------------------------- */
-
-function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestions, onComplete, resolveImage }) {
-  const C = confidenceQuestions || [];
-  const isPre = phase === "pre";
-  const [currentPlayer, setCurrentPlayer] = useState(0);
-  const currentQuestions = playerQuestionSets[currentPlayer] || [];
-  const [sliderValues, setSliderValues] = useState(() => Array.from({ length: playerCount }, () => Object.fromEntries(C.map((c) => [c.key, 5]))));
-  const [answers, setAnswers] = useState(() => playerQuestionSets.map((set) => set.map(() => null)));
-  const [lock, setLock] = useState(() => Array(playerCount).fill(false));
-
-  const handleSliderChange = (key, val) => {
-    if (lock[currentPlayer]) return;
-    setSliderValues((prev) => prev.map((p, i) => (i === currentPlayer ? { ...p, [key]: val } : p)));
-  };
-  const headingRef = useRef(null);
-  const submitConfidence = () => setLock((prev) => prev.map((x, i) => (i === currentPlayer ? true : x)));
-  const setAns = (qi, response) =>
-    setAnswers((prev) => prev.map((P, i) => (i === currentPlayer ? P.map((x, j) => (j === qi ? response : x)) : P)));
-
-  const submitPlayer = () => {
-    if (currentPlayer < playerCount - 1) {
-      setCurrentPlayer((p) => p + 1);
-      window.scrollTo(0, 0);
-      headingRef.current?.focus(); // screen readers start again at the top for the next team
-      return;
-    }
-    const rows = [];
-    for (let p = 0; p < playerCount; p++) {
-      const base = { phase, playerIndex: p, playerLabel: `Player ${p + 1}` };
-      C.forEach((cfg) => rows.push({ ...base, section: "confidence", questionId: cfg.key, questionPrompt: cfg.label, response: sliderValues[p][cfg.key] }));
-      (playerQuestionSets[p] || []).forEach((q, qi) => {
-        const response = answers[p]?.[qi] ?? null;
-        const result = checkAnswer(q, response);
-        rows.push({
-          ...base,
-          section: "quiz",
-          questionId: q.id || "",
-          format: q.format,
-          questionPrompt: q.prompt,
-          // The option number in the question file (1–4, like correctIndex), not the shuffled position on screen.
-          selectedIndex: q.format === "mcq" && response != null ? (q.optionOrder?.[response] ?? response) + 1 : "",
-          selectedOption: result.responseText,
-          correctAnswer: result.correctText,
-          correct: result.correct,
-        });
-      });
-    }
-    onComplete({ tidyRows: rows });
-  };
-
-  const currentSliders = sliderValues[currentPlayer];
-  const locked = lock[currentPlayer];
-  const lastLabel = isPre ? "Start Game" : "Finish Surveys";
-  const answered = (answers[currentPlayer] || []).filter((a) => a != null && (!Array.isArray(a) || a.length > 0) && a !== "").length;
-  const scaleLabels = [{ value: 0, label: "0" }, { value: 5, label: "5" }, { value: 10, label: "10" }];
-
-  return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: 5 }}>
-    <Container maxWidth="md">
-      <Card sx={{ p: { xs: 3, md: 5 } }}>
-        <Typography variant="h4" component="h1" gutterBottom ref={headingRef} tabIndex={-1} sx={{ outline: "none" }}>{isPre ? "Pre-Game Survey" : "Post-Game Survey"}</Typography>
-        {currentPlayer > 0 && !locked && (
-          <Alert severity="info" icon={<span aria-hidden>🔄</span>} sx={{ mb: 2 }}>
-            Thanks, {teamDisplayName(currentPlayer - 1, playerCount)}! Pass the computer to <strong>{teamDisplayName(currentPlayer, playerCount)}</strong>.
-          </Alert>
-        )}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <TeamToken index={currentPlayer} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{teamDisplayName(currentPlayer, playerCount)}{playerCount > 1 ? ` · player ${currentPlayer + 1} of ${playerCount}` : ""}</Typography>
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          {isPre ? "Answer on your own; this is your starting point, not a test. The best score goes first." : "Same questions as before the game. How much have you learned?"}
-        </Typography>
-        <Divider sx={{ my: 3 }} />
-        {C.length > 0 && (
-          <>
-            <Typography variant="h5" component="h2" sx={{ color: "primary.main" }}>Section 1 – Confidence</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>How much do you agree? 0 = not at all, 10 = completely.</Typography>
-            {C.map((cfg) => (
-              <Box key={cfg.key} sx={{ my: 3.5, px: 1 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 2, mb: 0.5 }}>
-                  <Typography variant="h6" component="h3" sx={{ fontSize: "1.1rem" }}>{cfg.label}</Typography>
-                  <Typography aria-hidden sx={{ fontWeight: 800, color: "primary.main", fontSize: "1.25rem", minWidth: 32, textAlign: "right" }}>{currentSliders[cfg.key] ?? 5}</Typography>
-                </Box>
-                <Slider min={0} max={10} step={1} marks={scaleLabels} value={currentSliders[cfg.key] ?? 5} disabled={locked} onChange={(_, v) => handleSliderChange(cfg.key, v)} valueLabelDisplay="auto" aria-label={cfg.label} getAriaValueText={(v) => `${v} out of 10`} />
-                <Box aria-hidden sx={{ display: "flex", justifyContent: "space-between", mt: -0.5 }}>
-                  <Typography variant="caption" color="text.secondary">Not at all</Typography>
-                  <Typography variant="caption" color="text.secondary">Completely</Typography>
-                </Box>
-              </Box>
-            ))}
-          </>
-        )}
-        {!locked && (
-          <Button variant="contained" size="large" sx={{ mt: 2 }} onClick={submitConfidence}>
-            {C.length > 0 ? "Continue to Questions" : "Start Questions"}
-          </Button>
-        )}
-
-        {locked && (
-          <>
-            <Divider sx={{ my: 4 }} />
-            <Typography variant="h5" component="h2" sx={{ color: "primary.main", mb: 2 }}>{C.length > 0 ? "Section 2 – Questions" : "Questions"}</Typography>
-            {currentQuestions.length === 0 && <Typography color="textSecondary">No survey questions in this file.</Typography>}
-            {currentQuestions.map((q, qi) => (
-              <Box key={`${currentPlayer}-${qi}`} sx={{ mb: 3, p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
-                <Typography variant="overline" color="textSecondary">Question {qi + 1} of {currentQuestions.length}</Typography>
-                <Typography variant="h6" component="h3" gutterBottom sx={{ mt: 0.5, whiteSpace: "pre-wrap", fontSize: "1.1rem" }}>{q.prompt}</Typography>
-                <QuestionInput
-                  key={`${phase}-${currentPlayer}-${qi}`}
-                  question={q}
-                  survey
-                  value={answers[currentPlayer]?.[qi]}
-                  onChange={(r) => setAns(qi, r)}
-                  resolveImage={resolveImage}
-                  imageMaxHeight={300}
-                />
-              </Box>
-            ))}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", mt: 2 }}>
-              <Button variant="contained" size="large" onClick={submitPlayer}>
-                {currentPlayer < playerCount - 1 ? "Next Player" : lastLabel}
-              </Button>
-              {currentQuestions.length > 0 && (
-                <Typography variant="body2" color={answered < currentQuestions.length ? "text.secondary" : "success.main"} sx={{ fontWeight: 700 }} aria-live="polite">
-                  {answered} of {currentQuestions.length} answered{answered < currentQuestions.length ? " · blank answers count as not correct" : " ✓"}
-                </Typography>
-              )}
-            </Box>
-          </>
-        )}
-      </Card>
-    </Container>
-    </Box>
-  );
-}
 
 function ValidationReport({ validation, imageMap, imageBase = "" }) {
   const [missingImages, setMissingImages] = useState([]);
@@ -243,8 +100,10 @@ function ValidationReport({ validation, imageMap, imageBase = "" }) {
   );
 }
 
-function SummaryView({ playerCount, config, topic, module, preRows, postRows, gameRows, sessionId: savedSessionId, onReturn }) {
-  const [members, setMembers] = useState(() => Array(playerCount).fill(""));
+function SummaryView({ playerCount, config, topic, module, preRows, postRows, gameRows, sessionId: savedSessionId, onReturn, remoteMembers = {} }) {
+  // Names typed here; online, a player's device can send its names (used while the field here is untouched).
+  const [typed, setMembers] = useState(() => Array(playerCount).fill(null));
+  const members = typed.map((m, i) => m ?? remoteMembers[i] ?? "");
   const [fallbackId] = useState(() => makeSessionId());
   const sessionId = savedSessionId || fallbackId; // one id per game, so a re-sent result can be spotted
   const [sendState, setSendState] = useState({ status: "idle", message: "" });
@@ -337,6 +196,24 @@ function SummaryView({ playerCount, config, topic, module, preRows, postRows, ga
 }
 
 // Instructors paste a question-file link and get a game link for students.
+// Start page: a player joining an online game that their host opened.
+function JoinOnline({ onJoin }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card sx={{ mt: 3, p: 2.5, textAlign: "left" }}>
+      <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+        <Box aria-hidden sx={{ fontSize: 34, lineHeight: 1 }}>📡</Box>
+        <Box sx={{ flex: "1 1 220px" }}>
+          <Typography variant="h6" component="h2" sx={{ lineHeight: 1.2 }}>Join an online game</Typography>
+          <Typography variant="body2" color="text.secondary">Your host opened a game and shows a room code. Play from this device.</Typography>
+        </Box>
+        {!open && <Button variant="outlined" onClick={() => setOpen(true)}>Enter a code</Button>}
+      </Box>
+      {open && <Box sx={{ mt: 2 }}><JoinCodeForm onJoin={onJoin} onCancel={() => setOpen(false)} /></Box>}
+    </Card>
+  );
+}
+
 function ShareLinkBuilder() {
   const [deck, setDeck] = useState("");
   const [images, setImages] = useState("");
@@ -378,7 +255,25 @@ function ShareLinkBuilder() {
 // Phases that are autosaved and can be resumed after a refresh.
 const RESUMABLE_PHASES = ["PRE_SURVEY", "GAME", "POST_SURVEY", "SUMMARY"];
 
+// A link with ?join=CODE opens this device as a player in someone else's online game.
 export default function App() {
+  const [joinCode, setJoinCode] = useState(() => normalizeRoomCode(new URLSearchParams(window.location.search).get("join")));
+  const join = (code) => { window.history.replaceState(null, "", `?join=${formatRoomCode(code)}`); setJoinCode(code); };
+  const leave = () => { window.history.replaceState(null, "", window.location.pathname); setJoinCode(""); };
+  if (joinCode) {
+    return (
+      <Suspense fallback={<Box role="status" sx={{ p: 6, textAlign: "center", minHeight: "100vh", bgcolor: "background.default", color: "text.primary" }}><Typography>Opening the game…</Typography></Box>}>
+        <GuestApp code={joinCode} onLeave={leave} />
+      </Suspense>
+    );
+  }
+  return <HostApp onJoin={join} />;
+}
+
+// Survey answers collected for an online game, by phase and player: { sliders, answers }.
+const NO_SURVEYS = { pre: {}, post: {} };
+
+function HostApp({ onJoin }) {
   const [phase, setPhase] = useState("SETUP");
   const [gameMode, setGameMode] = useState(null);
   const [playerCount, setPlayerCount] = useState(2);
@@ -411,6 +306,18 @@ export default function App() {
   const [gameSnapshot, setGameSnapshot] = useState(null);
   const [resumeGame, setResumeGame] = useState(null);
   const [sessionId, setSessionId] = useState("");
+  // Online play (players on their own devices): "local" or "online", the open room, and what devices sent.
+  const [playMode, setPlayMode] = useState("local");
+  const [online, setOnline] = useState(null); // { code } while hosting
+  const [surveyDone, setSurveyDone] = useState(NO_SURVEYS);
+  const [answerHere, setAnswerHere] = useState([]); // players whose survey the host answers here instead
+  const [remoteMembers, setRemoteMembers] = useState({});
+  const onlineHandlers = useRef({});
+  const runnerRef = useRef(null);
+  const room = useHostRoom(onlineHandlers);
+  const claims = room.lobby.claims;
+  const hostSlots = claims.map((c, i) => (c === "host" ? i : -1)).filter((i) => i >= 0);
+  const remoteSlots = claims.map((c, i) => (c && c !== "host" ? i : -1)).filter((i) => i >= 0);
 
   const validation = useMemo(
     () => (allTsvRows.length ? validateQuestionRows(allTsvRows) : null),
@@ -425,9 +332,11 @@ export default function App() {
       phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
       playerQuestionSets, confQ, preRows, postRows, gameRows, game: gameSnapshot,
       hadImages: Object.keys(localImageMap).length > 0,
+      // Online: the room reopens with the same code, and devices get their players back.
+      online: online ? { code: online.code, claims, surveyDone } : null,
     });
   }, [phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
-      playerQuestionSets, confQ, preRows, postRows, gameRows, gameSnapshot, localImageMap]);
+      playerQuestionSets, confQ, preRows, postRows, gameRows, gameSnapshot, localImageMap, online, claims, surveyDone]);
 
   useEffect(() => {
     const handlePopState = () => window.history.pushState(null, document.title, window.location.href);
@@ -459,6 +368,94 @@ export default function App() {
       setFilesConfirmed(false);
     }
   }, [allTsvRows]);
+
+  // The board is built once per game (online, guests get its fixed parts).
+  const boardData = useMemo(() => (gameMode && allTsvRows.length ? buildBoardFromTsv(gameMode, allTsvRows, selectedModule) : null), [gameMode, allTsvRows, selectedModule]);
+
+  // --- Online play: what the room does when devices talk ---
+  const surveyPhase = phase === "PRE_SURVEY" ? "pre" : phase === "POST_SURVEY" ? "post" : null;
+  useEffect(() => {
+    onlineHandlers.current = {
+      onAction: (slots, name, args) => runnerRef.current?.(name, args),
+      onSurvey: (slots, msg) => {
+        if (msg.phase !== surveyPhase) return;
+        const keys = confQ.map((c) => c.key);
+        setSurveyDone((prev) => {
+          const next = { ...prev, [msg.phase]: { ...prev[msg.phase] } };
+          slots.forEach((slot) => {
+            next[msg.phase][slot] = { sliders: cleanSliders(msg.sliders?.[slot], keys), answers: cleanAnswers(msg.answers?.[slot], (playerQuestionSets[slot] || []).length) };
+          });
+          return next;
+        });
+      },
+      onMembers: (slot, text) => setRemoteMembers((m) => ({ ...m, [slot]: text })),
+      // What a device needs for the current phase when it joins, reconnects or the phase changes.
+      syncFor: (token, slots) => {
+        if (surveyPhase) {
+          return [{
+            t: "survey", phase: surveyPhase, confidence: confQ,
+            sets: Object.fromEntries(slots.map((slot) => [slot, (playerQuestionSets[slot] || []).map(hideAnswer)])),
+            done: slots.length > 0 && slots.every((slot) => surveyDone[surveyPhase][slot]),
+          }];
+        }
+        if (phase === "SUMMARY") return [{ t: "summary", summary: summarizeTeams({ preRows, postRows, gameRows, playerCount, members: [] }) }];
+        return [];
+      },
+    };
+  });
+  // Tell the devices about every phase change (the board first, when the game starts).
+  useEffect(() => {
+    const session = room.session.current;
+    if (!session || !online) return;
+    if (phase === "GAME" && boardData) session.publishBoard(publicBoard(boardData));
+    if (["LOBBY", "PRE_SURVEY", "GAME", "POST_SURVEY", "SUMMARY"].includes(phase)) session.setPhase(phase);
+  }, [phase, online, room.room, room.session, boardData]);
+  // An online survey ends when every player has answered, on a device or here.
+  useEffect(() => {
+    if (!online || !surveyPhase) return;
+    const got = surveyDone[surveyPhase];
+    const players = Array.from({ length: playerCount }, (_, i) => i);
+    if (!players.every((i) => got[i])) return;
+    const rows = surveyRows({
+      phase: surveyPhase, players, questionSets: playerQuestionSets, confidence: confQ,
+      sliders: players.map((i) => got[i].sliders), answers: players.map((i) => got[i].answers),
+    });
+    setAnswerHere([]);
+    if (surveyPhase === "pre") { setPreRows(rows); setStartPlayer(bestPreSurveyPlayer(rows, playerCount)); setPhase("GAME"); }
+    else { setPostRows(rows); setPhase("SUMMARY"); }
+  }, [online, surveyPhase, surveyDone, playerCount, playerQuestionSets, confQ]);
+
+  const roomMeta = () => ({ topic: gameMode || "", module: selectedModule || "", imagesBase });
+  const closeRoom = () => { room.close(); setOnline(null); setSurveyDone(NO_SURVEYS); setRemoteMembers({}); setAnswerHere([]); };
+  const openRoom = () => {
+    forgetSavedGame();
+    const code = makeRoomCode();
+    setOnline({ code });
+    setSurveyDone(NO_SURVEYS); setRemoteMembers({}); setAnswerHere([]);
+    setPhase("LOBBY");
+    room.open({ code, playerCount, meta: roomMeta() });
+  };
+  const startOnlineGame = () => {
+    setSessionId(makeSessionId());
+    setPlayerQuestionSets(buildSurveySets(allTsvRows, { topic: gameMode, module: selectedModule, playerCount }));
+    setConfQ(buildConfidenceQuestions(allTsvRows, { topic: gameMode, module: selectedModule }));
+    setSurveyDone(NO_SURVEYS);
+    setPhase("PRE_SURVEY");
+  };
+  const recordLocalSurvey = (p) => ({ sliders, answers, players }) => {
+    setSurveyDone((prev) => {
+      const next = { ...prev, [p]: { ...prev[p] } };
+      players.forEach((slot) => { next[p][slot] = { sliders: sliders[slot] || {}, answers: answers[slot] || [] }; });
+      return next;
+    });
+    setAnswerHere((a) => a.filter((slot) => !players.includes(slot)));
+  };
+  const hostOnline = useMemo(() => (online ? {
+    role: "host",
+    publish: (view) => room.session.current?.publishView(view),
+    bindRunner: (fn) => { runnerRef.current = fn; return () => { if (runnerRef.current === fn) runnerRef.current = null; }; },
+    remoteSlots,
+  } : null), [online, room.session, remoteSlots.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Handlers ---
 
@@ -529,6 +526,12 @@ export default function App() {
     setPreRows(saved.preRows); setPostRows(saved.postRows); setGameRows(saved.gameRows);
     setResumeGame(saved.game || null); setGameSnapshot(saved.game || null);
     setFilesConfirmed(true); setPhase(saved.phase); setResumeOffer(null);
+    if (saved.online?.code) {
+      setOnline({ code: saved.online.code });
+      setSurveyDone(saved.online.surveyDone || NO_SURVEYS);
+      setPlayMode("online");
+      room.open({ code: saved.online.code, playerCount: saved.playerCount, claims: saved.online.claims, meta: { topic: saved.gameMode || "", module: saved.selectedModule || "", imagesBase: saved.imagesBase || "" } });
+    }
   };
   const discardSaved = () => {
     clearSnapshot(); setResumeOffer(null);
@@ -677,6 +680,7 @@ export default function App() {
           )}
 
           {loadingError && <Alert severity="error" sx={{ mt: 2, textAlign: "left" }}>{loadingError}</Alert>}
+          {!hasData && <JoinOnline onJoin={onJoin} />}
           {!hasData && <ShareLinkBuilder />}
           <InstallButton />
 
@@ -710,7 +714,7 @@ export default function App() {
 
           <Card sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" component="h2" gutterBottom>1 · How many players?</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5, mb: 1.5 }}>Players take turns on this computer. Each player can be one student or a small group.</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5, mb: 1.5 }}>Players take turns. Each player can be one student or a small group.</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1.5 }}>
               {[1, 2, 3, 4].map((n) => (
                 <Box
@@ -739,8 +743,19 @@ export default function App() {
             </ToggleButtonGroup>
           </Card>
 
+          <Card sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" component="h2">3 · Where do players play?</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Online, each player joins on their own computer, tablet or phone with a room code, and this computer runs the game. <strong>Beta:</strong> some school networks block live connections, so try it once before class.
+            </Typography>
+            <ToggleButtonGroup value={playMode} exclusive onChange={(_, v) => v !== null && setPlayMode(v)} fullWidth color="primary">
+              <ToggleButton value="local" sx={{ fontWeight: 800 }}>On this computer</ToggleButton>
+              <ToggleButton value="online" sx={{ fontWeight: 800 }}>On their own devices (beta)</ToggleButton>
+            </ToggleButtonGroup>
+          </Card>
+
           <Card sx={{ p: 3 }}>
-            <Typography variant="h6" component="h2" gutterBottom>3 · Choose a topic</Typography>
+            <Typography variant="h6" component="h2" gutterBottom>4 · Choose a topic</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 1.5 }}>
               {topics.map((t) => (
                 <Box
@@ -761,9 +776,9 @@ export default function App() {
         <Paper elevation={6} sx={{ p: 2, position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 2, zIndex: 100, borderRadius: 0 }}>
           <Button size="small" color="inherit" onClick={resetFile}>Change file</Button>
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" }, fontWeight: 700 }} aria-live="polite">
-            {gameMode ? `${playerCount === 1 ? "Solo" : `${playerCount} players`} · ${sessionMinutes ? `${sessionMinutes} min` : "no timer"} · ${[gameMode, selectedModule].filter(Boolean).join(" / ")}` : "Choose a topic to start"}
+            {gameMode ? `${playerCount === 1 ? "Solo" : `${playerCount} players`} · ${sessionMinutes ? `${sessionMinutes} min` : "no timer"}${playMode === "online" ? " · online" : ""} · ${[gameMode, selectedModule].filter(Boolean).join(" / ")}` : "Choose a topic to start"}
           </Typography>
-          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game <span aria-hidden>&nbsp;→</span></Button>
+          <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={playMode === "online" ? openRoom : startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>{playMode === "online" ? "Open the online room" : "Start game"} <span aria-hidden>&nbsp;→</span></Button>
         </Paper>
 
         <Modal open={moduleModalOpen} onClose={() => setModuleModalOpen(false)}>
@@ -779,8 +794,34 @@ export default function App() {
     );
   }
 
+  if (phase === "LOBBY") {
+    return (
+      <HostLobby
+        code={online?.code || ""}
+        status={room.status}
+        lobby={room.lobby}
+        playerCount={playerCount}
+        onHostSlot={(slot, on) => room.session.current?.setHostSlot(slot, on)}
+        onFreeSlot={(slot) => room.session.current?.freeSlot(slot)}
+        onRemoveDevice={(token) => room.session.current?.removeDevice(token)}
+        onStart={startOnlineGame}
+        onBack={() => { closeRoom(); setPhase("SETUP"); }}
+      />
+    );
+  }
+
+  // Online surveys: players answer on their devices; this computer answers for its own players.
+  if (online && surveyPhase) {
+    const done = Array.from({ length: playerCount }, (_, i) => Boolean(surveyDone[surveyPhase][i]));
+    const here = [...new Set([...hostSlots, ...answerHere])].filter((i) => !done[i]).sort((a, b) => a - b);
+    if (here.length) {
+      return <SurveyView key={`${surveyPhase}-${here.join(",")}`} phase={surveyPhase} playerCount={playerCount} players={here} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} score={false} finishLabel="Done" onComplete={recordLocalSurvey(surveyPhase)} />;
+    }
+    return <SurveyWait phase={surveyPhase} playerCount={playerCount} done={done} holders={claims} devices={room.lobby.devices} onAnswerHere={(i) => setAnswerHere((a) => [...a, i])} />;
+  }
+
   if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <Suspense fallback={<Box role="status" sx={{ p: 6, textAlign: "center" }}><Typography>Setting up the board…</Typography></Box>}><GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); setPhase("SETUP"); setGameMode(null); }} /></Suspense>;
+  if (phase === "GAME") return <Suspense fallback={<Box role="status" sx={{ p: 6, textAlign: "center" }}><Typography>Setting up the board…</Typography></Box>}><GameScreen boardData={boardData} online={hostOnline} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); closeRoom(); setPhase("SETUP"); setGameMode(null); }} /></Suspense>;
   if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
-  return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} sessionId={sessionId} onReturn={() => { setPhase("SETUP"); setGameMode(null); resetFile(); }} />;
+  return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} sessionId={sessionId} remoteMembers={remoteMembers} onReturn={() => { closeRoom(); setPhase("SETUP"); setGameMode(null); resetFile(); }} />;
 }

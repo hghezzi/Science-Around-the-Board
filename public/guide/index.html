@@ -479,12 +479,41 @@
 <ul>
 <li><strong>How many players?</strong> <em>Solo</em> or 2, 3 or 4 players sharing the computer (each player can be one student or a small group);</li>
 <li><strong>Session length:</strong> <em>No timer</em>, or 30, 45, 60 or 90 minutes;</li>
+<li><strong>Where do players play?</strong> <em>On this computer</em> (players take turns at one screen), or <em>On their own devices (beta)</em>: see <a href="#online-play-beta">Online play (beta)</a>;</li>
 <li><strong>Choose a topic</strong>, then the module under <strong>Select module</strong>.</li>
 </ul>
 <p><figure><img src="images/04-setup.png" alt="Game setup: number of players, session length and topic" loading="lazy"><figcaption>Game setup: number of players, session length and topic</figcaption></figure></p>
 <p><figure><img src="images/03-module.png" alt="Choosing a module" loading="lazy"><figcaption>Choosing a module</figcaption></figure></p>
 <p>After <strong>Start game →</strong>, each player completes a brief pre-game survey: the confidence sliders and 10 questions. Players take turns on the same screen until everyone is done, then the board opens. The player with the best pre-game survey score (unknown to players) starts; ties are broken at random.</p>
 <p><figure><img src="images/05-survey.png" alt="Pre-game survey" loading="lazy"><figcaption>Pre-game survey</figcaption></figure></p>
+<h3 id="online-play-beta">Online play (beta)</h3>
+<p>Online, every player can play from their own computer, tablet or phone, in the same room or from home. One computer, usually yours, <strong>hosts</strong> the game: it runs the board, and the other devices show what it shows and send the buttons their players press. I made this for remote classes, and for big rooms where groups can&#39;t crowd around one screen.</p>
+<p><strong>Hosting a game</strong></p>
+<ol>
+<li>Load your question file as usual and continue to the setup. Choose the number of players, then <strong>Where do players play? → On their own devices (beta)</strong>, a topic, and <strong>Open the online room →</strong>.</li>
+<li>The lobby shows a <strong>room code</strong> (for example <em>V7B-5NB</em>) and a <strong>join link</strong>. Put the code on the projector or post the link in your course chat.</li>
+<li>Players open the game, choose <strong>Join an online game</strong> on the start page and type the code (or open the link), then pick their player (<em>Play as Red Player</em>, …). A group can share one device, and a player can also play on the host computer: click <strong>Play on this computer</strong> next to it.</li>
+<li>When every player has a device (or &quot;On this computer&quot;), click <strong>Start the game →</strong>.</li>
+</ol>
+<p><figure><img src="images/11-online-lobby.png" alt="The host's lobby: the room code, the join link and who plays which player" loading="lazy"><figcaption>The host's lobby: the room code, the join link and who plays which player</figcaption></figure></p>
+<p><figure><img src="images/12-online-join.png" alt="A player's device: picking a player" loading="lazy"><figcaption>A player's device: picking a player</figcaption></figure></p>
+<p><strong>During the game</strong></p>
+<ul>
+<li>Each device answers its own <strong>pre- and post-game surveys</strong> at the same time, so nobody waits for the computer to be passed around. If a device can&#39;t finish (a flat battery, say), click <strong>Answer on this computer</strong> on the host&#39;s waiting screen.</li>
+<li>On their turn, players roll, answer, buy, upgrade and use chaos tokens on their own device. Everyone else sees the same board and dialogs, read-only, with a note saying who is playing.</li>
+<li>The host can always act for any player, for example when a device drops out. <strong>End game</strong> and the final standings are on the host only.</li>
+<li>If a device refreshes or loses the connection, it reconnects by itself and gets its player back. If the host computer refreshes, choose <strong>Resume</strong> on its start page: the same room reopens and the devices reconnect.</li>
+<li>At the end, players can type their names or student IDs on their own device and press <strong>Send names to the host</strong>; they appear on the host&#39;s results screen, and the host sends or downloads the one results file for the whole game, as usual.</li>
+</ul>
+<p><figure><img src="images/13-online-watching.png" alt="A player's device while someone else answers" loading="lazy"><figcaption>A player's device while someone else answers</figcaption></figure></p>
+<p><strong>Good to know</strong></p>
+<ul>
+<li><strong>Keep the host page open</strong> for the whole game: the game runs there. Turn off the host computer&#39;s sleep mode.</li>
+<li><strong>Try it once on your own network before class.</strong> Devices find each other through a free public connection service (PeerJS) and then connect directly, encrypted. Some school and company networks block these connections. If a device can&#39;t join, a phone hotspot usually works; otherwise, play on one computer, or share the host&#39;s screen on a video call.</li>
+<li><strong>Images:</strong> devices see hosted images, web links in the <code>imageFile</code> column and the image folder of a <a href="#sharing-the-game-with-students">game link</a>, but not images uploaded on the host computer.</li>
+<li>Devices never receive the answers before a question is answered, so a student can&#39;t read them from the network traffic.</li>
+<li>So far it has been tested in Chrome on computers. Try the browsers, tablets and phones your students will use before relying on it in class.</li>
+</ul>
 <h3 id="the-core-turn-sequence">The core turn sequence</h3>
 <p>Each player’s turn follows a fast-paced loop:</p>
 <ol>
@@ -749,9 +778,10 @@
 <li><strong>A game link won&#39;t load:</strong> for Google Sheets, use <strong>File → Share → Publish to web</strong> with <em>Tab-separated values</em>, not a normal share link. For other links, check that the file is public, for example by opening the link in a private browser window.</li>
 <li><strong>&quot;Send&quot; says it couldn&#39;t reach the sheet:</strong> students can use <strong>Email</strong> or <strong>Download</strong> instead. Check that your deployment&#39;s <em>Who has access</em> is set to <strong>Anyone</strong> and that <code>results_url</code> is the Web app URL ending in <code>/exec</code>.</li>
 <li><strong>Which version will my students get?</strong> Always the current one: the game updates itself on a student’s next visit. Your question file only changes when you change it.</li>
+<li><strong>A device can&#39;t join an online game:</strong> check the code, and that the host&#39;s game page is still open. <em>&quot;No game with this code is open&quot;</em> means the room isn&#39;t open (or was closed); <em>&quot;Couldn&#39;t connect&quot;</em> usually means the network blocks live connections: try a phone hotspot, or play on one computer. If a device says it has a different version, reload that page.</li>
 </ol>
 <h2 id="privacy-and-student-data">Privacy and student data</h2>
-<p>The game runs entirely in the students’ browsers. There is no account and no game server. Question files, answers and surveys stay on the students’ computers; results leave them only when students click <strong>Send results to instructor</strong> (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks <strong>Allow analytics</strong> on the start page. If your institution has rules about student data, ask students to choose <strong>No thanks</strong>; the game works the same either way. See the <a href="https://hghezzi.github.io/Science-Around-the-Board/privacy.html" target="_blank" rel="noopener">privacy notice</a>.</p>
+<p>The game runs entirely in the students’ browsers. There is no account and no game server. In an online game, devices find each other through the free PeerJS connection service, which sees the devices&#39; internet addresses and the room code but not the game; the game itself then goes directly from device to device, encrypted. Question files, answers and surveys stay on the students’ computers; results leave them only when students click <strong>Send results to instructor</strong> (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks <strong>Allow analytics</strong> on the start page. If your institution has rules about student data, ask students to choose <strong>No thanks</strong>; the game works the same either way. See the <a href="https://hghezzi.github.io/Science-Around-the-Board/privacy.html" target="_blank" rel="noopener">privacy notice</a>.</p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Stepping away from the podium and handing control of the review session over to a board game can feel like a leap of faith. As instructors, we are often trained to deliver content efficiently, and the noisy, debate-filled environment of a gamified workshop is a stark contrast to a quiet lecture hall. However, as you will quickly discover during your first session with Science Around the Board, that noise is the sound of active, collaborative learning.</p>
 <p>By leaning into playful pedagogy, we accomplish much more than simply reviewing material; we fundamentally change the students&#39; relationship with the content. We replace the anxiety of high-stakes testing with the &quot;hard fun&quot; of strategic competition, loss aversion and immediate feedback. The magic circle of the game board creates a space where failure is not only safe, but structurally necessary for growth.</p>
@@ -759,6 +789,11 @@
 <p>Building a great TSV cartridge takes intentional design, and mastering the role of the game master takes practice. But the payoff, watching your students actively conceptualize complex material rather than passively memorizing it, is entirely worth the effort.</p>
 <p>Welcome to the board, and have a great session!</p>
 <h2 id="whats-new">What’s new</h2>
+<p><strong>October 2026 (update 6): online play (beta)</strong></p>
+<ul>
+<li><strong>Players on their own devices.</strong> On the setup screen, choose <em>On their own devices (beta)</em>: the host computer opens a room with a code and a link, players join from any computer, tablet or phone, answer their surveys at the same time and play their turns on their own device. Refreshes reconnect by themselves, and a host refresh resumes the same room. Playing on one computer is unchanged and stays the default. See <a href="#online-play-beta">Online play (beta)</a>.</li>
+<li>The start page has <strong>Join an online game</strong>, and the privacy notice explains the connection service online play uses.</li>
+</ul>
 <p><strong>October 2026 (update 5)</strong></p>
 <ul>
 <li><strong>Starting cash depends on the number of players:</strong> $2,500 solo, $2,000 each with 2 players, $1,500 with 3 and $1,250 with 4. Fewer players get more turns and more tiles each, so they need more cash; I chose the amounts with a simulation of 3,000 games per setting so that 2, 3 and 4 players feel a similar squeeze.</li>

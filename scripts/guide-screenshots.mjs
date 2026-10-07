@@ -5,13 +5,14 @@
 import { preview } from "vite";
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { startPeerServer, routePeerJs, WEBRTC_ARGS } from "./lib/local-peer-server.mjs";
 
 const OUT = "guide/images";
 mkdirSync(OUT, { recursive: true });
 
 const server = await preview({ preview: { port: 4180, strictPort: false }, logLevel: "error" });
 const base = server.resolvedUrls.local[0];
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: WEBRTC_ARGS });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", deviceScaleFactor: 1.5, serviceWorkers: "block" });
 const page = await context.newPage();
 const shot = async (name, opts = {}) => {
@@ -34,6 +35,77 @@ async function answerOpenQuestion() {
   const box = modal.locator('input[type="checkbox"]');
   if (await box.count()) await box.first().check();
   await modal.locator('button:has-text("Submit answer")').click();
+}
+
+// Online play: the host's lobby with one device joined, and that device's view of the game
+// (a local signalling server stands in for the public one).
+async function captureOnline() {
+  const peers = await startPeerServer();
+  const make = async (width, height = 900) => {
+    const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: "light", deviceScaleFactor: 1.5, serviceWorkers: "block" });
+    await routePeerJs(ctx, peers.port);
+    const pg = await ctx.newPage();
+    await pg.addInitScript(() => {
+      let seed = 7;
+      Math.random = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
+    });
+    return { ctx, pg };
+  };
+  const { ctx: hc, pg: host } = await make(1440);
+  const { ctx: gc, pg: guest } = await make(1180, 820);
+  try {
+    await host.goto(base);
+    await host.click("text=No thanks");
+    await host.click("text=Play the demo");
+    await host.click("text=Continue to game setup");
+    await host.click('button:has-text("2 players")');
+    await host.click("text=16S");
+    await host.click("text=Confirm Selection");
+    await host.getByRole("button", { name: /On their own devices/ }).click();
+    await host.getByRole("button", { name: /Open the online room/ }).click();
+    await host.getByText("The room is open").waitFor({ timeout: 20000 });
+    const link = await host.getByLabel("Join link").inputValue();
+    await guest.goto(link);
+    await guest.getByText("Who are you playing as?").waitFor({ timeout: 30000 });
+    await guest.getByRole("button", { name: "Play as Blue Player" }).click();
+    await host.getByRole("button", { name: "Play on this computer" }).first().click();
+    await host.waitForTimeout(600);
+    await host.screenshot({ path: `${OUT}/11-online-lobby.png` });
+    console.log("  11-online-lobby.png");
+    await guest.waitForTimeout(400);
+    await guest.screenshot({ path: `${OUT}/12-online-join.png` });
+    console.log("  12-online-join.png");
+    await host.getByRole("button", { name: /Start the game/ }).click();
+    for (const pg of [host, guest]) {
+      await pg.click('button:has-text("Continue to Questions")');
+      const opts = pg.locator('button:has-text("A.")');
+      for (let k = 0; k < (await opts.count()); k++) await opts.nth(k).click();
+      await pg.click(pg === host ? 'button:has-text("Done")' : 'button:has-text("Send my answers")');
+    }
+    for (const pg of [host, guest]) { await pg.getByText("Game log").waitFor({ timeout: 20000 }); await pg.click('button:has-text("Got it")'); }
+    // Roll for whoever's turn it is until the device shows a question being answered elsewhere.
+    for (let i = 0; i < 12; i++) {
+      const turn = await host.getByText(/Player's turn$/).first().textContent();
+      const actor = /^Blue/.test(turn) ? guest : host;
+      await actor.click('button:has-text("Roll")');
+      await actor.waitForTimeout(3300);
+      const text = await guest.locator(".MuiModal-root").last().innerText().catch(() => "");
+      if (actor === host && text.includes("Question ·")) {
+        await guest.waitForTimeout(500);
+        await guest.screenshot({ path: `${OUT}/13-online-watching.png` });
+        console.log("  13-online-watching.png");
+        break;
+      }
+      for (const label of ["SKIP", "CONTINUE", "DECLINE", "PAY FULL"]) {
+        const b = actor.locator(`.MuiModal-root button:has-text("${label}")`).first();
+        if (await b.count()) { await b.click(); break; }
+      }
+      const q = actor.locator('.MuiModal-root button:has-text("A.")');
+      if (await q.count()) { await q.first().click(); await actor.waitForTimeout(300); const c = actor.locator('.MuiModal-root button:has-text("CONTINUE"), .MuiModal-root button:has-text("SKIP")').first(); if (await c.count()) await c.click(); }
+    }
+  } finally {
+    await hc.close(); await gc.close(); peers.close();
+  }
 }
 
 // The end screen of a question file with results settings (config rows), so the
@@ -153,7 +225,10 @@ try {
   await page.click('button:has-text("End game")');
   await shot("09-standings");
   await captureSummary();
+  await captureOnline();
 } finally {
   await browser.close();
   server.httpServer.close();
 }
+// The local signalling server keeps timers running; the screenshots are done.
+process.exit(0);

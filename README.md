@@ -36,6 +36,7 @@ The [Instructor Guide](https://hghezzi.github.io/Science-Around-the-Board/guide/
   - harder 6-question exams on the corner milestones;
   - your explanation shown after every answer, right or wrong.
 - **Measurement:** confidence sliders and a knowledge check before and after the game. The CSV export records every answer and transaction.
+- **Online play (beta):** players can join from their own computer, tablet or phone with a room code; the host's computer runs the game (peer-to-peer, no server or accounts).
 - **Results delivery:** an optional [Google Apps Script collector](public/tools/sab-results-collector.gs) puts every player's results in your own Google Sheet. Email and CSV download are the alternatives. You set this up with a few `config` rows in the question file.
 - **Game links:** share one link and your questions load by themselves, from a published Google Sheet, a GitHub file or any public link. Build the link on the start page ("For instructors: share your questions as a link").
 - **[Password-protected files](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html):** encrypt your question file so students can't read the answers before playing.
@@ -98,7 +99,7 @@ npm run build      # production build in dist/
 npm run validate-tsv -- my_questions.tsv   # check a question file
 ```
 
-- `npm run smoke`: an end-to-end test (Playwright). It plays the demo with 1 to 4 players and in dark mode, and checks the exported results, a mocked Google Sheet send, `.lock` files and links, resume after a refresh, and offline use. Run it before every deploy.
+- `npm run smoke`: an end-to-end test (Playwright). It plays the demo with 1 to 4 players and in dark mode, and checks the exported results, a mocked Google Sheet send, `.lock` files and links, resume after a refresh, offline use, and an online game between three browsers (with a local PeerJS server). Run it before every deploy.
 - `npm run privacy`: checks that nothing loads before analytics opt-in, that unsafe share links are refused and that the Content-Security-Policy blocks nothing.
 - `npm run a11y`: accessibility checks (axe-core) on the main screens in light and dark mode. Run it against `npm run preview`.
 - `npm run guide`: rebuilds both guides from [`guide/`](guide/): fresh screenshots, web pages and PDFs. It needs Playwright's Chromium.

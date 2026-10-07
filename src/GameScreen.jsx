@@ -1,5 +1,5 @@
 // src/GameScreen.jsx
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
 import {
   Button,
@@ -26,6 +26,7 @@ import {
 import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
 import { resolveImage } from './images';
 import { pickQuestion, pickQuestions, recordAnswer } from './questionPicker';
+import { canGuestAct, encodeArgs, decodeArgs } from './online/protocol';
 import QuestionInput from './QuestionInput';
 import Board from './components/Board';
 import Dice from './components/Dice';
@@ -106,6 +107,19 @@ function useLatestState(initial) {
   return [value, set, ref];
 }
 
+const noop = () => {};
+
+/**
+ * Game state that the host owns. On a guest device the value comes from the host's
+ * latest view (`gv[key]`) and the setter does nothing; elsewhere it is useLatestState.
+ */
+function useShared(gv, key, initial) {
+  const [value, set, ref] = useLatestState(initial);
+  const guestValue = gv ? gv[key] : undefined;
+  useLayoutEffect(() => { if (gv) ref.current = guestValue; }, [gv, guestValue, ref]);
+  return gv ? [guestValue, noop, ref] : [value, set, ref];
+}
+
 // ------------------------------------------------------------------
 //  MAIN COMPONENT
 //
@@ -129,18 +143,31 @@ export default function GameScreen({
   module = '',
   resume = null, // autosaved game to continue (see App.jsx / autosave.js)
   onSnapshot,
+  // Online play (see src/online/). Host: { role: 'host', publish(view), bindRunner(fn), names }.
+  // Guest: { role: 'guest', view, mySlots, send(name, args), clockOffset, status }.
+  online = null,
 }) {
+  const isGuest = online?.role === 'guest';
+  const isHost = online?.role === 'host';
+  const gv = isGuest ? online.view : null;
   // A resumed game keeps the freshly built board (its tiles share question arrays)
   // and restores only what changes during play: each tile's owner and level.
-  const [board, setBoard, boardRef] = useLatestState(() => (resume?.tiles
+  const [hostBoard, setBoard, boardRef] = useLatestState(() => (resume?.tiles
     ? boardData.map((t, i) => {
       const [owner = null, level = 0, paid] = resume.tiles[i] || [];
       return { ...t, owner, level, paid: owner == null ? 0 : paid ?? t.price };
     })
     : boardData));
-  const [players, setPlayers, playersRef] = useLatestState(() => resume?.players ?? generatePlayers(playerCount));
-  const [turn, setTurn, turnRef] = useLatestState(resume?.turn ?? (startingPlayerIndex || 0));
-  const [totalTurns, setTotalTurns, totalTurnsRef] = useLatestState(resume?.totalTurns ?? 0);
+  // A guest's board: the host's fixed tiles (boardData, without questions) with the latest owners and levels.
+  const guestBoard = useMemo(() => (gv ? boardData.map((t, i) => {
+    const [owner = null, level = 0, paid = 0] = gv.tiles?.[i] || [];
+    return { ...t, owner, level, paid };
+  }) : null), [gv, boardData]);
+  useLayoutEffect(() => { if (guestBoard) boardRef.current = guestBoard; }, [guestBoard, boardRef]);
+  const board = isGuest ? guestBoard : hostBoard;
+  const [players, setPlayers, playersRef] = useShared(gv, 'players', () => resume?.players ?? generatePlayers(playerCount));
+  const [turn, setTurn, turnRef] = useShared(gv, 'turn', resume?.turn ?? (startingPlayerIndex || 0));
+  const [totalTurns, setTotalTurns, totalTurnsRef] = useShared(gv, 'totalTurns', resume?.totalTurns ?? 0);
   // Which questions were asked and missed (questionPicker.js): unseen first, missed ones again later.
   const [asked, setAsked, askedRef] = useLatestState(resume?.asked ?? {});
   const getImgSrc = (imgName) => resolveImage(imgName, imageMap, imageBase);
@@ -159,32 +186,34 @@ export default function GameScreen({
   };
 
   // isMoving covers the whole move, up to the landing dialog: nothing else can open meanwhile.
-  const [isMoving, setIsMoving] = useState(false);
-  const [dice, setDice] = useState(resume?.dice ?? [1, 1]);
-  const [rollId, setRollId] = useState(0);
-  const [logs, setLogs] = useState(() => (resume
+  const [isMoving, setIsMoving] = useShared(gv, 'isMoving', false);
+  const [dice, setDice] = useShared(gv, 'dice', resume?.dice ?? [1, 1]);
+  const [rollId, setRollId] = useShared(gv, 'rollId', 0);
+  const [logs, setLogs] = useShared(gv, 'logs', () => (resume
     ? ['Game resumed.', ...(resume.logs || [])].slice(0, 10)
     : [playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.']));
 
   // Modal + flow state
-  const [modalOpen, setModalOpen] = useState(false);
-  const [activeCard, setActiveCard] = useState(null);
-  const [modalStage, setModalStage] = useState('QUESTION');
+  const [modalOpen, setModalOpen] = useShared(gv, 'modalOpen', false);
+  const [activeCard, setActiveCard] = useShared(gv, 'activeCard', null);
+  const [modalStage, setModalStage] = useShared(gv, 'modalStage', 'QUESTION');
   // Result of the last answer or event: { tone: 'good'|'bad'|'neutral', title, detail, explanation, note }.
-  const [feedback, setFeedback] = useState(null);
+  const [feedback, setFeedback] = useShared(gv, 'feedback', null);
   // The question just answered, shown again with the answer revealed (UI only).
-  const [lastAnswer, setLastAnswer] = useState(null);
+  const [lastAnswer, setLastAnswer] = useShared(gv, 'lastAnswer', null);
   const [exitOpen, setExitOpen] = useState(false);
   // A new game opens with the quick rules; a resumed one doesn't.
   const [rulesOpen, setRulesOpen] = useState(() => !resume);
   const [manageOpen, setManageOpen] = useState(false);
-  const [moneyFloats, setMoneyFloats] = useState({});
-  const [quizState, setQuizState] = useState(NO_QUIZ);
+  const [moneyFloats, setMoneyFloats] = useShared(gv, 'moneyFloats', {});
+  const [quizState, setQuizState] = useShared(gv, 'quizState', NO_QUIZ);
   const [hoverTile, setHoverTile] = useState(null);
   const [logRows, setLogRows] = useState(resume?.logRows ?? []);
 
   // Optional session timer: when it runs out, the game ends on net worth.
-  const [endsAt] = useState(() => (resume ? resume.endsAt ?? null : (sessionMinutes > 0 ? Date.now() + sessionMinutes * 60000 : null)));
+  const [hostEndsAt] = useState(() => (resume ? resume.endsAt ?? null : (sessionMinutes > 0 ? Date.now() + sessionMinutes * 60000 : null)));
+  // A guest counts down with the host's end time, corrected for the difference between the two clocks.
+  const endsAt = isGuest ? (gv.endsAt == null ? null : gv.endsAt - (online.clockOffset || 0)) : hostEndsAt;
   const [now, setNow] = useState(() => Date.now());
   const standingsShownRef = useRef(false);
   useEffect(() => {
@@ -206,6 +235,25 @@ export default function GameScreen({
   const currentPlayer = players[turn];
   // The team whose turn it is, as of the latest update (for handlers and timers).
   const activePlayer = () => playersRef.current[turnRef.current];
+
+  // Every button a player presses is a named action. Locally it runs at once; on a
+  // guest device it is sent to the host, which runs the same function (online play).
+  const actionsRef = useRef({});
+  const act = (name, fn) => {
+    actionsRef.current[name] = fn;
+    // onClick={fn} passes the click event: it can't (and needn't) travel to the host.
+    return isGuest ? (...args) => online.send(name, encodeArgs(args.filter((x) => !(x && typeof x === 'object' && 'nativeEvent' in x)))) : fn;
+  };
+  // Online host: let the app run guests' actions here (tile references become this board's tiles).
+  useEffect(() => {
+    if (!isHost) return undefined;
+    return online.bindRunner((name, args) => {
+      const fn = actionsRef.current[name];
+      if (fn) fn(...decodeArgs(args || [], boardRef.current));
+    });
+  }, [isHost, online, boardRef]);
+  // Messages that would interrupt the host's screen (alert) are only shown on one computer.
+  const warn = (msg) => { if (!online) alert(msg); };
 
   // ------------------------------------------------------------------
   //  LOGGING (game log + CSV rows)
@@ -296,7 +344,7 @@ export default function GameScreen({
   };
 
   // End the current team's turn. A team in debt must settle it first.
-  const passTurn = () => {
+  const passTurn = act('passTurn', () => {
     const p = activePlayer();
     if (p && !p.eliminated && p.money < 0) {
       resolveDebt(p);
@@ -305,7 +353,7 @@ export default function GameScreen({
     turnInProgressRef.current = false;
     setModalOpen(false);
     setTurn(nextActivePlayer(playersRef.current, turnRef.current));
-  };
+  });
 
   // A team that cannot pay its debts leaves the game; its tiles return to the bank.
   const eliminatePlayer = (playerId, reason) => {
@@ -319,7 +367,7 @@ export default function GameScreen({
     setModalOpen(true);
   };
 
-  const continueAfterElimination = () => {
+  const continueAfterElimination = act('continueAfterElimination', () => {
     const all = playersRef.current;
     const remaining = activePlayers(all);
     if (all.length > 1 && remaining.length === 1) {
@@ -331,11 +379,11 @@ export default function GameScreen({
     } else {
       passTurn();
     }
-  };
+  });
 
   // Liquidation: an upgraded tile loses one level across its subgroup; an
   // unupgraded one is sold back to the bank. The turn ends once out of debt.
-  const handleSellAsset = (listedTile) => {
+  const handleSellAsset = act('sellAsset', (listedTile) => {
     const player = activePlayer();
     const tile = boardRef.current[listedTile.id];
     if (!player || !tile || tile.owner !== player.id) return;
@@ -361,19 +409,19 @@ export default function GameScreen({
     } else {
       setActiveCard((prev) => ({ ...prev, debt: Math.abs(money), assets: nextBoard.filter((t) => t.owner === player.id) }));
     }
-  };
+  });
 
   // ------------------------------------------------------------------
   //  RESCUE QUIZ & CHAOS TOKENS
   // ------------------------------------------------------------------
-  const startGrantExam = () => {
+  const startGrantExam = act('startRescue', () => {
     const pool = pickQuestions(allBoardQuestions(), QUIZ_RULES.rescue.questions, askedRef.current, totalTurnsRef.current);
     if (pool.length === 0) { handleGrantResult(true); return; }
     setQuizState({
       ...NO_QUIZ, active: true, mode: 'GRANT', questions: pool.map((q) => prepareQuestion(q)), targetScore: QUIZ_RULES.rescue.pass,
     });
     setModalStage('GRANT_QUIZ');
-  };
+  });
 
   const handleGrantResult = (passed) => {
     const player = activePlayer();
@@ -388,25 +436,25 @@ export default function GameScreen({
     setModalStage('GRANT_RESULT');
   };
 
-  const handleBuyChaosToken = () => {
+  const handleBuyChaosToken = act('buyChaosToken', () => {
     if (!chaosTokensForSale(boardRef.current)) {
-      alert('Chaos Tokens are locked! They only become available after ALL 4 Milestones have been captured.');
+      warn('Chaos Tokens are locked! They only become available after ALL 4 Milestones have been captured.');
       return;
     }
     const player = activePlayer();
     if (player.money < ECONOMY.chaosTokenPrice) {
-      alert(`Insufficient funds to buy a Chaos Token ($${ECONOMY.chaosTokenPrice}).`);
+      warn(`Insufficient funds to buy a Chaos Token ($${ECONOMY.chaosTokenPrice}).`);
       return;
     }
     handleTransaction(player.id, -ECONOMY.chaosTokenPrice, { action: 'BUY_CHAOS', notes: 'Purchased token' });
     setPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, chaosTokens: p.chaosTokens + 1 } : p)));
     addLog(`${player.name} bought a Chaos Token.`);
-  };
+  });
 
   // ------------------------------------------------------------------
   //  MILESTONE EXAMS (6 questions, 5 to pass, stop on the 2nd mistake)
   // ------------------------------------------------------------------
-  const startQuiz = (tile, mode) => {
+  const startQuiz = act('startQuiz', (tile, mode) => {
     // A milestone without its own questions (the validator reports it) borrows the board's.
     const source = tile.quiz?.length ? tile.quiz : allBoardQuestions();
     if (source.length === 0) return;
@@ -419,9 +467,9 @@ export default function GameScreen({
     setLastAnswer(null);
     setModalStage('QUIZ_START');
     setModalOpen(true);
-  };
+  });
 
-  const handleQuizAnswer = (response) => {
+  const handleQuizAnswer = act('answerQuiz', (response) => {
     if (quizState.waiting) return;
     const currentQ = quizState.questions[quizState.qIndex];
     const result = checkAnswer(currentQ, response);
@@ -439,9 +487,9 @@ export default function GameScreen({
       mistakes: prev.mistakes + (result.correct ? 0 : 1),
       history: [...(prev.history || []), result.correct],
     }));
-  };
+  });
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = act('nextQuestion', () => {
     const isGrant = quizState.mode === 'GRANT';
     // A milestone exam stops at the 2nd mistake; the Rescue Quiz always runs to the end.
     if (!isGrant && quizState.mistakes >= quizState.maxMistakes) {
@@ -455,7 +503,7 @@ export default function GameScreen({
     const passed = quizState.score >= quizState.targetScore;
     if (isGrant) handleGrantResult(passed);
     else finishQuiz(passed);
-  };
+  });
 
   const finishQuiz = (passed) => {
     const { tile, mode } = quizState;
@@ -487,13 +535,13 @@ export default function GameScreen({
   };
 
   // Landing on a rival's milestone and declining the exam.
-  const payMilestoneFee = () => {
+  const payMilestoneFee = act('payMilestoneFee', () => {
     const tile = boardRef.current[activeCard.data.id];
     const fee = tile.baseRent || 0;
     handleTransaction(turnRef.current, -fee, { action: 'MILESTONE_FULL_FEE', tileId: tile.id, tileName: tile.name });
     if (tile.owner != null) handleTransaction(tile.owner, fee, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
     passTurn();
-  };
+  });
 
   // ------------------------------------------------------------------
   //  MOVING AND LANDING
@@ -558,7 +606,7 @@ export default function GameScreen({
     openCard({ type: 'MSG', data: tile, msg: 'Event triggered.' }, 'MSG');
   };
 
-  const handleRoll = () => {
+  const handleRoll = act('roll', () => {
     const p = activePlayer();
     if (isMoving || timeUp || turnInProgressRef.current || !p || p.eliminated) return;
     // Debts are settled before a turn ends, so this only happens with a game saved by an older version.
@@ -583,14 +631,14 @@ export default function GameScreen({
       later(() => { setIsMoving(false); checkLanding(passesGo); }, LANDING_PAUSE_MS);
     }, HOP_MS);
     timersRef.current.add(hop);
-  };
+  });
 
   // ------------------------------------------------------------------
   //  QUESTIONS ON PROPERTY AND CORE TILES
   // ------------------------------------------------------------------
 
   // Unowned tile: right answer -> option to buy; wrong answer -> small fine.
-  const handleAnswer = (response) => {
+  const handleAnswer = act('answerProperty', (response) => {
     const { q, data: tile } = activeCard;
     const result = checkAnswer(q, response);
     logAnswer('PROPERTY_Q', q, result, { tileId: tile.id, tileName: tile.name });
@@ -603,19 +651,19 @@ export default function GameScreen({
       handleTransaction(turnRef.current, -ECONOMY.wrongAnswerPenalty, { action: 'QUESTION_PENALTY', tileId: tile.id, tileName: tile.name, notes: 'Incorrect on acquisition question' });
       setModalStage('FEEDBACK_INCORRECT');
     }
-  };
+  });
 
-  const handleBuy = () => {
+  const handleBuy = act('buy', () => {
     const tile = activeCard.data;
-    if (activePlayer().money < tile.price) { alert('Insufficient funds!'); return; }
+    if (activePlayer().money < tile.price) { warn('Insufficient funds!'); return; }
     handleTransaction(turnRef.current, -tile.price, { action: 'BUY_PROPERTY', tileId: tile.id, tileName: tile.name });
     setBoard((prev) => acquireTile(prev, tile, turnRef.current, tile.price));
     addLog(`${activePlayer().name} bought ${tile.type === 'property' ? tile.sub : tile.name} for ${money(tile.price)}.`);
     passTurn();
-  };
+  });
 
   // Rival's tile: a right answer halves the rent.
-  const handleRentChallengeAnswer = (response) => {
+  const handleRentChallengeAnswer = act('answerRent', (response) => {
     const { q, data: tile, rent, payerId, ownerId } = activeCard;
     const result = checkAnswer(q, response);
     logAnswer('RENT_Q', q, result, { tileId: tile.id, tileName: tile.name });
@@ -629,7 +677,7 @@ export default function GameScreen({
     handleTransaction(payerId, -rentToPay, { action: 'RENT_PAYMENT', tileId: tile.id, tileName: tile.name });
     if (ownerId != null) handleTransaction(ownerId, rentToPay, { action: 'RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
     setModalStage('FEEDBACK_INCORRECT');
-  };
+  });
 
   // Autosave between turns only: a refresh in the middle of a turn returns to its start.
   useEffect(() => {
@@ -637,25 +685,37 @@ export default function GameScreen({
     onSnapshot({ tiles: board.map((t) => [t.owner ?? null, t.level || 0, t.paid || 0]), players, turn, totalTurns, logs, logRows, dice, endsAt, asked });
   }, [onSnapshot, board, players, turn, totalTurns, logs, logRows, dice, endsAt, asked, isMoving, modalOpen, manageOpen]);
 
+  // Online host: send the game as it stands after every change (each guest gets a copy
+  // without unanswered answers; see online/protocol.js guestView).
+  useEffect(() => {
+    if (!isHost) return;
+    online.publish({
+      tiles: board.map((t) => [t.owner ?? null, t.level || 0, t.paid || 0]),
+      players, turn, totalTurns, isMoving, dice, rollId, logs, modalOpen, activeCard, modalStage,
+      feedback, lastAnswer, moneyFloats, quizState, endsAt,
+    });
+  }, [isHost, online, board, players, turn, totalTurns, isMoving, dice, rollId, logs, modalOpen, activeCard, modalStage,
+      feedback, lastAnswer, moneyFloats, quizState, endsAt]);
+
   // ------------------------------------------------------------------
   //  CHAOS CHALLENGE (spend a token to try to steal a rival's property)
   // ------------------------------------------------------------------
-  const openChaosSelect = () => {
+  const openChaosSelect = act('openChaosSelect', () => {
     setFeedback(null);
     setLastAnswer(null);
     openCard({ type: 'CHAOS_SELECT' }, 'CHAOS_SELECT');
-  };
+  });
 
-  const handleSelectChaosTarget = (tile) => {
-    if (activePlayer().chaosTokens <= 0) { alert('No chaos tokens available.'); return; }
+  const handleSelectChaosTarget = act('selectChaosTarget', (tile) => {
+    if (activePlayer().chaosTokens <= 0) { warn('No chaos tokens available.'); return; }
     // Duel on the target tile's own questions (fallback: any board question).
     const pool = tile.questions?.length ? tile.questions : allBoardQuestions();
-    if (pool.length === 0) { alert('This question file has no questions for a Chaos challenge.'); return; }
+    if (pool.length === 0) { warn('This question file has no questions for a Chaos challenge.'); return; }
     setActiveCard({ type: 'CHAOS_CHALLENGE', data: tile, q: prepareQuestion(pickQuestion(pool, askedRef.current, totalTurnsRef.current)), ownerId: tile.owner });
     setModalStage('CHAOS_QUESTION');
-  };
+  });
 
-  const handleChaosAnswer = (response) => {
+  const handleChaosAnswer = act('answerChaos', (response) => {
     const { q } = activeCard;
     const player = activePlayer();
     const tile = boardRef.current[activeCard.data.id];
@@ -680,26 +740,31 @@ export default function GameScreen({
       setFeedback({ tone: 'bad', title: 'Chaos challenge failed', detail: `Penalty: ${money(penalty)}.`, explanation: q.explanation || '' });
     }
     setModalStage('FEEDBACK_INCORRECT');
-  };
+  });
 
   // ------------------------------------------------------------------
   //  UPGRADES
   // ------------------------------------------------------------------
-  const handleUpgrade = () => {
+  const handleUpgrade = act('upgrade', () => {
     const playerId = turnRef.current;
     const tile = boardRef.current[activeCard.data.id];
-    if (!canUpgradeSubgroup(boardRef.current, tile, playerId)) { alert('You must own all tiles in this sub-theme and keep node levels even.'); return; }
+    if (!canUpgradeSubgroup(boardRef.current, tile, playerId)) { warn('You must own all tiles in this sub-theme and keep node levels even.'); return; }
     const level = nextUpgradeLevel(boardRef.current, tile);
-    if (level <= tile.level) { alert('No upgrades available.'); return; }
+    if (level <= tile.level) { warn('No upgrades available.'); return; }
     const cost = upgradeCost(tile, level);
-    if (activePlayer().money < cost) { alert('Insufficient funds.'); return; }
+    if (activePlayer().money < cost) { warn('Insufficient funds.'); return; }
     handleTransaction(playerId, -cost, { action: 'UPGRADE_SUBTHEME', tileId: tile.id, tileName: tile.name, notes: `Level ${level}` });
     setBoard((prev) => applyUpgrade(prev, tile, playerId, level));
     addLog(`${activePlayer().name} upgraded ${tile.sub} to level ${level}.`);
     setModalOpen(false);
-  };
+  });
+
+  const declineMilestone = act('declineMilestone', () => { setModalOpen(false); passTurn(); });
+  const closeDialog = act('closeDialog', () => setModalOpen(false));
+  const openUpgradeOffer = act('openUpgradeOffer', (tile) => { setActiveCard({ type: 'UPGRADE_OFFER', data: tile }); setModalOpen(true); });
 
   const openLabManager = () => {
+    if (isGuest) { setManageOpen(true); return; } // only the dialog opens; choosing a group is sent to the host
     setFeedback(null);
     setModalStage(null);
     setManageOpen(true);
@@ -769,6 +834,7 @@ export default function GameScreen({
         question={q}
         onSubmit={onSubmit}
         reveal={opts.reveal || null}
+        watching={!canAct}
         resolveImage={getImgSrc}
         imageMaxHeight={opts.imageMaxHeight || 250}
       />
@@ -814,6 +880,14 @@ export default function GameScreen({
   const quizTile = quizState.tile;
   const dialogTile = activeCard?.data || (['QUIZ_START', 'MILESTONE_SUCCESS', 'MILESTONE_FAIL'].includes(modalStage) ? quizTile : null);
   const showDialogTop = !['STANDINGS', 'WIN', 'ELIMINATED'].includes(modalStage) && !['STANDINGS', 'WIN', 'ELIMINATED'].includes(activeCard?.type);
+  // Online: a guest device acts only for its own player, on its turn; the host can always act
+  // (for a player whose device has dropped, for example).
+  const canAct = !isGuest || canGuestAct({ turn, modalOpen, modalStage, activeCard }, online.mySlots);
+  const hostOnlyScreen = ['STANDINGS', 'WIN'].includes(modalStage) || ['STANDINGS', 'WIN'].includes(activeCard?.type);
+  const playsElsewhere = isHost && (online.remoteSlots || []).includes(turn);
+  const waitingNote = isGuest && !canAct
+    ? (hostOnlyScreen ? 'Waiting for the host to continue.' : `${currentPlayer.name} is playing. You'll see every move here.`)
+    : playsElsewhere ? `${currentPlayer.name} plays on their own device. You can still act for them if their device has dropped.` : '';
 
   const resultHeading = () => {
     if (activeCard?.type === 'RENT_DEFENSE') return `Rent due · ${tileLabel(activeCard.data)}`;
@@ -839,8 +913,8 @@ export default function GameScreen({
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button variant="text" onClick={() => setRulesOpen(true)} startIcon={<span aria-hidden>📖</span>}>{LABELS.howToPlay}</Button>
-          <Button variant="outlined" color="warning" disabled={isMoving} onClick={() => openStandings(false, 'ended')}>End game</Button>
-          <Button variant="text" color="error" onClick={() => setExitOpen(true)}>Exit session</Button>
+          {!isGuest && <Button variant="outlined" color="warning" disabled={isMoving} onClick={() => openStandings(false, 'ended')}>End game</Button>}
+          <Button variant="text" color="error" onClick={() => setExitOpen(true)}>{isGuest ? 'Leave game' : 'Exit session'}</Button>
         </Box>
       </Box>
 
@@ -864,7 +938,7 @@ export default function GameScreen({
               variant="contained"
               size="large"
               onClick={handleRoll}
-              disabled={timeUp}
+              disabled={timeUp || !canAct}
               aria-disabled={isMoving || undefined}
               sx={{
                 bgcolor: TEAM_INK[currentPlayer.id], color: 'common.white', px: 5, py: 1.25, fontSize: '1.15rem', boxShadow: 3, minWidth: 220,
@@ -875,8 +949,8 @@ export default function GameScreen({
               {rollLabel}
             </Button>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Button variant="outlined" disabled={isMoving} onClick={openLabManager} startIcon={<span aria-hidden>⭐</span>}>{LABELS.upgrades}</Button>
-              <Button variant="outlined" color="secondary" disabled={isMoving} onClick={openChaosSelect} startIcon={<span aria-hidden>⚡</span>}>
+              <Button variant="outlined" disabled={isMoving || !canAct} onClick={openLabManager} startIcon={<span aria-hidden>⭐</span>}>{LABELS.upgrades}</Button>
+              <Button variant="outlined" color="secondary" disabled={isMoving || !canAct} onClick={openChaosSelect} startIcon={<span aria-hidden>⚡</span>}>
                 Chaos tokens: {currentPlayer.chaosTokens}
               </Button>
             </Box>
@@ -924,6 +998,9 @@ export default function GameScreen({
       <Modal open={modalOpen} disableEscapeKeyDown>
         <Box role="dialog" aria-modal="true" aria-labelledby={TITLE_ID} sx={{ ...modalStyle, ...(dialogTile?.color ? { borderTopColor: dialogTile.color } : {}) }}>
           {showDialogTop && <DialogTop tile={dialogTile} player={currentPlayer} />}
+          {waitingNote && <Alert severity="info" icon={<span aria-hidden>👀</span>} sx={{ mb: 2 }}>{waitingNote}</Alert>}
+          {/* A disabled fieldset disables every button and input inside: a guest watches until it's their turn. */}
+          <Box component="fieldset" disabled={!canAct} sx={{ border: 0, p: 0, m: 0, minWidth: 0, '&:disabled button, &:disabled input': { cursor: 'default' } }}>
 
           {activeCard?.type === 'LIQUIDATION' && modalStage === 'LIQUIDATION' && (() => {
             const rows = [];
@@ -1100,7 +1177,7 @@ export default function GameScreen({
               </Box>
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                 <Button fullWidth size="large" variant="contained" autoFocus onClick={() => startQuiz(activeCard.data, 'MILESTONE_ACQUIRE')}>Start exam</Button>
-                <Button fullWidth size="large" variant="outlined" onClick={() => { setModalOpen(false); passTurn(); }}>Decline</Button>
+                <Button fullWidth size="large" variant="outlined" onClick={declineMilestone}>Decline</Button>
               </Box>
             </>
           )}
@@ -1286,7 +1363,7 @@ export default function GameScreen({
                 </Typography>
                 {!canPay && <Alert severity="warning" sx={{ mt: 1.5 }}>Not enough cash for this upgrade.</Alert>}
                 <Button fullWidth size="large" variant="contained" autoFocus={canPay} disabled={!canPay || !g.canLevel} onClick={handleUpgrade} sx={{ mt: 2 }}>{LABELS.upgrade} for {money(g.cost)}</Button>
-                <Button fullWidth size="large" autoFocus={!canPay} onClick={() => setModalOpen(false)} sx={{ mt: 1 }}>Cancel</Button>
+                <Button fullWidth size="large" autoFocus={!canPay} onClick={closeDialog} sx={{ mt: 1 }}>Cancel</Button>
               </>
             );
           })()}
@@ -1340,7 +1417,7 @@ export default function GameScreen({
                   </Box>
                   <Button variant="outlined" color="secondary" disabled={Boolean(buyBlocked)} onClick={handleBuyChaosToken}>Buy token</Button>
                 </Box>
-                <Button fullWidth size="large" autoFocus sx={{ mt: 2 }} onClick={() => setModalOpen(false)}>Cancel</Button>
+                <Button fullWidth size="large" autoFocus sx={{ mt: 2 }} onClick={closeDialog}>Cancel</Button>
               </>
             );
           })()}
@@ -1353,6 +1430,7 @@ export default function GameScreen({
               {renderQuestion(activeCard.q, handleChaosAnswer)}
             </>
           )}
+          </Box>
         </Box>
       </Modal>
 
@@ -1379,7 +1457,7 @@ export default function GameScreen({
                       variant="contained"
                       disabled={Boolean(reason)}
                       aria-label={`Upgrade ${g.tile.sub}`}
-                      onClick={() => { setActiveCard({ type: 'UPGRADE_OFFER', data: g.tile }); setManageOpen(false); setModalOpen(true); }}
+                      onClick={() => { setManageOpen(false); openUpgradeOffer(g.tile); }}
                     >
                       Upgrade
                     </Button>
@@ -1401,7 +1479,9 @@ export default function GameScreen({
       <Dialog open={exitOpen} onClose={() => setExitOpen(false)} aria-labelledby="exit-title" aria-describedby="exit-text">
         <DialogTitle id="exit-title">Leave this game?</DialogTitle>
         <DialogContent>
-          <Typography id="exit-text">The current game and its results will be lost. To finish properly, use End game instead.</Typography>
+          <Typography id="exit-text">{isGuest
+            ? 'This device stops following the game. The game goes on on the host, who can play for you; open the join link again to come back.'
+            : 'The current game and its results will be lost. To finish properly, use End game instead.'}</Typography>
         </DialogContent>
         <DialogActions>
           <Button autoFocus onClick={() => setExitOpen(false)}>Stay in the game</Button>

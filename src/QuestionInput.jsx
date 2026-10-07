@@ -83,6 +83,7 @@ export default function QuestionInput({
   value,
   reveal = null,
   survey = false,
+  watching = false, // online: someone else is answering (no keyboard shortcuts)
   resolveImage,
   imageMaxHeight,
 }) {
@@ -101,7 +102,7 @@ export default function QuestionInput({
   };
 
   // Game mode: keys A–D (or 1–4) pick a multiple-choice answer.
-  const shortcuts = format === "mcq" && !survey && Boolean(onSubmit) && !locked;
+  const shortcuts = format === "mcq" && !survey && Boolean(onSubmit) && !locked && !watching;
   useEffect(() => {
     if (!shortcuts) return undefined;
     const onKey = (e) => {

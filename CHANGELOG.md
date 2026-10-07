@@ -4,6 +4,9 @@ Notable changes to Science Around the Board. The live site is deployed automatic
 
 ## Unreleased: public release preparation (October 2026)
 
+### Online play (beta)
+- Players can join from their own devices with a room code (`?join=`): the host's browser runs the game and devices connect peer-to-peer through PeerJS (WebRTC). Per-device surveys, read-only views for watchers, reconnects, host Resume, names sent from devices. Local play is unchanged; online code loads only when chosen. New tests: `tests/online.test.js`, the `online` smoke scenario, online screens in `a11y`, and a privacy check that local play opens no connection.
+
 ### Gameplay (changes scores)
 - Starting cash by number of players: $2,500 solo, $2,000 / $1,500 / $1,250 each for 2 / 3 / 4 players (from a 3,000-game simulation per setting).
 - A rival milestone's fee is $250; a core tile's rent is $50 per core tile its owner holds (up to $200).
