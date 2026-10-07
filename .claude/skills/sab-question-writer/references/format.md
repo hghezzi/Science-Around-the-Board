@@ -114,7 +114,7 @@ To edit an existing file, convert it first: `python build_tsv.py --to-json old.t
 - A cell that starts and ends with a straight quote (a code option such as `"w"`) is written by build_tsv.py in spreadsheet form and reads back exactly.
 - Code must fit on one line. Use one-line statements (`for i in range(3): print(i)`) or describe the structure in words, or show longer code as an image; in Python, a compound statement can't follow `;`, so check that one-lined code still runs.
 - Unicode subscripts, superscripts and symbols (H₂O, 10²³, β, →) display fine; avoid `^` and `_` markup.
-- Keep prompts under about 300 characters; teams read them aloud under time pressure.
+- Keep prompts under about 300 characters; players read them aloud under time pressure.
 - An encrypted `.lock` file can't be validated. Validate the plain `.tsv` first, then encrypt.
 
 ## 8. Config rows (instructor settings)
@@ -123,7 +123,7 @@ Optional rows that set up how results reach the instructor. Put the setting name
 
 | `id` | value (`question` column) | effect |
 |---|---|---|
-| `results_url` | the collector's Web app URL, `https://script.google.com/macros/s/…/exec` | the end screen shows **Send results to instructor**, which adds each team's results to the instructor's Google Sheet |
+| `results_url` | the collector's Web app URL, `https://script.google.com/macros/s/…/exec` | the end screen shows **Send results to instructor**, which adds each player's results to the instructor's Google Sheet |
 | `instructor_email` | an email address | the end screen shows **Email results to instructor**: it downloads the results file and opens a pre-addressed email; students attach the file |
 | `course` | e.g. `BIOL 301 – Week 5` | labels the results (Sheet rows and the email subject) |
 | `ask_names` | `yes` or `no` | whether students must type their names or student IDs before sending. Default: `yes` when `results_url` or `instructor_email` is set |
@@ -146,7 +146,7 @@ JSON for build_tsv.py:
 2. Choose Extensions → Apps Script. Delete the sample code, paste the collector script from https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs and save.
 3. Choose Deploy → New deployment, select type **Web app**, set Execute as: **Me** and Who has access: **Anyone**, then Deploy and authorize.
 4. Copy the Web app URL (it ends in `/exec`) into a `results_url` config row.
-5. Test: play a quick solo game with the file and click **Send results to instructor**. A "Summary" tab (one row per team) and a "Details" tab (every answer and transaction) appear in the Sheet.
+5. Test: play a quick solo game with the file and click **Send results to instructor**. A "Summary" tab (one row per player) and a "Details" tab (every answer and transaction) appear in the Sheet.
 6. If the script is edited later, use Deploy → Manage deployments → Edit → Version: New version, so the URL stays the same.
 
 Notes:

@@ -547,7 +547,7 @@ def check_item_quality(rows, games=None):
     if long_items:
         warnings.append(f"Correct answer much longer than the other options ({fmt_num(LONG_RATIO)}× their average length or more): {summarize(long_items)}. Students can pick it without knowing the content; make the distractors just as detailed, or trim the correct answer.")
     if near_misses:
-        warnings.append(f"Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: {summarize(near_misses)}. Use multiple choice when two terms differ by one letter or numeral (Type I and Type II, absorption and adsorption).")
+        warnings.append(f"Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: {summarize(near_misses)}. Use multiple choice when two terms differ by one letter or numeral (Type I and Type II, absorption and adsorption), or add the other spelling to the accepted answers if it is also correct.")
 
     # Statistical cues: per game when the file has several, otherwise for the whole file.
     total = tally_cues(facts)
