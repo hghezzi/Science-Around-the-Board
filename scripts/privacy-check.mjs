@@ -53,6 +53,32 @@ console.log("▶ before consent");
   await context.close();
 }
 
+console.log("▶ local play stays offline");
+{
+  // A game on one computer never loads the online-play code or opens a live connection.
+  const { context, page, external } = await newPage();
+  const sockets = [];
+  const scripts = [];
+  page.on("websocket", (ws) => sockets.push(ws.url()));
+  page.on("request", (r) => { if (r.resourceType() === "script") scripts.push(r.url()); });
+  await page.goto(BASE);
+  await page.getByRole("button", { name: "No thanks" }).click();
+  await page.getByRole("button", { name: /Play the demo/ }).click();
+  await page.getByRole("button", { name: /Continue to game setup/ }).click();
+  await page.getByRole("button", { name: /^Solo$/ }).click();
+  await page.getByRole("button", { name: /^16S/ }).click();
+  await page.getByRole("button", { name: /Confirm selection/i }).click();
+  await page.getByRole("button", { name: /^Start game/ }).click();
+  await page.getByRole("button", { name: /Continue to Questions/ }).click();
+  await page.getByRole("button", { name: /^Start Game$/ }).click();
+  await page.getByText("Game log").waitFor();
+  await page.waitForTimeout(1500);
+  const peerCode = scripts.filter((u) => /\/assets\/(bundler|peerTransport|GuestApp)-/.test(u));
+  if (sockets.length || external.length || peerCode.length) fail(`local play reached out: ${[...sockets, ...external, ...peerCode].join(", ")}`);
+  else ok("a local game loads no online-play code and opens no live connection");
+  await context.close();
+}
+
 console.log("▶ No thanks");
 {
   const { context, page, external } = await newPage();

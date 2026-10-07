@@ -34,6 +34,18 @@ You need:
 
    Answer honestly, without help from the other players. The survey is your starting point, not a test, and the player with the best score goes first.
 
+## Joining an online game
+
+In an online game, your host's computer runs the board and you play from your own device.
+
+1. Open the join link from your host, or go to <https://hghezzi.github.io/Science-Around-the-Board/>, choose **Join an online game**, click **Enter a code** and type the room code from your host's screen.
+2. **Who are you playing as?** Click **Play as …** next to a free player. A group can share one device.
+3. Wait for the host to start. Then answer the **pre-game survey** on your device and click **Send my answers**.
+4. On your turn, roll and answer on your device. On other players' turns you see every move, but you can't press anything.
+5. At the end, type your names or student IDs and click **Send names to the host**. Your host hands in the results.
+
+If the page reloads or the Wi-Fi drops, the game reconnects by itself and gives you your player back. If it can't join at all, check the code with your host; some networks block online games, so a phone hotspot may help.
+
 ## How to win
 
 The game ends in one of two ways:
@@ -130,7 +142,7 @@ The buttons you see depend on how your instructor set up the game. If **Send** f
 - **"That password didn't work."** Check capital letters and spaces, or ask your instructor.
 - **A picture is missing.** The question still works without it. If you have the image files, go back to the start page and use **Optional: upload images**.
 - **The board looks squashed.** Make the browser window wider, or zoom out (Ctrl and − on Windows, ⌘ and − on a Mac).
-- **No internet?** After your first visit, the game works offline, but a game link needs the internet to load your instructor's questions.
+- **No internet?** After your first visit, the game works offline, but a game link needs the internet to load your instructor's questions, and online games need the internet throughout.
 
 ## Your privacy
 

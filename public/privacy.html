@@ -30,7 +30,7 @@
     <p class="muted">Science Around the Board · last updated October 2026</p>
 
     <h2>The short version</h2>
-    <p>The game runs entirely in your web browser. There are no accounts and no game server. Nothing you type or answer in the game is sent to us. Your results reach your instructor only if you send them (see below).</p>
+    <p>The game runs entirely in your web browser. There are no accounts and no game server. Nothing you type or answer in the game is sent to us. In an optional online game, the devices of that game connect to each other (see below). Your results reach your instructor only if you send them (see below).</p>
 
     <h2>What stays on your computer</h2>
     <ul>
@@ -51,6 +51,9 @@
       <li>The game is hosted on <strong>GitHub Pages</strong>. Like any web host, GitHub receives your IP address and browser details when the page loads (see <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>).</li>
       <li>If you open a <strong>game link</strong> from your instructor, your browser downloads the question file and any images from wherever the instructor keeps them (for example Google Sheets or GitHub). That host sees an ordinary web request, but nothing about your answers.</li>
     </ul>
+
+    <h2>Online games (only if you choose one)</h2>
+    <p>When a host chooses <strong>On their own devices</strong>, or you choose <strong>Join an online game</strong>, the game connects the devices in that game. To find each other, the devices use the free <strong>PeerJS</strong> connection service (0.peerjs.com) and public STUN/TURN servers run by Google and PeerJS. These see each device's IP address and the room code, but not the game. The game itself (the board, answers, surveys and names typed for the host) then travels directly between the devices in the game, encrypted by the browser (WebRTC); if a network doesn't allow a direct connection, it may pass, still encrypted, through a PeerJS relay. Devices never receive the answers to a question before it is answered. The host's computer collects the results as in any other game. A player's device remembers a random device code for each room it joined, so a refresh gets its player back. Nothing of this happens in a game played on one computer.</p>
 
     <h2>Sending results to your instructor</h2>
     <p>Only when your instructor's question file includes a results link does the end screen offer <strong>Send results to instructor</strong>. Clicking it sends the session's results (every answer, survey response and transaction, the scores, and the names or student IDs typed on that screen) directly to a Google Sheet that belongs to your instructor; Google processes this data for your instructor. Nothing is sent unless you click Send, and it is never sent to the game's authors.</p>

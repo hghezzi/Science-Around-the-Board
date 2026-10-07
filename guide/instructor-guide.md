@@ -276,6 +276,7 @@ At each computer, one student loads the question file, or opens your game link, 
 
 - **How many players?** *Solo* or 2, 3 or 4 players sharing the computer (each player can be one student or a small group);
 - **Session length:** *No timer*, or 30, 45, 60 or 90 minutes;
+- **Where do players play?** *On this computer* (players take turns at one screen), or *On their own devices (beta)*: see [Online play (beta)](#online-play-beta);
 - **Choose a topic**, then the module under **Select module**.
 
 ![Game setup: number of players, session length and topic](images/04-setup.png)
@@ -285,6 +286,39 @@ At each computer, one student loads the question file, or opens your game link, 
 After **Start game →**, each player completes a brief pre-game survey: the confidence sliders and 10 questions. Players take turns on the same screen until everyone is done, then the board opens. The player with the best pre-game survey score (unknown to players) starts; ties are broken at random.
 
 ![Pre-game survey](images/05-survey.png)
+
+### Online play (beta)
+
+Online, every player can play from their own computer, tablet or phone, in the same room or from home. One computer, usually yours, **hosts** the game: it runs the board, and the other devices show what it shows and send the buttons their players press. I made this for remote classes, and for big rooms where groups can't crowd around one screen.
+
+**Hosting a game**
+
+1. Load your question file as usual and continue to the setup. Choose the number of players, then **Where do players play? → On their own devices (beta)**, a topic, and **Open the online room →**.
+2. The lobby shows a **room code** (for example *V7B-5NB*) and a **join link**. Put the code on the projector or post the link in your course chat.
+3. Players open the game, choose **Join an online game** on the start page and type the code (or open the link), then pick their player (*Play as Red Player*, …). A group can share one device, and a player can also play on the host computer: click **Play on this computer** next to it.
+4. When every player has a device (or "On this computer"), click **Start the game →**.
+
+![The host's lobby: the room code, the join link and who plays which player](images/11-online-lobby.png)
+
+![A player's device: picking a player](images/12-online-join.png)
+
+**During the game**
+
+- Each device answers its own **pre- and post-game surveys** at the same time, so nobody waits for the computer to be passed around. If a device can't finish (a flat battery, say), click **Answer on this computer** on the host's waiting screen.
+- On their turn, players roll, answer, buy, upgrade and use chaos tokens on their own device. Everyone else sees the same board and dialogs, read-only, with a note saying who is playing.
+- The host can always act for any player, for example when a device drops out. **End game** and the final standings are on the host only.
+- If a device refreshes or loses the connection, it reconnects by itself and gets its player back. If the host computer refreshes, choose **Resume** on its start page: the same room reopens and the devices reconnect.
+- At the end, players can type their names or student IDs on their own device and press **Send names to the host**; they appear on the host's results screen, and the host sends or downloads the one results file for the whole game, as usual.
+
+![A player's device while someone else answers](images/13-online-watching.png)
+
+**Good to know**
+
+- **Keep the host page open** for the whole game: the game runs there. Turn off the host computer's sleep mode.
+- **Try it once on your own network before class.** Devices find each other through a free public connection service (PeerJS) and then connect directly, encrypted. Some school and company networks block these connections. If a device can't join, a phone hotspot usually works; otherwise, play on one computer, or share the host's screen on a video call.
+- **Images:** devices see hosted images, web links in the `imageFile` column and the image folder of a [game link](#sharing-the-game-with-students), but not images uploaded on the host computer.
+- Devices never receive the answers before a question is answered, so a student can't read them from the network traffic.
+- So far it has been tested in Chrome on computers. Try the browsers, tablets and phones your students will use before relying on it in class.
 
 ### The core turn sequence
 
@@ -474,10 +508,11 @@ While this is only an example, you can certainly explore other lesson-design str
 10. **A game link won't load:** for Google Sheets, use **File → Share → Publish to web** with *Tab-separated values*, not a normal share link. For other links, check that the file is public, for example by opening the link in a private browser window.
 11. **"Send" says it couldn't reach the sheet:** students can use **Email** or **Download** instead. Check that your deployment's *Who has access* is set to **Anyone** and that `results_url` is the Web app URL ending in `/exec`.
 12. **Which version will my students get?** Always the current one: the game updates itself on a student’s next visit. Your question file only changes when you change it.
+13. **A device can't join an online game:** check the code, and that the host's game page is still open. *"No game with this code is open"* means the room isn't open (or was closed); *"Couldn't connect"* usually means the network blocks live connections: try a phone hotspot, or play on one computer. If a device says it has a different version, reload that page.
 
 ## Privacy and student data
 
-The game runs entirely in the students’ browsers. There is no account and no game server. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs entirely in the students’ browsers. There is no account and no game server. In an online game, devices find each other through the free PeerJS connection service, which sees the devices' internet addresses and the room code but not the game; the game itself then goes directly from device to device, encrypted. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
 
 ## Conclusion
 
@@ -492,6 +527,11 @@ Building a great TSV cartridge takes intentional design, and mastering the role 
 Welcome to the board, and have a great session!
 
 ## What’s new
+
+**October 2026 (update 6): online play (beta)**
+
+- **Players on their own devices.** On the setup screen, choose *On their own devices (beta)*: the host computer opens a room with a code and a link, players join from any computer, tablet or phone, answer their surveys at the same time and play their turns on their own device. Refreshes reconnect by themselves, and a host refresh resumes the same room. Playing on one computer is unchanged and stays the default. See [Online play (beta)](#online-play-beta).
+- The start page has **Join an online game**, and the privacy notice explains the connection service online play uses.
 
 **October 2026 (update 5)**
 

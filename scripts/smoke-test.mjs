@@ -9,11 +9,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import CryptoJS from "crypto-js";
 import { encryptLockFile } from "../src/lockFile.js";
 import { parseTsv } from "../src/tsvParser.js";
+import { startPeerServer, routePeerJs, WEBRTC_ARGS } from "./lib/local-peer-server.mjs";
 
 const ROLLS = Number(process.env.ROLLS || 10);
 const server = await preview({ preview: { port: Number(process.env.SMOKE_PORT || process.env.PORT || 4181), strictPort: false }, logLevel: "error" });
 const BASE = server.resolvedUrls.local[0];
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: WEBRTC_ARGS });
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`  ✗ ${msg}`); };
 
@@ -454,6 +455,214 @@ async function bankruptScenario() {
   await context.close();
 }
 
+// ---------------------------------------------------------------------------
+// ONLINE PLAY: a host and two guest devices, through a local signalling server
+// (the public one can't be reached from CI). Covers the lobby, surveys on each
+// device, turns played on guests, a guest refresh, a host refresh with Resume,
+// the end screen with names sent from devices, the CSV, and a wrong room code.
+// ---------------------------------------------------------------------------
+let peerServer = null;
+async function onlinePage(colorScheme = "light", width = 1300) {
+  if (!peerServer) peerServer = await startPeerServer();
+  const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme, acceptDownloads: true, serviceWorkers: "block" });
+  await routePeerJs(context, peerServer.port);
+  const page = await context.newPage();
+  page.on("pageerror", (e) => fail(`online page error: ${e.message}`));
+  page.on("console", (m) => { if (m.type() === "error" && /Content Security Policy/i.test(m.text())) fail(`online CSP: ${m.text().slice(0, 160)}`); });
+  page.on("dialog", (d) => d.accept().catch(() => {}));
+  return { context, page };
+}
+
+// One player's survey on one device.
+async function onlineSurvey(page, finish, label) {
+  await page.getByRole("button", { name: /Continue to Questions|Start Questions/ }).click({ timeout: 20000 });
+  const n = await page.getByText(/^Question \d+ of \d+$/).count();
+  if (n !== 10) fail(`${label}: ${n} survey questions (expected 10)`);
+  const options = page.getByRole("button", { name: /^A\./ });
+  for (let k = 0; k < (await options.count()); k++) await options.nth(k).click();
+  const inputs = page.locator('input[aria-label="Answer"]');
+  for (let k = 0; k < (await inputs.count()); k++) await inputs.nth(k).fill("1");
+  await page.getByRole("button", { name: finish }).click();
+}
+
+async function dismissRules(page) {
+  const got = page.getByRole("button", { name: /^Got it$/ });
+  await got.waitFor({ timeout: 15000 }).then(() => got.click()).catch(() => {});
+}
+
+// Play `rolls` turns: whoever's turn it is acts on their own device.
+async function playOnline(pages, owner, rolls, label) {
+  const host = pages.host;
+  let done = 0;
+  let checkedWatcher = false;
+  for (let guard = 0; guard < 500; guard++) {
+    const banner = await host.getByText(/^(Red|Blue|Green|Orange) Player's turn$/).first().textContent().catch(() => "");
+    const color = (banner.match(/^(\w+)/) || [])[1];
+    const page = pages[owner[color]];
+    if (!page) { await host.waitForTimeout(200); continue; }
+    const modals = page.locator(".MuiModal-root");
+    if (await modals.count()) {
+      const dialog = modals.last();
+      const text = await dialog.innerText().catch(() => "");
+      if (/Final Standings/i.test(text)) return;
+      // A watching device can't press anything in the dialog.
+      if (!checkedWatcher && owner[color] !== "host") {
+        const other = Object.entries(owner).find(([, who]) => who !== owner[color] && who !== "host");
+        if (other) {
+          const watcher = pages[other[1]];
+          const buttons = watcher.locator(".MuiModal-root fieldset button:enabled, .MuiModal-root fieldset input:enabled");
+          if (await watcher.locator(".MuiModal-root fieldset").count()) {
+            checkedWatcher = true;
+            if (await buttons.count()) fail(`${label}: a watching device could press a button in someone else's dialog`);
+          }
+        }
+      }
+      if (await answerQuestion(dialog)) { await page.waitForTimeout(250); continue; }
+      let clicked = false;
+      for (const name of DIALOG_BUTTONS) {
+        const button = dialog.getByRole("button", { name }).first();
+        if ((await button.count()) && (await button.isEnabled())) { await button.click(); clicked = true; break; }
+      }
+      await page.waitForTimeout(clicked ? 250 : 300);
+      continue;
+    }
+    if (done >= rolls) return;
+    const roll = page.getByRole("button", { name: /^Roll/ });
+    if ((await roll.count()) && (await roll.isEnabled())) {
+      await roll.click(); done++;
+      await page.locator(".MuiModal-root").first().waitFor({ timeout: 10000 }).catch(() => {});
+    } else await page.waitForTimeout(300);
+  }
+  fail(`${label}: gave up after 500 steps (a dialog may be stuck on a device)`);
+}
+
+// Turn number and every player's net worth, as a device shows them.
+const boardState = async (page) => [await page.getByText(/^Turn \d+$/).first().textContent(), ...(await page.getByText(/^Net worth [-−]?\$[\d,]+$/).allTextContents())].join(" | ");
+
+async function onlineScenario() {
+  console.log("▶ online: host + 2 devices");
+  const { context: hc, page: host } = await onlinePage();
+  const { context: ac, page: guestA } = await onlinePage("dark", 1100);
+  const { context: bc, page: guestB } = await onlinePage("light", 900);
+  await openDemo(host);
+  await host.getByRole("button", { name: /Continue to game setup/ }).click();
+  await host.getByRole("button", { name: /^16S/ }).click();
+  await host.getByRole("button", { name: /Confirm selection/i }).click();
+  await host.getByRole("button", { name: /^3 players$/ }).click();
+  await host.getByRole("button", { name: /On their own devices/ }).click();
+  await host.getByRole("button", { name: /Open the online room/ }).click();
+  await host.getByText("The room is open").waitFor({ timeout: 20000 });
+  const link = await host.getByLabel("Join link").inputValue();
+  const code = new URL(link).searchParams.get("join");
+
+  // Device A uses the link; device B types the code on the start page.
+  await guestA.goto(link);
+  await guestB.goto(BASE);
+  const noThanks = guestB.getByRole("button", { name: "No thanks" });
+  if (await noThanks.count()) await noThanks.click();
+  await guestB.getByRole("button", { name: "Enter a code" }).click();
+  await guestB.getByLabel("Room code").fill(code.toLowerCase());
+  await guestB.getByRole("button", { name: /^Join$/ }).click();
+  for (const g of [guestA, guestB]) await g.getByText("Who are you playing as?").waitFor({ timeout: 30000 });
+  await guestA.getByRole("button", { name: "Play as Blue Player" }).click();
+  await guestB.getByRole("button", { name: "Play as Blue Player" }).waitFor({ state: "detached", timeout: 5000 }).catch(() => fail("online: a taken player was still offered to another device"));
+  await guestB.getByRole("button", { name: "Play as Green Player" }).click();
+  await host.getByRole("button", { name: "Play on this computer" }).first().click(); // Red plays on the host
+  const start = host.getByRole("button", { name: /Start the game/ });
+  await start.waitFor();
+  if (!(await start.isEnabled())) fail("online: Start stays off with every player assigned");
+  await start.click();
+
+  // Surveys on every device at once.
+  await Promise.all([
+    onlineSurvey(host, /^Done$/, "online host pre"),
+    onlineSurvey(guestA, /^Send my answers$/, "online A pre"),
+    onlineSurvey(guestB, /^Send my answers$/, "online B pre"),
+  ]);
+  for (const p of [host, guestA, guestB]) await p.getByText("Game log").waitFor({ timeout: 20000 });
+  await Promise.all([host, guestA, guestB].map(dismissRules));
+
+  const pages = { host, a: guestA, b: guestB };
+  const owner = { Red: "host", Blue: "a", Green: "b" };
+  await playOnline(pages, owner, 9, "online");
+  await host.waitForTimeout(800);
+  const [h1, a1, b1] = [await boardState(host), await boardState(guestA), await boardState(guestB)];
+  if (h1 !== a1 || h1 !== b1) fail(`online: devices disagree:\n    host ${h1}\n    A    ${a1}\n    B    ${b1}`);
+
+  // On its own turn, a device opens the chaos dialog (shown on every device) and cancels it,
+  // and opens its Upgrades list (only on that device).
+  for (let k = 0; k < 8; k++) {
+    await playOnline(pages, owner, 0, "online settle");
+    if (/^Blue/.test(await host.getByText(/Player's turn$/).first().textContent())) break;
+    await playOnline(pages, owner, 1, "online to Blue");
+  }
+  if (/^Blue/.test(await host.getByText(/Player's turn$/).first().textContent()) && !(await host.locator(".MuiModal-root").count())) {
+    await guestA.getByRole("button", { name: /^Chaos tokens/ }).click();
+    await host.getByRole("heading", { name: /Chaos tokens/ }).waitFor({ timeout: 5000 }).catch(() => fail("online: the chaos dialog opened on a device didn't show on the host"));
+    await guestA.locator(".MuiModal-root").getByRole("button", { name: /^Cancel$/ }).click();
+    await host.locator(".MuiModal-root").waitFor({ state: "detached", timeout: 5000 }).catch(() => fail("online: Cancel on a device didn't close the dialog on the host"));
+    await guestA.getByRole("button", { name: /^Upgrades/ }).click();
+    await guestA.getByRole("heading", { name: /Upgrades/ }).waitFor({ timeout: 5000 }).catch(() => fail("online: Upgrades didn't open on the device"));
+    if (await host.locator(".MuiModal-root").count()) fail("online: a device's Upgrades list opened on the host");
+    await guestA.getByRole("button", { name: /^Close$/ }).click();
+    if (await guestB.getByRole("button", { name: /^Roll/ }).isEnabled()) fail("online: a device can roll on someone else's turn");
+  } else fail("online: never reached Blue's turn with no dialog open");
+
+  // A device refreshes: it gets its player back.
+  await guestA.reload();
+  await guestA.getByText("Game log").waitFor({ timeout: 30000 });
+  await dismissRules(guestA);
+  if ((await boardState(guestA)) !== (await boardState(host))) fail("online: a refreshed device came back out of step");
+  await playOnline(pages, owner, 3, "online after device refresh");
+
+  // The host refreshes between turns: Resume reopens the same room and the devices reconnect.
+  while (await host.locator(".MuiModal-root").count()) await playOnline(pages, owner, 0, "online settle");
+  await host.waitForTimeout(500);
+  const before = await boardState(host);
+  await host.reload();
+  await host.getByRole("button", { name: /^Resume$/ }).click();
+  await host.getByText("Game log").waitFor({ timeout: 20000 });
+  await guestB.getByText(/Reconnecting/).waitFor({ timeout: 10000 }).catch(() => {});
+  await guestB.getByText(/Reconnecting/).waitFor({ state: "detached", timeout: 45000 }).catch(() => fail("online: a device didn't reconnect after the host's refresh"));
+  await host.waitForTimeout(800);
+  if ((await boardState(host)) !== before) fail(`online: the host resumed at "${await boardState(host)}", expected "${before}"`);
+  if ((await boardState(guestB)) !== before) fail("online: a device shows a different game after the host's refresh");
+  await playOnline(pages, owner, 3, "online after host refresh");
+
+  // End of game: post-surveys on every device, names sent from the devices.
+  while (await host.locator(".MuiModal-root").count()) await playOnline(pages, owner, 0, "online settle");
+  if (await guestA.getByRole("button", { name: /^End game$/ }).count()) fail("online: a device can end the game");
+  await host.getByRole("button", { name: /^End game$/ }).click();
+  await host.getByRole("button", { name: /Continue to post-survey/i }).click();
+  await Promise.all([
+    onlineSurvey(host, /^Done$/, "online host post"),
+    onlineSurvey(guestA, /^Send my answers$/, "online A post"),
+    onlineSurvey(guestB, /^Send my answers$/, "online B post"),
+  ]);
+  await host.getByText(/Session complete/).waitFor({ timeout: 20000 });
+  for (const [g, name, who] of [[guestA, "Blue", "Ana Lee"], [guestB, "Green", "Sam Park"]]) {
+    await g.getByText(/Session complete/).waitFor({ timeout: 20000 });
+    await g.getByLabel(new RegExp(`${name} Player: names or student IDs`)).fill(who);
+    await g.getByRole("button", { name: /Send names to the host/ }).click();
+  }
+  await host.waitForTimeout(800);
+  if ((await host.getByLabel(/Blue Player: names or student IDs/).inputValue()) !== "Ana Lee") fail("online: the host didn't get the names sent from a device");
+  await host.getByLabel(/Red Player: names or student IDs/).fill("Host Group");
+  const rows = await downloadCsv(host);
+  checkCsv(rows, 3, "online");
+  const members = rows.filter((r) => r.eventType === "TEAM_INFO").map((r) => r.members);
+  if (members.join("|") !== "Host Group|Ana Lee|Sam Park") fail(`online: CSV members are "${members.join("|")}"`);
+  const answered = new Set(rows.filter((r) => /_Q$/.test(r.eventType)).map((r) => r.playerIndex));
+  if (answered.size < 2) fail(`online: in-game answers weren't recorded for players on devices (${JSON.stringify(rows.reduce((acc, r) => { const k = r.eventType || r.phase; acc[k] = (acc[k] || 0) + 1; return acc; }, {}))})`);
+  await Promise.all([hc.close(), ac.close(), bc.close()]);
+
+  // A code that isn't open.
+  const { context: wc, page: wrong } = await onlinePage();
+  await wrong.goto(`${BASE}?join=ABC-DEF`);
+  await wrong.getByText(/No game with this code is open/).waitFor({ timeout: 30000 }).catch(() => fail("online: a wrong code doesn't say so"));
+  await wc.close();
+}
+
 const SCENARIOS = {
   debt: debtScenario,
   bankrupt: bankruptScenario,
@@ -464,6 +673,7 @@ const SCENARIOS = {
   resume: resumeScenario,
   offline: offlineScenario,
   update: updateScenario,
+  online: onlineScenario,
 };
 const selected = (process.env.SCENARIOS || Object.keys(SCENARIOS).join(",")).split(",");
 for (const name of selected) {
@@ -472,5 +682,6 @@ for (const name of selected) {
 }
 await browser.close();
 server.httpServer.close();
+peerServer?.close();
 console.log(failures.length ? `\n${failures.length} problem(s) found.` : "\nAll smoke scenarios passed.");
 process.exit(failures.length ? 1 : 0);
