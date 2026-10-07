@@ -15,20 +15,22 @@ import {
   DialogActions,
 } from '@mui/material';
 import { DEFAULT_CHANCE_CARDS } from './questionBank';
-import { LABELS, RULES, teamDisplayName, money, signedMoney } from './labels';
+import { LABELS, teamDisplayName, money, signedMoney } from './labels';
 import { matchesTopicAndModule } from './tsvBoardBuilder';
 import { BOARD_SIZE } from './gameData';
 import {
   getSubgroupTiles, getRentMultiplier, computeRent, rankPlayers, nextActivePlayer, activePlayers,
-  ECONOMY, QUIZ_RULES, drawQuestions, pickRandom, canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
-  bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale,
+  ECONOMY, QUIZ_RULES, pickRandom, canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
+  bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, acquireTile, chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale,
 } from './gameRules';
 import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
 import { resolveImage } from './images';
+import { pickQuestion, pickQuestions, recordAnswer } from './questionPicker';
 import QuestionInput from './QuestionInput';
 import Board from './components/Board';
 import Dice from './components/Dice';
 import TeamPanel from './components/TeamPanel';
+import RulesDialog from './components/RulesDialog';
 import { celebrate } from './components/confetti';
 import { TEAM_COLORS, TEAM_SYMBOLS, TEAM_INK, SR_ONLY } from './theme';
 
@@ -131,11 +133,16 @@ export default function GameScreen({
   // A resumed game keeps the freshly built board (its tiles share question arrays)
   // and restores only what changes during play: each tile's owner and level.
   const [board, setBoard, boardRef] = useLatestState(() => (resume?.tiles
-    ? boardData.map((t, i) => ({ ...t, owner: resume.tiles[i]?.[0] ?? null, level: resume.tiles[i]?.[1] ?? 0 }))
+    ? boardData.map((t, i) => {
+      const [owner = null, level = 0, paid] = resume.tiles[i] || [];
+      return { ...t, owner, level, paid: owner == null ? 0 : paid ?? t.price };
+    })
     : boardData));
   const [players, setPlayers, playersRef] = useLatestState(() => resume?.players ?? generatePlayers(playerCount));
   const [turn, setTurn, turnRef] = useLatestState(resume?.turn ?? (startingPlayerIndex || 0));
   const [totalTurns, setTotalTurns, totalTurnsRef] = useLatestState(resume?.totalTurns ?? 0);
+  // Which questions were asked and missed (questionPicker.js): unseen first, missed ones again later.
+  const [asked, setAsked, askedRef] = useLatestState(resume?.asked ?? {});
   const getImgSrc = (imgName) => resolveImage(imgName, imageMap, imageBase);
   // True from the roll until the turn is passed: never autosave a half-finished turn.
   const turnInProgressRef = useRef(false);
@@ -168,7 +175,8 @@ export default function GameScreen({
   // The question just answered, shown again with the answer revealed (UI only).
   const [lastAnswer, setLastAnswer] = useState(null);
   const [exitOpen, setExitOpen] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false);
+  // A new game opens with the quick rules; a resumed one doesn't.
+  const [rulesOpen, setRulesOpen] = useState(() => !resume);
   const [manageOpen, setManageOpen] = useState(false);
   const [moneyFloats, setMoneyFloats] = useState({});
   const [quizState, setQuizState] = useState(NO_QUIZ);
@@ -215,6 +223,7 @@ export default function GameScreen({
 
   // One row per answered question, whatever the format.
   const logAnswer = (eventType, q, result, meta = {}) => {
+    setAsked((h) => recordAnswer(h, q, result.correct, totalTurnsRef.current));
     addCSVEvent({
       eventType,
       turn: totalTurnsRef.current,
@@ -262,6 +271,7 @@ export default function GameScreen({
       tileId: meta.tileId ?? '',
       tileName: meta.tileName ?? '',
       notes: meta.notes ?? '',
+      timestamp: new Date().toISOString(),
     });
   };
 
@@ -357,7 +367,7 @@ export default function GameScreen({
   //  RESCUE QUIZ & CHAOS TOKENS
   // ------------------------------------------------------------------
   const startGrantExam = () => {
-    const pool = drawQuestions(allBoardQuestions(), QUIZ_RULES.rescue.questions);
+    const pool = pickQuestions(allBoardQuestions(), QUIZ_RULES.rescue.questions, askedRef.current, totalTurnsRef.current);
     if (pool.length === 0) { handleGrantResult(true); return; }
     setQuizState({
       ...NO_QUIZ, active: true, mode: 'GRANT', questions: pool.map((q) => prepareQuestion(q)), targetScore: QUIZ_RULES.rescue.pass,
@@ -403,7 +413,7 @@ export default function GameScreen({
     const rules = QUIZ_RULES.milestone;
     setQuizState({
       ...NO_QUIZ, active: true, mode, tile,
-      questions: drawQuestions(source, rules.questions).map((q) => prepareQuestion(q)),
+      questions: pickQuestions(source, rules.questions, askedRef.current, totalTurnsRef.current).map((q) => prepareQuestion(q)),
       targetScore: rules.pass, maxMistakes: rules.maxMistakes,
     });
     setLastAnswer(null);
@@ -455,7 +465,7 @@ export default function GameScreen({
     if (mode === 'MILESTONE_ACQUIRE') {
       if (passed) {
         handleTransaction(playerId, -tile.price, { action: 'MILESTONE_ACQUIRE', tileId: tile.id, tileName: tile.name });
-        setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: playerId } : t)));
+        setBoard((prev) => acquireTile(prev, tile, playerId, tile.price));
         setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, chaosTokens: p.chaosTokens + 1 } : p)));
         addLog(`${activePlayer().name} captured the ${tile.name} milestone!`);
         setModalStage('MILESTONE_SUCCESS');
@@ -523,7 +533,7 @@ export default function GameScreen({
     }
 
     if (tile.questions && tile.questions.length > 0) {
-      const q = prepareQuestion(pickRandom(tile.questions));
+      const q = prepareQuestion(pickQuestion(tile.questions, askedRef.current, totalTurnsRef.current));
       if (tile.owner != null) {
         openCard({
           type: 'RENT_DEFENSE', data: tile, q, rent: computeRent(boardRef.current, tile),
@@ -599,7 +609,7 @@ export default function GameScreen({
     const tile = activeCard.data;
     if (activePlayer().money < tile.price) { alert('Insufficient funds!'); return; }
     handleTransaction(turnRef.current, -tile.price, { action: 'BUY_PROPERTY', tileId: tile.id, tileName: tile.name });
-    setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: turnRef.current } : t)));
+    setBoard((prev) => acquireTile(prev, tile, turnRef.current, tile.price));
     addLog(`${activePlayer().name} bought ${tile.type === 'property' ? tile.sub : tile.name} for ${money(tile.price)}.`);
     passTurn();
   };
@@ -624,8 +634,8 @@ export default function GameScreen({
   // Autosave between turns only: a refresh in the middle of a turn returns to its start.
   useEffect(() => {
     if (!onSnapshot || isMoving || modalOpen || manageOpen || turnInProgressRef.current) return;
-    onSnapshot({ tiles: board.map((t) => [t.owner ?? null, t.level || 0]), players, turn, totalTurns, logs, logRows, dice, endsAt });
-  }, [onSnapshot, board, players, turn, totalTurns, logs, logRows, dice, endsAt, isMoving, modalOpen, manageOpen]);
+    onSnapshot({ tiles: board.map((t) => [t.owner ?? null, t.level || 0, t.paid || 0]), players, turn, totalTurns, logs, logRows, dice, endsAt, asked });
+  }, [onSnapshot, board, players, turn, totalTurns, logs, logRows, dice, endsAt, asked, isMoving, modalOpen, manageOpen]);
 
   // ------------------------------------------------------------------
   //  CHAOS CHALLENGE (spend a token to try to steal a rival's property)
@@ -641,7 +651,7 @@ export default function GameScreen({
     // Duel on the target tile's own questions (fallback: any board question).
     const pool = tile.questions?.length ? tile.questions : allBoardQuestions();
     if (pool.length === 0) { alert('This question file has no questions for a Chaos challenge.'); return; }
-    setActiveCard({ type: 'CHAOS_CHALLENGE', data: tile, q: prepareQuestion(pickRandom(pool)), ownerId: tile.owner });
+    setActiveCard({ type: 'CHAOS_CHALLENGE', data: tile, q: prepareQuestion(pickQuestion(pool, askedRef.current, totalTurnsRef.current)), ownerId: tile.owner });
     setModalStage('CHAOS_QUESTION');
   };
 
@@ -657,10 +667,11 @@ export default function GameScreen({
 
     if (result.correct) {
       const cost = chaosStealCost(tile);
-      if (player.money < cost) { setFeedback({ tone: 'neutral', title: 'Correct, but not enough cash', detail: `Taking this tile costs ${money(cost)} and your team has ${money(player.money)}.`, explanation: q.explanation || '' }); setModalStage('FEEDBACK_INCORRECT'); return; }
+      // The token is spent either way (no refund); the Challenge button is disabled when the team can't pay.
+      if (player.money < cost) { setFeedback({ tone: 'neutral', title: 'Correct, but not enough cash', detail: `Taking this tile costs ${money(cost)} and your team has ${money(player.money)}. The token is used up.`, explanation: q.explanation || '' }); setModalStage('FEEDBACK_INCORRECT'); return; }
       handleTransaction(player.id, -cost, { action: 'CHAOS_STEAL', tileId: tile.id, tileName: tile.name });
       if (tile.owner != null) handleTransaction(tile.owner, cost, { action: 'CHAOS_SELL', tileId: tile.id, tileName: tile.name });
-      setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: player.id, level: 0 } : t)));
+      setBoard((prev) => acquireTile(prev, tile, player.id, cost));
       setFeedback({ tone: 'good', title: 'Chaos success!', detail: `You take ${tile.sub || tile.name} from ${ownerName} for ${money(cost)}.`, explanation: q.explanation || '' });
       addLog(`${player.name} took ${tile.sub || tile.name} from ${ownerName} with a chaos token.`);
     } else {
@@ -1295,23 +1306,27 @@ export default function GameScreen({
               <>
                 <Typography id={TITLE_ID} variant="h5" component="h2" gutterBottom><span aria-hidden>⚡ </span>Chaos tokens</Typography>
                 <Typography sx={{ mb: 2 }}>
-                  Your team has <strong>{tokens} token{tokens === 1 ? '' : 's'}</strong>. Spend one to challenge for a rival's tile: answer its question right to take it for half price. Answer wrong and you pay a small penalty.
+                  Your team has <strong>{tokens} token{tokens === 1 ? '' : 's'}</strong>. Spend one to challenge for a rival's tile: answer its question right to take it for half price. Answer wrong and you pay a small penalty. Either way the token is used up and your turn ends. Complete sets are protected.
                 </Typography>
                 {tokens === 0 && <Alert severity="info" sx={{ mb: 2 }}>Capture a milestone (corner tile) to earn a token.</Alert>}
                 {targets.length === 0 ? (
-                  <Typography color="text.secondary" sx={{ mb: 2 }}>No rival tiles to challenge yet.</Typography>
+                  <Typography color="text.secondary" sx={{ mb: 2 }}>No rival tiles can be challenged right now (complete sets are protected).</Typography>
                 ) : (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 320, overflowY: 'auto', mb: 2 }}>
-                    {targets.map((t) => (
+                    {targets.map((t) => {
+                      const cost = chaosStealCost(t);
+                      const short = currentPlayer.money < cost;
+                      return (
                       <Box key={t.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, border: '1px solid', borderColor: 'divider', borderLeft: `6px solid ${t.color}`, borderRadius: 2 }}>
                         <TeamDot player={players[t.owner]} size={22} />
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 800 }}>{t.sub} {t.level > 0 && <Stars level={t.level} inline />}</Typography>
-                          <Typography variant="body2" color="text.secondary">{t.group} · owned by {ownerName(t.owner)} · take it for {money(chaosStealCost(t))}</Typography>
+                          <Typography variant="body2" color="text.secondary">{t.group} · owned by {ownerName(t.owner)} · take it for {money(cost)}{short ? ` (your team needs ${money(cost)})` : ''}</Typography>
                         </Box>
-                        <Button variant="contained" disabled={tokens <= 0} onClick={() => handleSelectChaosTarget(t)} aria-label={`Challenge for ${t.sub} owned by ${ownerName(t.owner)}`}>Challenge</Button>
+                        <Button variant="contained" disabled={tokens <= 0 || short} onClick={() => handleSelectChaosTarget(t)} aria-label={`Challenge for ${t.sub} owned by ${ownerName(t.owner)}`}>Challenge</Button>
                       </Box>
-                    ))}
+                      );
+                    })}
                   </Box>
                 )}
                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
@@ -1373,26 +1388,11 @@ export default function GameScreen({
         </Box>
       </Modal>
 
-      <Dialog open={rulesOpen} onClose={() => setRulesOpen(false)} aria-labelledby="rules-title" maxWidth="sm" fullWidth>
-        <DialogTitle id="rules-title">{LABELS.howToPlay}</DialogTitle>
-        <DialogContent dividers>
-          <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'flex', flexDirection: 'column', gap: 1.75 }}>
-            {RULES.map((r) => (
-              <Box component="li" key={r.title} sx={{ display: 'flex', gap: 1.5 }}>
-                <Box aria-hidden sx={{ fontSize: 24, lineHeight: 1.2, width: 32, textAlign: 'center', flexShrink: 0 }}>{r.icon}</Box>
-                <Box>
-                  <Typography sx={{ fontWeight: 800 }}>{r.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">{r.text}</Typography>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'space-between', px: 3 }}>
-          <Button href="./guide/students.html" target="_blank" rel="noopener">Full student guide<span aria-hidden>&nbsp;↗</span><Box component="span" sx={SR_ONLY}> (opens in a new tab)</Box></Button>
-          <Button variant="contained" onClick={() => setRulesOpen(false)}>Got it</Button>
-        </DialogActions>
-      </Dialog>
+      <RulesDialog
+        open={rulesOpen}
+        onClose={() => setRulesOpen(false)}
+        intro={totalTurns === 0 ? 'Quick rules before your first roll. Open them again any time with How to play at the top.' : ''}
+      />
 
       <Dialog open={exitOpen} onClose={() => setExitOpen(false)} aria-labelledby="exit-title" aria-describedby="exit-text">
         <DialogTitle id="exit-title">Leave this game?</DialogTitle>

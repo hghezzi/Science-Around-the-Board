@@ -50,14 +50,35 @@ export function computeRent(board, tile) {
 //  VICTORY, ELIMINATION & TURN ORDER
 // ------------------------------------------------------------------
 
-/** Value of a player's tiles: purchase price plus upgrades already bought. */
-export function assetValue(board, playerId) {
-  return board
-    .filter((t) => t.owner === playerId)
-    .reduce((sum, t) => sum + (t.price || 0) + (t.level || 0) * (t.houseCost || 0), 0);
+/** What the current owner paid for a tile: its price, or less after a Chaos steal. */
+export const tilePaid = (tile) => (tile?.owner == null ? 0 : tile.paid ?? tile.price ?? 0);
+
+/** Total cost of raising a subgroup from level 0 to `level` (paid once per subgroup). */
+export function upgradeSpend(tile, level) {
+  let sum = 0;
+  for (let l = 1; l <= level; l++) sum += upgradeCost(tile, l);
+  return sum;
 }
 
-/** Net worth = cash + asset value (eliminated players are worth 0). */
+/**
+ * Money a player has spent on the tiles they own: what they paid for each deed,
+ * plus each upgrade they bought (once per subgroup, as it was charged).
+ */
+export function assetValue(board, playerId) {
+  const owned = board.filter((t) => t.owner === playerId);
+  const upgraded = new Set();
+  return owned.reduce((sum, t) => {
+    let v = sum + tilePaid(t);
+    const key = `${t.group}|${t.sub}`;
+    if ((t.level || 0) > 0 && !upgraded.has(key)) {
+      upgraded.add(key);
+      v += upgradeSpend(t, t.level);
+    }
+    return v;
+  }, 0);
+}
+
+/** Net worth = cash + money spent on tiles still owned (eliminated players are worth 0). */
 export function netWorth(player, board) {
   if (!player || player.eliminated) return 0;
   return player.money + assetValue(board, player.id);
@@ -123,12 +144,13 @@ export function bestPreSurveyPlayer(preRows, playerCount, rng = Math.random) {
 // ------------------------------------------------------------------
 
 export const ECONOMY = {
-  startMoney: 2500,
+  startMoney: 1500,
+  rentScale: 2.5, // every base rent is 2.5× its original value (property 50% of price, core $300, milestone $625)
   lapBonus: 200, // passing (or landing on) START
   wrongAnswerPenalty: 20, // wrong answer on an unowned tile
   chaosTokenPrice: 500, // only once all four milestones are owned
   rescueBonus: 500, // paid on top of the cleared debt after a passed Rescue Quiz
-  saleShare: 0.5, // liquidation: selling a deed or an upgrade returns half its cost
+  saleShare: 0.5, // liquidation: selling a deed or an upgrade returns half of what was paid for it
   chaosStealShare: 0.5, // a successful Chaos Challenge buys the tile at half its price
 };
 
@@ -211,11 +233,19 @@ export function applyUpgrade(board, tile, playerId, level) {
 //  BANKRUPTCY, LIQUIDATION & ELIMINATION
 // ------------------------------------------------------------------
 
-/** Cash a player could raise by selling every deed and upgrade they own. */
+/** Cash a player could raise by selling every deed and upgrade they own (half of what they paid). */
 export function liquidationValue(board, playerId) {
-  return board
-    .filter((t) => t.owner === playerId)
-    .reduce((sum, t) => sum + Math.floor(((t.price || 0) + (t.level || 0) * (t.houseCost || 0)) * ECONOMY.saleShare), 0);
+  const owned = board.filter((t) => t.owner === playerId);
+  const upgraded = new Set();
+  return owned.reduce((sum, t) => {
+    let v = sum + Math.floor(tilePaid(t) * ECONOMY.saleShare);
+    const key = `${t.group}|${t.sub}`;
+    if ((t.level || 0) > 0 && !upgraded.has(key)) {
+      upgraded.add(key);
+      for (let l = 1; l <= t.level; l++) v += Math.floor(upgradeCost(t, l) * ECONOMY.saleShare);
+    }
+    return v;
+  }, 0);
 }
 
 /**
@@ -233,31 +263,37 @@ export function bankruptcyAction(player, board) {
 }
 
 /**
- * Remove one upgrade level from every upgraded tile the player owns in
- * `tile`'s subgroup (levels stay even). A tile of the subgroup that a rival
- * has since stolen is left alone. Returns the new board and the refund.
+ * Sell the top upgrade level of `tile`'s subgroup: every tile the player owns
+ * there drops one level (levels stay even) and the player gets back half of
+ * what that level cost (it was charged once for the whole subgroup).
  */
 export function downgradeSubgroup(board, tile, playerId) {
   const ids = new Set(
     getSubgroupTiles(board, tile).filter((t) => t.owner === playerId && (t.level || 0) > 0).map((t) => t.id)
   );
+  const level = tile.level || 0;
   return {
     board: board.map((t) => (ids.has(t.id) ? { ...t, level: t.level - 1 } : t)),
-    refund: Math.floor((tile.houseCost || tile.price || 0) * ECONOMY.saleShare * ids.size),
+    refund: ids.size && level > 0 ? Math.floor(upgradeCost(tile, level) * ECONOMY.saleShare) : 0,
   };
 }
 
-/** Sell one deed back to the bank for half its price. */
+/** Sell one deed back to the bank for half of what its owner paid. */
 export function sellDeed(board, tile) {
   return {
-    board: board.map((t) => (t.id === tile.id ? { ...t, owner: null, level: 0 } : t)),
-    value: Math.floor((tile.price || 0) * ECONOMY.saleShare),
+    board: board.map((t) => (t.id === tile.id ? { ...t, owner: null, level: 0, paid: 0 } : t)),
+    value: Math.floor(tilePaid(tile) * ECONOMY.saleShare),
   };
 }
 
 /** Every tile the player owns returns to the bank, without upgrades. */
 export function releaseTiles(board, playerId) {
-  return board.map((t) => (t.owner === playerId ? { ...t, owner: null, level: 0 } : t));
+  return board.map((t) => (t.owner === playerId ? { ...t, owner: null, level: 0, paid: 0 } : t));
+}
+
+/** Board after `playerId` acquires `tile` for `paid` (a purchase, a captured milestone or a Chaos steal). */
+export function acquireTile(board, tile, playerId, paid) {
+  return board.map((t) => (t.id === tile.id ? { ...t, owner: playerId, level: 0, paid } : t));
 }
 
 // ------------------------------------------------------------------
@@ -270,9 +306,13 @@ export const chaosStealCost = (tile) => Math.floor((tile?.price || 0) * ECONOMY.
 /** Fine for a failed Chaos Challenge: half the tile's base rent ($20 if that is zero). */
 export const chaosFailPenalty = (tile) => Math.floor((tile?.baseRent || 20) * 0.5) || 20;
 
-/** Rival properties the player can target with a Chaos Challenge. */
+/**
+ * Rival properties the player can target with a Chaos Challenge. A complete
+ * set (the owner holds all of its tiles, upgraded or not) is protected.
+ */
 export function chaosTargets(board, playerId) {
-  return board.filter((t) => t.type === "property" && t.owner != null && t.owner !== playerId);
+  return board.filter((t) => t.type === "property" && t.owner != null && t.owner !== playerId
+    && (t.level || 0) === 0 && !ownsFullSubgroup(board, t, t.owner));
 }
 
 /** Chaos Tokens are for sale only once every milestone has an owner. */

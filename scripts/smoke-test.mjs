@@ -47,7 +47,7 @@ async function setupGame(page, teams) {
   // Topic BEFORE team count: this order used to leave extra players without survey questions.
   await page.getByRole("button", { name: /^16S/ }).click();
   await page.getByRole("button", { name: /Confirm selection/i }).click();
-  await page.getByRole("button", { name: teams === 1 ? /^Solo$/ : new RegExp(`^${teams} teams$`) }).click();
+  await page.getByRole("button", { name: teams === 1 ? /^Solo$/ : new RegExp(`^${teams} players$`) }).click();
   await page.getByRole("button", { name: /Start game/ }).click();
 }
 
@@ -154,6 +154,14 @@ function checkCsv(rows, teams, label) {
   if (info !== teams) fail(`${label}: CSV has ${info} TEAM_INFO rows (expected ${teams})`);
 }
 
+// The board is showing. A new game opens with the quick rules: close them.
+async function gameStarted(page) {
+  await page.getByText("Game log").waitFor();
+  const gotIt = page.getByRole("button", { name: /^Got it$/ });
+  await gotIt.waitFor({ timeout: 2000 }).then(() => gotIt.click()).catch(() => {});
+  await page.getByRole("dialog", { name: /How to play/ }).waitFor({ state: "detached", timeout: 5000 }).catch(() => {});
+}
+
 async function teamScenario(teams, colorScheme = "light") {
   const label = `${colorScheme} ${teams} team(s)`;
   console.log(`▶ ${label}`);
@@ -161,7 +169,7 @@ async function teamScenario(teams, colorScheme = "light") {
   await openDemo(page);
   await setupGame(page, teams);
   await doSurvey(page, teams, `${label} pre`);
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   await playTurns(page, label);
   await finishGame(page, teams, label);
   checkCsv(await downloadCsv(page), teams, label);
@@ -188,7 +196,7 @@ async function resultsScenario() {
   if (!(await page.getByText(/Results will be sent to your instructor/).count())) fail("results: start page doesn't mention sending results");
   await setupGame(page, 1);
   await doSurvey(page, 1, "results pre");
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   await finishGame(page, 1, "results");
   const send = page.getByRole("button", { name: /Send results to instructor/ });
   if (await send.isEnabled()) fail("results: Send should be disabled until names are typed");
@@ -268,7 +276,7 @@ async function resumeScenario() {
   await openDemo(page, `${BASE}?deck=demo`);
   await setupGame(page, 2);
   await doSurvey(page, 2, "resume pre");
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   await playTurns(page, "resume", 3);
   const turn = page.getByText(/^Turn \d+$/);
   const before = await turn.textContent();
@@ -276,7 +284,7 @@ async function resumeScenario() {
   const worthBefore = await worth.allTextContents();
   await page.reload();
   await page.getByRole("button", { name: /^Resume$/ }).click();
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   const after = await turn.textContent();
   if (before !== after) fail(`resume: came back at "${after}", expected "${before}"`);
   const worthAfter = await worth.allTextContents();
@@ -319,7 +327,7 @@ async function offlineScenario() {
   await page.getByText(/Loaded \d+ questions/).waitFor({ timeout: 10000 });
   await setupGame(page, 1);
   await doSurvey(page, 1, "offline pre");
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   // The encryptor works offline too.
   await page.goto(`${BASE}encryptor.html`);
   if (!(await page.getByRole("heading", { name: "Question Encryptor" }).count())) fail("offline: the encryptor didn't open offline");
@@ -371,7 +379,7 @@ async function debtScenario() {
   const snapshot = {
     version: 1, savedAt: Date.now(), phase: "GAME", sessionId: "debt-test", allTsvRows: rows, imagesBase: "", gameMode: "16S", selectedModule: "QIIME2",
     playerCount: 2, sessionMinutes: 0, startPlayer: 0, playerQuestionSets: [[], []], confQ: [], preRows: [], postRows: [], gameRows: [],
-    game: { tiles, players: [team(0, "Red Team", "#e53935", 2, 10), team(1, "Blue Team", "#1e88e5", 0, 2500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
+    game: { tiles, players: [team(0, "Red Team", "#e53935", 2, 200), team(1, "Blue Team", "#1e88e5", 0, 1500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
   };
   await page.addInitScript((s) => {
     if (!sessionStorage.getItem("seeded")) { localStorage.setItem("sab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
@@ -383,12 +391,12 @@ async function debtScenario() {
   await page.getByRole("button", { name: /^Resume$/ }).click();
   await page.getByRole("button", { name: /^Roll/ }).click();
   const dialog = page.locator(".MuiModal-root").last();
-  await dialog.getByText(/Rent due: \$120/i).waitFor({ timeout: 10000 });
+  await dialog.getByText(/Rent due: \$300/i).waitFor({ timeout: 10000 });
   if (!(await answerQuestion(dialog))) fail("debt: couldn't answer the rent question");
   await dialog.getByRole("button", { name: /^Continue$/i }).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no feedback dialog (${(await page.locator("body").innerText()).slice(0, 300)})`));
   if (/Out of money/i.test(await dialog.innerText())) fail("debt: liquidation replaced the rent feedback");
   await dialog.getByRole("button", { name: /^Continue$/i }).click();
-  await page.getByText(/Out of money/).waitFor({ timeout: 5000 }).catch(() => fail("debt: no liquidation after the feedback"));
+  await page.getByText(/Out of money/).waitFor({ timeout: 5000 }).catch(async () => fail(`debt: no liquidation after the feedback (${(await page.locator("body").innerText()).slice(0, 600)})`));
   await page.getByRole("button", { name: /^Sell deed/i }).click();
   await page.getByText(/Blue Team's turn/).waitFor({ timeout: 5000 }).catch(() => fail("debt: the turn didn't pass after clearing the debt"));
   await context.close();
@@ -409,7 +417,7 @@ async function bankruptScenario() {
   await openDemo(page);
   await setupGame(page, 2);
   await doSurvey(page, 2, "bankrupt pre");
-  await page.getByText("Game log").waitFor();
+  await gameStarted(page);
   for (let step = 0; step < 300; step++) {
     const modal = page.locator(".MuiModal-root").last();
     if (!(await page.locator(".MuiModal-root").count())) {

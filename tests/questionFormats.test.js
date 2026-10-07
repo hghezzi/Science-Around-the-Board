@@ -59,6 +59,11 @@ describe("prepareQuestion", () => {
       expect([...p.options].sort()).toEqual(["A", "B", "C", "D"]);
     }
   });
+  it("records which file option sits at each on-screen position", () => {
+    const q = normalizeQuestion(row());
+    const p = prepareQuestion(q);
+    p.options.forEach((text, i) => expect(q.options[p.optionOrder[i]]).toBe(text));
+  });
   it("remaps multi-select answers", () => {
     const q = normalizeQuestion(row({ format: "multi", correctIndex: "1,3" }));
     for (let k = 0; k < 20; k++) {
@@ -131,6 +136,14 @@ describe("checkAnswer", () => {
     const short = normalizeQuestion(row({ format: "text", answer: ".qzv" }));
     expect(checkAnswer(short, "QZV").correct).toBe(true);
     expect(checkAnswer(short, "qza").correct).toBe(false);
+  });
+  it("text never forgives a typo that makes a different short term or changes the first letter", () => {
+    expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "alkane" })), "alkene").correct).toBe(false);
+    expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "nitrate" })), "nitrite").correct).toBe(false);
+    expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "ethanol" })), "methanol").correct).toBe(false);
+    expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "metabolism" })), "netabolism").correct).toBe(false);
+    expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "metabolism" })), "metabolsim").correct).toBe(false); // a swap is two edits
+    expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "metabolism" })), "metabolsm").correct).toBe(true);
   });
   it("hasResponse", () => {
     const multi = normalizeQuestion(row({ format: "multi", correctIndex: "1" }));

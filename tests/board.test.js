@@ -64,10 +64,10 @@ describe("board layout", () => {
   });
 
   it("sets base rent from price", () => {
-    expect(board[1].baseRent).toBe(20);
-    expect(board[5].baseRent).toBe(32);
-    expect(board[4].baseRent).toBe(120);
-    expect(board[9].baseRent).toBe(250);
+    expect(board[1].baseRent).toBe(50);
+    expect(board[5].baseRent).toBe(80);
+    expect(board[4].baseRent).toBe(300);
+    expect(board[9].baseRent).toBe(625);
   });
 });
 

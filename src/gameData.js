@@ -10,6 +10,7 @@
 
 import { buildBoardQuestionSet } from "./tsvBoardBuilder";
 import { LABELS } from "./labels";
+import { ECONOMY } from "./gameRules";
 
 /**
  * Build a full board for a given topic + module using TSV rows.
@@ -251,9 +252,10 @@ function makeTile(def, id) {
   return tile;
 }
 
+// Base rents are scaled by ECONOMY.rentScale (2.5×): property 50% of its price, core $300, milestone $625.
 function getBaseRent(def) {
-  if (def.type === "property") return Math.floor((def.price || 0) * 0.2);
-  if (def.type === "sequencing_core") return 120;
-  if (def.type === "milestone") return 250;
+  if (def.type === "property") return Math.floor((def.price || 0) * 0.2 * ECONOMY.rentScale);
+  if (def.type === "sequencing_core") return Math.floor(120 * ECONOMY.rentScale);
+  if (def.type === "milestone") return Math.floor(250 * ECONOMY.rentScale);
   return 0;
 }

@@ -37,8 +37,8 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `npm run privacy`: builds, then `scripts/privacy-check.mjs` checks with Playwright that nothing leaves the site before analytics opt-in or after "No thanks", that a change of mind deletes the GA cookies, that `javascript:`/`data:` share links are refused, that `404.html` redirects, and that the CSP blocks nothing. Smoke and privacy accept `PORT=`.
 - `npm run a11y`: axe-core checks on the main screens in light and dark mode (including the password dialog, resume notice and end screen). It needs `npm run preview` running on port 4173.
 - `python3 scripts/make-icons.py`: regenerates the install icons in `public/icons/` (Pillow).
-- `npm run deploy`: builds and pushes `dist/` to the `gh-pages` branch. This is a manual deploy (Vite `base` is `/Science-Around-the-Board/`), so only run it when asked.
-- CI (`.github/workflows/ci.yml`) runs lint and tests, validates both example TSVs with the JS and Python validators, and builds.
+- `npm run deploy`: builds and pushes `dist/` to the `gh-pages` branch (Vite `base` is `/Science-Around-the-Board/`). Normally not needed: `.github/workflows/deploy.yml` deploys automatically after CI passes on `main` (and can be re-run by hand). Run it manually only when asked.
+- CI (`.github/workflows/ci.yml`) runs lint and tests, validates both example TSVs with the JS and Python validators, builds, then plays the app end to end (`smoke`, `privacy`). A merge to `main` therefore goes live once CI is green.
 
 ## Code map
 - `src/App.jsx`:
@@ -49,13 +49,14 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `SurveyView` serves both pre and post surveys. The best pre-survey scorer starts the game (`bestPreSurveyPlayer`).
   - `SummaryView`: score table, names or IDs per team (required when `config.askNames`), then Send (results sheet), Email (a `mailto:` link that also downloads the file) and Download. The CSV starts with `TEAM_INFO` rows.
 - `src/GameScreen.jsx`: a single component (~1300 lines) holding all turn logic and UI, with modal flows keyed by `modalStage` / `activeCard.type`.
-  - Start money $2500; passing START +$200 (the "lap bonus").
+  - Start money $1500 (`ECONOMY` in `gameRules.js`); passing START +$200 (the "lap bonus"). A new game opens `RulesDialog` (quick rules from `labels.js` `RULES`).
+  - Question choice goes through `questionPicker.js` (unseen first, a missed question again after `REASK_AFTER_TURNS`); the shared history (`asked`) is saved with the game.
   - `checkLanding` reads `playersRef` and must not run side effects inside a state updater (StrictMode runs updaters twice in dev).
-  - Autosave: `onSnapshot` fires only between turns (`turnInProgressRef` is set by the roll and cleared by `passTurn`). `resume` restores players, turn, logs and tile `owner`/`level` onto a freshly built board; tiles share question arrays, so the board itself is never serialized.
+  - Autosave: `onSnapshot` fires only between turns (`turnInProgressRef` is set by the roll and cleared by `passTurn`). `resume` restores players, turn, logs, `asked` and tile `[owner, level, paid]` onto a freshly built board; tiles share question arrays, so the board itself is never serialized.
   - Property question: right gives the option to buy; wrong is −$20.
   - Rent defense: right pays 50%.
   - Milestone exam: 6 questions, 5 to pass, failing on the 2nd mistake; a pass earns a chaos token.
-  - Chaos steal at 50% of price, using the target tile's own questions.
+  - Chaos steal at 50% of price, using the target tile's own questions. Complete sets (owner holds the whole subgroup) can't be targeted; the token is spent either way and the turn ends.
   - Liquidation, then **one** Rescue Quiz (2 of 3 to pass; CSV action `EMERGENCY_GRANT`). Failing it, or a second bankruptcy, eliminates the team and returns its tiles to the bank.
   - **The game ends** with last team standing (`WIN`), or with the `STANDINGS` modal ranking by net worth. Standings open from END GAME, from the optional `sessionMinutes` timer, or after a win. `handleEndGame` appends `GAME_RESULT` rows.
   - `logAnswer` writes one CSV row per answered question.
@@ -83,11 +84,12 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/gameData.js`:
   - Builds a fixed **36-tile** loop. Tiles 0/9/18/27 are milestones, and tile 0 (START) is Side4's milestone.
   - Each side is 3×sub1 ($100), core ($200), 3×sub2 ($160), Wildcard (internal type `chance`).
-  - Base rent is 20% of price; a core's is 120 and a milestone's is 250.
+  - Base rent is 20% of price × `ECONOMY.rentScale` (2.5), so 50% of price; a core's is 300 and a milestone's is 625.
 - `src/gameRules.js` (pure):
   - Rent multipliers: 0.5× without the full set, otherwise 1/3/6/10/20× by level.
   - Victory helpers: `assetValue`, `netWorth`, `rankPlayers`, `nextActivePlayer`, `bestPreSurveyPlayer`.
-- `src/images.js` (pure): `resolveImage(name, uploaded, base)`. Order: uploaded file, then http/data URL, then the `?images=` folder (`base`), then `./questionImages/<name>` (hosted in `public/questionImages`).
+  - Net worth = cash + money spent: each tile's `paid` (price, or the chaos price) plus each subgroup's upgrades once (`upgradeSpend`). Every liquidation sale returns half of what was paid.
+- `src/images.js` (pure): `resolveImage(name, uploaded, base)`. Order: uploaded file, then http/data URL, then the `?images=` folder (`base`), then `./questionImages/<name>` (hosted in `public/questionImages`: only figures we can publish, drawn by `scripts/make-demo-images.py` or the skill).
 - `src/surveys.js` (pure): `buildSurveySets` (10 per player) and `buildConfidenceQuestions`, filtered by topic/module.
 - `src/config.js` (pure): `readConfig(rows)` reads `type=config` rows (`results_url`, `instructor_email`, `course`, `ask_names`).
 - `src/results.js`: `toCsv` (formula-safe), `resultsFilename`, `summarizeTeams`, `teamInfoRows`, `buildPayload`, `sendResults` (text/plain POST, no CORS preflight), `buildMailto`, `downloadText`.
@@ -106,7 +108,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `encryptor.html` + `src/encryptor.js`: the encryptor page (a second Vite page, offline-capable), using `lockFile.js`.
 - `public/404.html`: GitHub Pages fallback; redirects unknown paths to the game, keeping `?deck=`. `public/og-image.png`: link preview, made by `scripts/make-og-image.py`.
 - `public/icons/`: install icons, generated by `scripts/make-icons.py`.
-- `public/SAB_questions_Jan22_Filtered.tsv`: demo file (`16S`/`QIIME2`, 183 rows, including multi, numeric, order and text rows and 7 questions using the hosted images).
+- `public/SAB_questions_Jan22_Filtered.tsv`: demo file (`16S`/`QIIME2`, 183 rows, including multi, numeric, order and text rows and 7 questions using the hosted `sab_*.png` figures from `scripts/make-demo-images.py`).
 - `public/examples/intro_statistics.tsv`: a non-biology example, generated with the skill.
 - `.claude/skills/sab-question-writer/`: a Claude skill that interviews instructors and writes validated question files.
   - `scripts/build_tsv.py` converts JSON to TSV.
@@ -135,7 +137,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 9. Multi-device live play (each team on its own device) would need a server and accounts; not planned.
 
 ## Conventions
-- Develop on the session's assigned branch. Don't push to `main` or deploy unless asked.
+- Develop on the session's assigned branch. Don't push to `main` or deploy unless asked; merging to `main` deploys automatically.
 - Keep the pure logic (parser, builder, rules, validator) free of React so it stays testable. Add tests in `tests/` for rule changes.
 - Teams use the live site for classes, so flag any change that alters gameplay, scoring or the CSV format.
 - **Keep the guides current.** Every user-facing change updates `guide/instructor-guide.md` (and `guide/student-guide.md` when students see it) and adds a "What's new" entry to the Instructor Guide, then runs `npm run guide` and commits the regenerated outputs. Check button labels and numbers against the code.

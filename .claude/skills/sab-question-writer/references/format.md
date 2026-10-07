@@ -54,7 +54,7 @@ Every format is marked simply correct or incorrect.
 | `multi` | option1–4, `correctIndex` like `1,3` | checkboxes plus Submit | the selection matches **exactly** |
 | `numeric` | `answer` (e.g. `1500`), optional `tolerance` | number box | within tolerance (commas allowed: `1,500`) |
 | `order` | option1–4 **in the correct order** | shuffled list with ↑/↓ buttons | the order matches exactly |
-| `text` | `answer` e.g. `beta|beta diversity|β` | text box | it matches an accepted answer, ignoring case, punctuation and extra spaces. One typo is forgiven on answers of 5 or more characters |
+| `text` | `answer` e.g. `beta|beta diversity|β` | text box | it matches an accepted answer, ignoring case, punctuation and extra spaces. One typo is forgiven on answers of 8 or more characters, but not in the first letter or in a number, so short terms such as `alkane` must be exact |
 
 Tips:
 - For `multi`, say "(Select all that apply)" in the prompt, and use 2–3 correct answers out of 4.

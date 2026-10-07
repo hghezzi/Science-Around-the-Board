@@ -102,7 +102,7 @@ npm run validate-tsv -- my_questions.tsv   # check a question file
 - `npm run privacy`: checks that nothing loads before analytics opt-in, that unsafe share links are refused and that the Content-Security-Policy blocks nothing.
 - `npm run a11y`: accessibility checks (axe-core) on the main screens in light and dark mode. Run it against `npm run preview`.
 - `npm run guide`: rebuilds both guides from [`guide/`](guide/): fresh screenshots, web pages and PDFs. It needs Playwright's Chromium.
-- `npm run deploy`: publishes `dist/` to GitHub Pages.
+- `npm run deploy`: publishes `dist/` to GitHub Pages by hand. Usually not needed: every merge into `main` is deployed automatically once CI (including the end-to-end tests) passes (`.github/workflows/deploy.yml`).
 
 CI runs lint, tests, both question-file validators and the build on every pull request. [CLAUDE.md](CLAUDE.md) maps the architecture and lists the project conventions.
 

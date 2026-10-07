@@ -48,6 +48,10 @@ for (const scheme of ["light", "dark"]) {
   await page.click('button:has-text("Continue to Questions")');
   await audit(page, `${scheme} survey`);
   await page.click('button:has-text("Start Game")');
+  await page.getByRole("button", { name: "Got it" }).waitFor();
+  await page.waitForTimeout(400);
+  await audit(page, `${scheme} rules`);
+  await page.click('button:has-text("Got it")');
   await page.waitForTimeout(400);
   await audit(page, `${scheme} board`);
   // A refresh mid-game offers to resume the autosaved game.

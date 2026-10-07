@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   ECONOMY, QUIZ_RULES, MAX_LEVEL, shuffle, pickRandom, drawQuestions,
   canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
-  liquidationValue, bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles,
+  liquidationValue, bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, acquireTile, assetValue, tilePaid,
   chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale, computeRent, netWorth,
 } from "../src/gameRules.js";
 import { buildBoardFromTsv } from "../src/gameData.js";
@@ -10,14 +10,14 @@ import { parseTsv } from "../src/tsvParser.js";
 import { DEMO_TSV } from "./helpers.js";
 
 const prop = (id, sub, owner = null, level = 0, price = 100) => ({
-  id, type: "property", group: "G", sub, owner, level, price, houseCost: price, castleCost: price * 2, baseRent: price * 0.2,
+  id, type: "property", group: "G", sub, owner, level, price, houseCost: price, castleCost: price * 2, baseRent: price * 0.5,
 });
 // Deterministic "random" sequence.
 const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
 
 describe("economy constants (documented in the Instructor Guide)", () => {
   it("match the published rules", () => {
-    expect(ECONOMY).toMatchObject({ startMoney: 2500, lapBonus: 200, wrongAnswerPenalty: 20, chaosTokenPrice: 500, rescueBonus: 500 });
+    expect(ECONOMY).toMatchObject({ startMoney: 1500, rentScale: 2.5, lapBonus: 200, wrongAnswerPenalty: 20, chaosTokenPrice: 500, rescueBonus: 500 });
     expect(QUIZ_RULES.milestone).toEqual({ questions: 6, pass: 5, maxMistakes: 2 });
     expect(QUIZ_RULES.rescue).toEqual({ questions: 3, pass: 2 });
     expect(MAX_LEVEL).toBe(4);
@@ -90,10 +90,35 @@ describe("upgrades", () => {
 describe("bankruptcy", () => {
   const player = (money, extra = {}) => ({ id: 1, money, eliminated: false, rescueUsed: false, ...extra });
 
-  it("values assets at half their cost, upgrades included", () => {
-    const board = [prop(0, "a", 1, 2), prop(1, "a", 1, 2), { id: 2, type: "milestone", owner: 1, price: 500, level: 0, houseCost: 0 }];
-    expect(liquidationValue(board, 1)).toBe(150 + 150 + 250);
+  it("values assets at half of what was paid, each upgrade counted once per subgroup", () => {
+    const board = [prop(0, "a", 1, 2), prop(1, "a", 1, 2), prop(2, "a", 1, 2), { id: 3, type: "milestone", owner: 1, price: 500, level: 0, houseCost: 0 }];
+    // Deeds 3 × $50, two upgrade levels ($100 each, paid once) × 50%, milestone $250.
+    expect(liquidationValue(board, 1)).toBe(150 + 100 + 250);
     expect(liquidationValue(board, 2)).toBe(0);
+  });
+
+  it("counts only money spent in net worth: deeds as paid, each upgrade once", () => {
+    const board = [prop(0, "a", 1, 4), prop(1, "a", 1, 4), prop(2, "a", 1, 4)];
+    // 3 deeds × $100 + levels 1–3 at $100 + the top level at $200.
+    expect(assetValue(board, 1)).toBe(300 + 300 + 200);
+    expect(liquidationValue(board, 1)).toBe(assetValue(board, 1) / 2);
+    const stolen = acquireTile([prop(0, "a", 2)], prop(0, "a", 2), 1, 50);
+    expect(tilePaid(stolen[0])).toBe(50);
+    expect(assetValue(stolen, 1)).toBe(50);
+    expect(netWorth({ id: 1, money: 1000 }, stolen)).toBe(1050);
+  });
+
+  it("selling everything returns exactly half of net worth's tile value", () => {
+    let board = [prop(0, "a", 1, 3), prop(1, "a", 1, 3), prop(2, "a", 1, 3)];
+    const value = assetValue(board, 1);
+    let cash = 0;
+    while (board.some((t) => t.owner === 1)) {
+      const t = board.find((x) => x.owner === 1);
+      const r = t.level > 0 ? downgradeSubgroup(board, t, 1) : sellDeed(board, t);
+      cash += r.refund ?? r.value;
+      board = r.board;
+    }
+    expect(cash).toBe(value / 2);
   });
 
   it("liquidates when assets cover the debt, else offers one rescue, then eliminates", () => {
@@ -107,26 +132,22 @@ describe("bankruptcy", () => {
     expect(bankruptcyAction(player(-1, { eliminated: true }), board)).toBeNull();
   });
 
-  it("downgrades the whole subgroup by one level and refunds half the upgrade cost per tile", () => {
+  it("downgrades the whole subgroup by one level and refunds half that level's cost (charged once)", () => {
     const board = [prop(0, "a", 1, 2), prop(1, "a", 1, 2), prop(2, "a", 1, 2), prop(3, "b", 1, 1)];
     const r = downgradeSubgroup(board, board[0], 1);
-    expect(r.refund).toBe(150);
+    expect(r.refund).toBe(50);
     expect(r.board.map((t) => t.level)).toEqual([1, 1, 1, 1]);
-  });
-
-  it("does not touch (or refund) a tile of the subgroup that a rival stole", () => {
-    // Team 1 upgraded "a" to level 2, then team 2 stole tile 2 with a Chaos Challenge (level reset to 0).
-    const board = [prop(0, "a", 1, 2), prop(1, "a", 1, 2), prop(2, "a", 2, 0)];
-    const r = downgradeSubgroup(board, board[0], 1);
-    expect(r.refund).toBe(100);
-    expect(r.board.map((t) => t.level)).toEqual([1, 1, 0]);
+    const top = [prop(0, "a", 1, 4), prop(1, "a", 1, 4), prop(2, "a", 1, 4)];
+    expect(downgradeSubgroup(top, top[0], 1).refund).toBe(100); // the top level cost $200
   });
 
   it("sells a deed for half its price and returns it to the bank", () => {
     const board = [prop(0, "a", 1, 0, 160)];
     const r = sellDeed(board, board[0]);
     expect(r.value).toBe(80);
-    expect(r.board[0]).toMatchObject({ owner: null, level: 0 });
+    expect(r.board[0]).toMatchObject({ owner: null, level: 0, paid: 0 });
+    const cheap = [{ ...prop(0, "a", 1, 0, 160), paid: 80 }]; // taken with a chaos token
+    expect(sellDeed(cheap, cheap[0]).value).toBe(40);
   });
 
   it("returns an eliminated team's tiles to the bank without upgrades", () => {
@@ -138,7 +159,7 @@ describe("bankruptcy", () => {
 describe("chaos challenge", () => {
   it("steals at half price and fines half the base rent", () => {
     expect(chaosStealCost(prop(0, "a", 1, 0, 160))).toBe(80);
-    expect(chaosFailPenalty(prop(0, "a", 1, 0, 160))).toBe(16);
+    expect(chaosFailPenalty(prop(0, "a", 1, 0, 160))).toBe(40);
     expect(chaosFailPenalty({ baseRent: 0 })).toBe(10);
     expect(chaosFailPenalty({ baseRent: 1 })).toBe(20);
   });
@@ -146,6 +167,13 @@ describe("chaos challenge", () => {
   it("targets only rivals' properties", () => {
     const board = [prop(0, "a", 1), prop(1, "a", 2), prop(2, "a"), { id: 3, type: "milestone", owner: 2 }];
     expect(chaosTargets(board, 1).map((t) => t.id)).toEqual([1]);
+  });
+
+  it("protects complete sets, upgraded or not", () => {
+    const full = [prop(0, "a", 2), prop(1, "a", 2), prop(2, "a", 2), prop(3, "b", 2), prop(4, "b", 3)];
+    expect(chaosTargets(full, 1).map((t) => t.id)).toEqual([3, 4]);
+    const upgraded = full.map((t) => (t.sub === "a" ? { ...t, level: 1 } : t));
+    expect(chaosTargets(upgraded, 1).map((t) => t.id)).toEqual([3, 4]);
   });
 
   it("sells tokens only once all milestones are owned", () => {
@@ -160,10 +188,10 @@ describe("a full game's economy on the demo board", () => {
 
   it("charges rent by tile type", () => {
     const owned = board.map((t) => ({ ...t, owner: 0 }));
-    expect(computeRent(owned, owned[1])).toBe(20); // sub1 property, full set, level 0
-    expect(computeRent(owned, owned[4])).toBe(120); // core
+    expect(computeRent(owned, owned[1])).toBe(50); // sub1 property, full set, level 0
+    expect(computeRent(owned, owned[4])).toBe(300); // core
     const partial = board.map((t, i) => (i === 5 ? { ...t, owner: 0 } : t));
-    expect(computeRent(partial, partial[5])).toBe(16); // half rent without the full set
+    expect(computeRent(partial, partial[5])).toBe(40); // half rent without the full set
   });
 
   it("net worth counts cash plus tiles", () => {

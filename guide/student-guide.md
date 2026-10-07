@@ -24,7 +24,7 @@ You need:
    - If your instructor gave you images, click **Optional: upload images** and select all the image files at once (Ctrl+A on Windows, ⌘A on a Mac).
 2. **Check that it loaded.** The page shows *Loaded … questions*. Click **Continue to game setup →**.
 3. **Set up the game:**
-   1. **How many teams?** Choose *Solo* or *2*, *3* or *4 teams* sharing this computer.
+   1. **How many players?** Choose *Solo* or *2*, *3* or *4 players* sharing this computer. Each player can be one student or a small team.
    2. **Session length.** Pick the time your instructor asks for, or *No timer*.
    3. **Choose a topic.** Click the topic, pick the module your instructor named under **Select module**, then click **Confirm selection**.
 4. Click **Start game →**.
@@ -39,11 +39,13 @@ You need:
 The game ends in one of two ways:
 
 1. **Last team standing:** every other team has been eliminated by bankruptcy.
-2. **Highest net worth:** when the timer runs out, or when your instructor asks you to click **End game**, the team with the highest net worth wins. Net worth is your cash plus the value of your tiles and upgrades.
+2. **Highest net worth:** when the timer runs out, or when your instructor asks you to click **End game**, the team with the highest net worth wins. Net worth is your cash plus what you paid for the tiles and upgrades you still own.
 
-Each team starts with **$2,500**. Teams take turns, and the team panel on the right shows each team's cash and net worth.
+Each team starts with **$1,500**. Teams take turns, and the team panel on the right shows each team's cash and net worth.
 
 ## Your turn
+
+When the game starts, a **How to play** pop-up sums up the rules. Click **Got it** to begin; the **How to play** button at the top of the board opens it again.
 
 Click **Roll** (it shows your team's name). Your token moves around the board, and every time it passes **START** your team collects a **$200 lap bonus**. Then the tile you land on decides what happens:
 
@@ -53,12 +55,12 @@ Click **Roll** (it shows your team's name). Your token moves around the board, a
 | **A rival's tile** | You owe the owner rent, but you answer a question first. If you're right, you pay only **half** the rent. If you're wrong, you pay all of it. |
 | **Your own tile** | Nothing happens. |
 | **An unowned corner (milestone)** | You can take a 6-question exam on that side's theme. **Start exam** to try (you need $500), or **Decline**. If you get 5 of 6 right, you pay $500, own the corner and earn a ⚡ Chaos Token. A second wrong answer ends the exam, and you pay nothing. |
-| **A rival's corner** | The fee is $250. Click **Accept challenge** to take the 6-question exam (if you get 5 of 6 right, you pay only half), or click **Pay full**. |
+| **A rival's corner** | The fee is $625. Click **Accept challenge** to take the 6-question exam (if you get 5 of 6 right, you pay only half), or click **Pay full**. |
 | **A Wildcard** | You draw a random event that pays or costs the amount shown, with a fun fact. |
 
-The core tiles (the ones in the middle of each side) work like other tiles: you buy them for $200, and their rent is $120.
+The core tiles (the ones in the middle of each side) work like other tiles: you buy them for $200, and their rent is $300.
 
-![The board. The centre shows whose turn it is, the dice and the Roll, Upgrades and Use chaos buttons. Hover over a tile, or tab to it, to see its details and rent](images/06-board.png)
+![The board. The centre shows whose turn it is, the dice and the Roll, Upgrades and Chaos tokens buttons. Hover over a tile, or tab to it, to see its details and rent](images/06-board.png)
 
 ### Answering questions
 
@@ -67,7 +69,7 @@ The core tiles (the ones in the middle of each side) work like other tiles: you 
 - **Select all that apply:** tick every correct option, then click **Submit answer**. You need exactly the right set.
 - **Number:** type a number, then click **Submit answer**. For estimates, an answer close enough counts.
 - **Put in order:** use the ↑ and ↓ buttons to arrange the steps, then click **Submit answer**.
-- **Short answer:** type a word or short phrase. Capital letters, punctuation and one small typo in longer words don't matter.
+- **Short answer:** type a word or short phrase. Capital letters and punctuation don't matter, and one small typo is forgiven in long words (8+ letters). Short terms must be spelled exactly.
 
 After every answer you see the correct answer and an explanation, so read it before you click **Continue**. The same ideas come back later in the game.
 
@@ -83,25 +85,25 @@ Each side of the board has two **colour groups** of three tiles. When your team 
 
 | Stars | none, group incomplete | none, full group | ⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| Rent on a $100 tile | $10 | $20 | $60 | $120 | $200 | $400 |
-| Rent on a $160 tile | $16 | $32 | $96 | $192 | $320 | $640 |
+| Rent on a $100 tile | $25 | $50 | $150 | $300 | $500 | $1,000 |
+| Rent on a $160 tile | $40 | $80 | $240 | $480 | $800 | $1,600 |
 
 Each of the first three stars costs one tile's price ($100 or $160) for the whole group, and the fourth star costs twice that.
 
 ### Chaos Tokens
 
-You earn a ⚡ Chaos Token by capturing a corner milestone. Once all four corners are owned, you can also buy tokens for $500. To use one, click **Use chaos**, then **Challenge** a rival's tile:
+You earn a ⚡ Chaos Token by capturing a corner milestone. Once all four corners are owned, you can also buy tokens for $500. To use one before you roll, click **Chaos tokens**, then **Challenge** a rival's tile:
 
-- **Right answer:** you take the tile for half its price, which goes to its owner. Any star on that tile is lost.
+- **Right answer:** you take the tile for half its price, which goes to its owner.
 - **Wrong answer:** you pay a small fine to the bank.
 
-The question comes from the tile's own topic, and you spend the token either way.
+The question comes from the tile's own topic. You spend the token either way, and using it ends your turn. A complete colour group (all three tiles, with or without stars) is protected and can't be challenged.
 
 ## Running out of money
 
 If your cash drops below $0, the game helps you recover:
 
-1. **Sell or downgrade.** You sell tiles or remove stars, at half their value, until you're back above $0.
+1. **Sell or downgrade.** You sell tiles or remove stars until you're back above $0. Each sale gives back half of what you paid.
 2. **Rescue Quiz (once per game).** If selling everything still wouldn't cover the debt, you get a 3-question **Rescue Quiz**. If you get 2 or more right, your debt is cleared and you receive $500.
 3. **Eliminated.** If you fail the Rescue Quiz, or go bankrupt a second time, your team is out of the game, and its tiles return to the bank. Stay at the computer: you still take the post-game survey.
 

@@ -363,7 +363,7 @@
 <td align="left"><code>text</code> (short answer)</td>
 <td align="left"><code>answer</code> with alternatives separated by <code>|</code></td>
 <td align="left">A text box</td>
-<td align="left">it matches an accepted answer (case, punctuation and one small typo in answers of 5+ characters are forgiven)</td>
+<td align="left">it matches an accepted answer (case and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter or a number)</td>
 </tr>
 </tbody></table>
 <p>Tips: say <em>&quot;(Select all that apply)&quot;</em> in multi-select prompts, state units in numeric prompts, keep short answers to one to three words, and list every reasonable spelling.</p>
@@ -422,7 +422,7 @@
 <li>a file the students uploaded with the same name;</li>
 <li>a full web link (<code>https://…</code>) written in the column;</li>
 <li>a file in the image folder of a shared game link (see <a href="#sharing-the-game-with-students">Sharing the game with students</a>);</li>
-<li>an image hosted with the game.</li>
+<li>an image hosted with the game (only the demo&#39;s own figures).</li>
 </ol>
 <p>If none is found, the question is shown without the image, and the start page lists the images it couldn&#39;t find. Filenames are case-sensitive (<code>graph.PNG</code> is not <code>graph.png</code>). Students upload all images at once with the <strong>Optional: upload images</strong> button after loading the question file.</p>
 <h4 id="checking-your-file">Checking your file</h4>
@@ -471,13 +471,13 @@
 <p>Teams compete to achieve one of two victory conditions:</p>
 <ol>
 <li><strong>Last team standing:</strong> be the last team that has not been eliminated by bankruptcy.</li>
-<li><strong>Highest net worth:</strong> when the session timer runs out, or when you ask teams to click <strong>End game</strong>, the team with the highest net worth (cash plus the value of its properties and upgrades) wins.</li>
+<li><strong>Highest net worth:</strong> when the session timer runs out, or when you ask teams to click <strong>End game</strong>, the team with the highest net worth (cash plus what it paid for the properties and upgrades it still owns) wins.</li>
 </ol>
 <p>Milestones don&#39;t win the game on their own. They earn Chaos Tokens and add to a team’s net worth, so mastery still pays off.</p>
 <h3 id="game-setup">Game setup</h3>
 <p>At each computer, one student loads the question file, or opens your game link, and adds the optional images, then clicks <strong>Continue to game setup →</strong> and picks:</p>
 <ul>
-<li><strong>How many teams?</strong> <em>Solo</em> or 2, 3 or 4 teams sharing the computer;</li>
+<li><strong>How many players?</strong> <em>Solo</em> or 2, 3 or 4 players sharing the computer (each player can be one student or a small team);</li>
 <li><strong>Session length:</strong> <em>No timer</em>, or 30, 45, 60 or 90 minutes;</li>
 <li><strong>Choose a topic</strong>, then the module under <strong>Select module</strong>.</li>
 </ul>
@@ -492,11 +492,13 @@
 <li><strong>Move:</strong> their pawn advances around the board automatically. Passing START earns a $200 lap bonus.</li>
 <li><strong>Encounter:</strong> the team interacts with the tile they land on.</li>
 </ol>
+<p>A new game opens with a short <strong>How to play</strong> pop-up of the quick rules, and teams can reopen it at any time with <strong>How to play</strong> at the top of the board (the start page has a <strong>Quick rules</strong> link too).</p>
+<p><figure><img src="images/06-rules.png" alt="The quick rules that open at the start of a game" loading="lazy"><figcaption>The quick rules that open at the start of a game</figcaption></figure></p>
 <p><figure><img src="images/06-board.png" alt="The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth" loading="lazy"><figcaption>The board. The centre shows whose turn it is, the dice and tile details; the panel on the right shows each team’s cash and net worth</figcaption></figure></p>
 <h3 id="tile-encounters">Tile encounters</h3>
 <p>The heart of the game lies in what happens when a team lands on a tile.</p>
 <ul>
-<li><strong>Unowned tiles (properties):</strong> the team may try to buy the tile. They are shown one of your questions.<ul>
+<li><strong>Unowned tiles (properties):</strong> the team may try to buy the tile. They are shown one of your questions. Questions nobody has seen yet come first, and a question a team got wrong comes back about six turns later, so missed ideas get a second, spaced retrieval.<ul>
 <li><em>Correct answer:</em> they may pay the tile’s price and take ownership, or skip.</li>
 <li><em>Incorrect answer:</em> they pay a $20 fine, the tile stays unowned, and the correct answer and explanation are shown.</li>
 </ul>
@@ -506,8 +508,8 @@
 <li><em>Incorrect answer:</em> the team pays full rent.</li>
 </ul>
 </li>
-<li><strong>Milestones (corner exams):</strong> capturing a corner requires more than money; it requires mastery. A team needs $500 to attempt the exam and must answer 5 out of 6 questions on that side’s theme; a second mistake ends the exam. A team that passes pays $500, captures the corner and earns a Chaos Token; a team that fails pays nothing. Landing on a rival’s milestone means a $250 fee, or an expert challenge (the same 6-question exam) that halves it.</li>
-<li><strong>Core tiles:</strong> tiles with questions from your <code>core</code> rows. They are bought ($200) and defended like properties, with a fixed rent of $120.</li>
+<li><strong>Milestones (corner exams):</strong> capturing a corner requires more than money; it requires mastery. A team needs $500 to attempt the exam and must answer 5 out of 6 questions on that side’s theme; a second mistake ends the exam. A team that passes pays $500, captures the corner and earns a Chaos Token; a team that fails pays nothing. Landing on a rival’s milestone means a $625 fee, or an expert challenge (the same 6-question exam) that halves it.</li>
+<li><strong>Core tiles:</strong> tiles with questions from your <code>core</code> rows. They are bought ($200) and defended like properties, with a fixed rent of $300.</li>
 <li><strong>Wildcard tiles:</strong> draw a random card from your <code>mishap</code> rows that pays or costs the amount written on it (e.g. &quot;Scholarship awarded! +$200&quot; or &quot;Contamination! -$100&quot;), with a fun fact.</li>
 </ul>
 <p><figure><img src="images/07-question.png" alt="A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder" loading="lazy"><figcaption>A question. Options are shuffled each time; other formats show checkboxes, a number box, a text box or a list to reorder</figcaption></figure></p>
@@ -516,12 +518,12 @@
 <p>To keep engagement high in the later stages of the session, the engine includes two advanced mechanics. Teams use both from the buttons in the centre of the board during their turn, before rolling.</p>
 <ul>
 <li><strong>Upgrades:</strong> if a team owns all the tiles in a subtheme (e.g. all three &quot;Denoising &amp; QC&quot; tiles), they can use the <strong>Upgrades</strong> button to upgrade those tiles evenly, up to four stars. This drastically increases the rent charged to rivals who land there.</li>
-<li><strong>Chaos Tokens:</strong> capturing a milestone awards a Chaos Token. A token can be spent on a Chaos Challenge (<strong>Use chaos</strong>) against a rival’s property: answer a question from that property’s own subtheme correctly to steal it for half its price (paid to its owner; any upgrade on that tile is lost), or pay a small fine. Once all four milestones have been captured, Chaos Tokens can be bought for $500.</li>
+<li><strong>Chaos Tokens:</strong> capturing a milestone awards a Chaos Token. A token can be spent on a Chaos Challenge (the <strong>Chaos tokens</strong> button) against a rival’s property: answer a question from that property’s own subtheme correctly to take it for half its price (paid to its owner), or pay a small fine. Either way the token is used up and the team’s turn ends without a roll. A complete set (all three tiles of a subtheme, upgraded or not) is protected and can’t be challenged, and the Challenge button stays off until the team can afford the price. Once all four milestones have been captured, Chaos Tokens can be bought for $500.</li>
 </ul>
 <h3 id="bankruptcy-and-the-rescue-quiz">Bankruptcy and the Rescue Quiz</h3>
 <p>If a team’s balance goes negative:</p>
 <ol>
-<li><strong>Liquidation:</strong> the team must sell properties or remove upgrades, at half their value, until it is out of debt.</li>
+<li><strong>Liquidation:</strong> the team must sell properties or remove upgrades until it is out of debt. Each sale returns half of what the team paid for it.</li>
 <li><strong>Rescue Quiz (once per game):</strong> if selling everything still can’t cover the debt, the team takes a 3-question Rescue Quiz drawn from the whole board. With 2 or more correct answers, the debt is cleared and the team receives $500 to keep playing.</li>
 <li><strong>Elimination:</strong> a team that fails the Rescue Quiz, or goes bankrupt a second time, is eliminated, and its properties return to the bank. Its players still take the post-game survey.</li>
 </ol>
@@ -535,7 +537,7 @@
 </thead>
 <tbody><tr>
 <td align="left">Starting cash</td>
-<td align="left">$2,500 per team</td>
+<td align="left">$1,500 per team</td>
 </tr>
 <tr>
 <td align="left">Lap bonus (passing START)</td>
@@ -551,27 +553,27 @@
 </tr>
 <tr>
 <td align="left">Property rent</td>
-<td align="left">20% of the price ($20 or $32); half that until the owner has the whole group; ×3, ×6, ×10, ×20 with 1–4 stars</td>
+<td align="left">50% of the price ($50 or $80); half that until the owner has the whole group; ×3, ×6, ×10, ×20 with 1–4 stars</td>
 </tr>
 <tr>
 <td align="left">Core rent · rival milestone fee</td>
-<td align="left">$120 · $250</td>
+<td align="left">$300 · $625</td>
 </tr>
 <tr>
 <td align="left">Correct rent-defense answer or passed expert challenge</td>
 <td align="left">pays half</td>
 </tr>
 <tr>
-<td align="left">Upgrade cost (whole group)</td>
+<td align="left">Upgrade cost (paid once for the whole group)</td>
 <td align="left">the tile price for each of stars 1–3, twice the price for star 4</td>
 </tr>
 <tr>
 <td align="left">Chaos steal · failed challenge · buying a token</td>
-<td align="left">half the tile’s price · half its base rent · $500</td>
+<td align="left">half the tile’s price · half its base rent · $500 (complete sets can’t be challenged; the token is spent either way and the turn ends)</td>
 </tr>
 <tr>
 <td align="left">Liquidation</td>
-<td align="left">tiles and upgrades sell for half their value</td>
+<td align="left">tiles and upgrades sell for half of what was paid for them</td>
 </tr>
 <tr>
 <td align="left">Rescue Quiz</td>
@@ -579,7 +581,7 @@
 </tr>
 <tr>
 <td align="left">Net worth</td>
-<td align="left">cash + tile prices + upgrades</td>
+<td align="left">cash + what the team paid for the tiles and upgrades it still owns (an upgrade counts once, as it was charged; a tile taken with chaos counts at the half price paid)</td>
 </tr>
 </tbody></table>
 <h2 id="endgame-dynamics">Endgame dynamics</h2>
@@ -645,7 +647,7 @@
 </tr>
 <tr>
 <td align="left"><code>phase</code> = <code>pre</code> / <code>post</code>, <code>section</code> = <code>quiz</code></td>
-<td align="left">Each survey question: <code>questionId</code>, <code>selectedOption</code>, <code>correctAnswer</code>, <code>correct</code></td>
+<td align="left">Each survey question: <code>questionId</code>, <code>selectedOption</code>, <code>selectedIndex</code> (for multiple choice, the option number in your file, 1–4, like <code>correctIndex</code>), <code>correctAnswer</code>, <code>correct</code></td>
 </tr>
 <tr>
 <td align="left"><code>PROPERTY_Q</code>, <code>RENT_Q</code>, <code>MILESTONE_Q</code>, <code>CHAOS_Q</code>, <code>GRANT_Q</code></td>
@@ -653,7 +655,7 @@
 </tr>
 <tr>
 <td align="left"><code>TRANSACTION</code></td>
-<td align="left">Every money change, with the reason (<code>action</code>), <code>amount</code>, <code>moneyBefore</code> and <code>moneyAfter</code></td>
+<td align="left">Every money change, with the reason (<code>action</code>), <code>amount</code>, <code>moneyBefore</code>, <code>moneyAfter</code> and <code>timestamp</code></td>
 </tr>
 <tr>
 <td align="left"><code>ELIMINATED</code></td>
@@ -757,6 +759,19 @@
 <p>Building a great TSV cartridge takes intentional design, and mastering the role of the game master takes practice. But the payoff, watching your students actively conceptualize complex material rather than passively memorizing it, is entirely worth the effort.</p>
 <p>Welcome to the board, and have a great session!</p>
 <h2 id="whats-new">What’s new</h2>
+<p><strong>October 2026 (update 4): gameplay changes.</strong> These change how the game plays and scores.</p>
+<ul>
+<li><strong>Unseen questions first, missed ones later.</strong> The game now asks questions nobody has seen before repeating any, and a question answered wrongly comes back about six turns later (spaced retrieval). Exams, chaos challenges and the Rescue Quiz follow the same rule.</li>
+<li><strong>A tighter economy.</strong> Teams start with $1,500 (was $2,500) and every rent is 2.5 times higher: property rent is 50% of the price, core rent is $300 and a rival&#39;s milestone fee is $625. Debt, liquidation and the Rescue Quiz now happen in real games.</li>
+<li><strong>Net worth counts only money spent.</strong> A tile counts at what its owner paid for it, and each upgrade counts once, as it was charged (it used to count once per tile, so a $160 upgrade added $480). Every sale during liquidation returns exactly half of what was paid.</li>
+<li><strong>Chaos challenges:</strong> a complete set (all three tiles, upgraded or not) can no longer be challenged; using a token ends the turn, and the token is spent whether or not the steal succeeds; the Challenge button stays off until the team can pay the price.</li>
+<li><strong>Fairer short answers.</strong> One typo is now forgiven only in answers of 8 or more characters, never in the first letter or a number, so <code>alkene</code> is no longer accepted for <code>alkane</code>, nor <code>methanol</code> for <code>ethanol</code>.</li>
+<li><strong>Quick rules.</strong> A new game opens with a short <strong>How to play</strong> pop-up; teams can reopen it from the board, and the start page has a <strong>Quick rules</strong> link.</li>
+<li><strong>&quot;Players&quot; instead of &quot;teams&quot; on the setup screen:</strong> choose Solo, 2, 3 or 4 players (each player can still be a small team).</li>
+<li><strong>CSV:</strong> survey rows&#39; <code>selectedIndex</code> is now the option number in your file (1–4, like <code>correctIndex</code>) instead of the shuffled position on screen, and <code>TRANSACTION</code> rows have a <code>timestamp</code>.</li>
+<li><strong>New demo images.</strong> The demo&#39;s five figures were redrawn from made-up data so they can be shared freely; the older hosted images are no longer served. If your own question file used those hosted file names, upload the images with <strong>Optional: upload images</strong> or share them with an image-folder link.</li>
+<li><strong>Automatic deploys:</strong> every change merged into the project goes live after all checks pass.</li>
+</ul>
 <p><strong>October 2026 (update 3)</strong></p>
 <ul>
 <li><strong>Snappier turns.</strong> The pawn moves a little faster and its dialog opens sooner (about half a second saved per roll, about 20 seconds over a 45-minute game). The rules are unchanged.</li>

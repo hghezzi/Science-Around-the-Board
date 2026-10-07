@@ -18,6 +18,7 @@ import { resetConsent } from "./consent";
 import ConsentBanner from "./ConsentBanner";
 import PasswordDialog from "./components/PasswordDialog";
 import InstallButton from "./components/InstallButton";
+import RulesDialog from "./components/RulesDialog";
 import { DECK_SHORTCUTS, buildShareLink, isUnpublishedSheet, normalizeDeckUrl, normalizeImagesBase, readDeckParams } from "./deckLinks";
 import { TEAM_COLORS, TEAM_SYMBOLS, TEAM_INK } from "./theme";
 import { teamDisplayName } from "./labels";
@@ -85,7 +86,8 @@ function SurveyView({ phase, playerCount, playerQuestionSets, confidenceQuestion
           questionId: q.id || "",
           format: q.format,
           questionPrompt: q.prompt,
-          selectedIndex: q.format === "mcq" ? response : "",
+          // The option number in the question file (1–4, like correctIndex), not the shuffled position on screen.
+          selectedIndex: q.format === "mcq" && response != null ? (q.optionOrder?.[response] ?? response) + 1 : "",
           selectedOption: result.responseText,
           correctAnswer: result.correctText,
           correct: result.correct,
@@ -384,6 +386,7 @@ export default function App() {
   const [startPlayer, setStartPlayer] = useState(0);
   const [allTsvRows, setAllTsvRows] = useState([]);
   const [loadingError, setLoadingError] = useState(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [modules, setModules] = useState([]);
@@ -627,7 +630,7 @@ export default function App() {
             >
               <strong>Resume your game?</strong>{" "}
               Saved at {new Date(resumeOffer.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
-              {[resumeOffer.gameMode, resumeOffer.selectedModule].filter(Boolean).join(" / ")} · {resumeOffer.playerCount === 1 ? "solo" : `${resumeOffer.playerCount} teams`} ·{" "}
+              {[resumeOffer.gameMode, resumeOffer.selectedModule].filter(Boolean).join(" / ")} · {resumeOffer.playerCount === 1 ? "solo" : `${resumeOffer.playerCount} players`} ·{" "}
               {{ PRE_SURVEY: "pre-game survey", GAME: `turn ${resumeOffer.game?.totalTurns ?? 0}`, POST_SURVEY: "post-game survey", SUMMARY: "results screen" }[resumeOffer.phase]}.
               {resumeOffer.hadImages && " Uploaded images aren't saved; upload them again if your questions use them."}
             </Alert>
@@ -678,7 +681,8 @@ export default function App() {
           <InstallButton />
 
           <Typography variant="body2" sx={{ mt: 4 }}>
-            <a href="./guide/students.html" target="_blank" rel="noopener">How to play</a> ·{" "}
+            <a href="#" onClick={(e) => { e.preventDefault(); setRulesOpen(true); }}>Quick rules</a> ·{" "}
+            <a href="./guide/students.html" target="_blank" rel="noopener">Student guide</a> ·{" "}
             <a href="./guide/" target="_blank" rel="noopener">Instructor guide</a> ·{" "}
             <a href="./encryptor.html" target="_blank" rel="noopener">Encrypt a question file</a>
           </Typography>
@@ -690,6 +694,7 @@ export default function App() {
         </Container>
         <ConsentBanner />
         {pendingCipher != null && <PasswordDialog error={passwordError} busy={unlocking} onSubmit={unlock} onCancel={() => setPendingCipher(null)} />}
+        <RulesDialog open={rulesOpen} onClose={() => setRulesOpen(false)} />
       </Box>
     );
   }
@@ -704,8 +709,8 @@ export default function App() {
           <Typography variant="h3" component="h1" sx={{ textAlign: "center", mb: 4 }}>Game setup</Typography>
 
           <Card sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" component="h2" gutterBottom>1 · How many teams?</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5, mb: 1.5 }}>Teams take turns on this computer. A team can be one student or a small group.</Typography>
+            <Typography variant="h6" component="h2" gutterBottom>1 · How many players?</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5, mb: 1.5 }}>Players take turns on this computer. Each player can be one student or a small group.</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1.5 }}>
               {[1, 2, 3, 4].map((n) => (
                 <Box
@@ -718,7 +723,7 @@ export default function App() {
                   <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5, mb: 0.5 }}>
                     {TEAM_COLORS.slice(0, n).map((c, i) => <TeamToken key={i} index={i} size={20} />)}
                   </Box>
-                  <Typography sx={{ fontWeight: 800 }}>{n === 1 ? "Solo" : `${n} teams`}</Typography>
+                  <Typography sx={{ fontWeight: 800 }}>{n === 1 ? "Solo" : `${n} players`}</Typography>
                 </Box>
               ))}
             </Box>
@@ -756,7 +761,7 @@ export default function App() {
         <Paper elevation={6} sx={{ p: 2, position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 2, zIndex: 100, borderRadius: 0 }}>
           <Button size="small" color="inherit" onClick={resetFile}>Change file</Button>
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" }, fontWeight: 700 }} aria-live="polite">
-            {gameMode ? `${playerCount === 1 ? "Solo" : `${playerCount} teams`} · ${sessionMinutes ? `${sessionMinutes} min` : "no timer"} · ${[gameMode, selectedModule].filter(Boolean).join(" / ")}` : "Choose a topic to start"}
+            {gameMode ? `${playerCount === 1 ? "Solo" : `${playerCount} players`} · ${sessionMinutes ? `${sessionMinutes} min` : "no timer"} · ${[gameMode, selectedModule].filter(Boolean).join(" / ")}` : "Choose a topic to start"}
           </Typography>
           <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>Start game <span aria-hidden>&nbsp;→</span></Button>
         </Paper>

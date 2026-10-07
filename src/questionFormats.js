@@ -109,6 +109,9 @@ export function normalizeText(s) {
     .trim();
 }
 
+/** Short-answer responses need this many characters before one typo is forgiven. */
+export const TYPO_MIN_LENGTH = 8;
+
 export function editDistance(a, b) {
   const dp = Array.from({ length: b.length + 1 }, (_, j) => j);
   for (let i = 1; i <= a.length; i++) {
@@ -192,7 +195,8 @@ export function prepareQuestion(q, rng = Math.random) {
   }
 
   const remap = (oldIdx) => order.indexOf(oldIdx);
-  const out = { ...q, options: order.map((i) => q.options[i]) };
+  // optionOrder[i] = the file's option index (0-based) shown at position i.
+  const out = { ...q, options: order.map((i) => q.options[i]), optionOrder: order };
   if (q.format === "multi") out.answers = (q.answers || []).map(remap).sort((a, b) => a - b);
   else if (q.format === "mcq" || !q.format) out.answer = q.answer == null ? null : remap(q.answer);
   return out;
@@ -273,11 +277,12 @@ export function checkAnswer(q, response) {
         const got = normalizeText(response);
         correct = got.length > 0 && (q.acceptedAnswers || []).some((a) => {
           const want = normalizeText(a);
-          if (got === want) return true;
-          // One typo is forgiven on longer answers, but never in a number:
-          // "1980s" is not a typo of "1990s".
+          if (got === want || got.replace(/ /g, "") === want.replace(/ /g, "")) return true; // "1990's" = "1990s"
+          // One typo is forgiven on answers of TYPO_MIN_LENGTH+ characters, but never in a
+          // number ("1980s" is not "1990s") or in the first letter ("methanol" is not
+          // "ethanol"). Shorter terms must be exact: "alkene" is not a typo of "alkane".
           const digits = (t) => t.replace(/\D/g, "");
-          return want.length >= 5 && digits(got) === digits(want) && editDistance(got, want) <= 1;
+          return want.length >= TYPO_MIN_LENGTH && got[0] === want[0] && digits(got) === digits(want) && editDistance(got, want) <= 1;
         });
         break;
       }
