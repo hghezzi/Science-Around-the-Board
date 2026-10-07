@@ -3,8 +3,9 @@
 // to the instructor's results sheet (a Google Apps Script web app).
 import { teamDisplayName } from "./labels.js";
 
-// Stop spreadsheet apps from treating typed text such as "=SUM(...)" as a formula.
-const safeCell = (v) => (typeof v === "string" && /^[=+\-@]/.test(v) ? `'${v}` : v);
+// Stop spreadsheet apps from treating typed text such as "=SUM(...)" as a formula
+// (OWASP CSV injection: =, +, -, @, and a leading tab or carriage return).
+const safeCell = (v) => (typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
 
 export function toCsv(rows) {
   const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
@@ -13,7 +14,9 @@ export function toCsv(rows) {
 }
 
 export function resultsFilename(topic, module, date = new Date()) {
-  const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  // ASCII-only file names travel safely through every LMS; accents are dropped ("Biología" -> "biologia").
+  const slug = (s) => String(s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const pad = (n) => String(n).padStart(2, "0");
   const stamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
   const name = [slug(topic), slug(module)].filter(Boolean).join("_") || "game";

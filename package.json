@@ -1,9 +1,23 @@
 {
-  "name": "ScienceAroundTheBoard",
-  "homepage": "https://hghezzi.github.io/Science-Around-the-Board",
-  "private": true,
+  "name": "science-around-the-board",
   "version": "1.0.0",
+  "description": "A browser-only, property-trading board game for classroom review. Instructors write the questions in one spreadsheet file; student teams play in the browser.",
+  "author": "Hans Ghezzi",
+  "license": "CC-BY-NC-SA-4.0",
+  "homepage": "https://hghezzi.github.io/Science-Around-the-Board/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hghezzi/Science-Around-the-Board.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hghezzi/Science-Around-the-Board/issues"
+  },
+  "keywords": ["education", "game-based-learning", "review-game", "active-recall", "classroom", "quiz", "board-game", "pwa", "react"],
+  "private": true,
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "prebuild": "node scripts/package-skill.mjs",
@@ -17,7 +31,8 @@
     "deploy": "gh-pages -d dist",
     "a11y": "node scripts/a11y-check.mjs",
     "guide": "vite build && node scripts/guide-screenshots.mjs && node scripts/build-guide.mjs",
-    "smoke": "vite build && node scripts/smoke-test.mjs"
+    "smoke": "vite build && node scripts/smoke-test.mjs",
+    "privacy": "vite build && node scripts/privacy-check.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -46,6 +61,6 @@
     "playwright": "^1.56.1",
     "vite": "^7.2.2",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.11"
   }
 }

@@ -70,3 +70,20 @@ describe("board layout", () => {
     expect(board[9].baseRent).toBe(250);
   });
 });
+
+describe("incomplete question files", () => {
+  it("still builds a full 36-tile loop when the file has fewer than 4 themes", () => {
+    for (const themes of [["A", "B", "C"], ["A"], []]) {
+      const board = buildBoardFromTsv("Topic", parseTsv(makeTsv({ themes })), "Mod");
+      expect(board).toHaveLength(36);
+      expect([0, 9, 18, 27].map((i) => board[i].type)).toEqual(Array(4).fill("milestone"));
+      board.forEach((t, i) => expect(t.id).toBe(i));
+    }
+  });
+
+  it("builds an empty but complete board when no rows match", () => {
+    const board = buildBoardFromTsv("Nope", parseTsv(makeTsv()), "Nothing");
+    expect(board).toHaveLength(36);
+    expect(board.every((t) => t.questions.length === 0)).toBe(true);
+  });
+});

@@ -79,13 +79,21 @@ Guidelines that matter most (the full list is in `references/question-design.md`
 - **Milestone** questions: harder synthesis, application and troubleshooting scenarios for the theme. Students must get 5 of 6 right to capture a corner, so make them fair but demanding.
 - **Survey** questions: the pre/post knowledge check. Write them parallel to the board content (same LOs) but **not duplicates** of property or milestone questions; otherwise the post-test measures memory of the exact item rather than learning.
 - **Distractors**: every wrong option should be a real misconception or a common error, not a joke. When a student picks it, it should reveal a specific gap.
+- **No give-away cues (the most common flaw in generated questions)**: you will be tempted to make the correct answer the longest, most precise and most qualified option. Don't. Write the correct answer first, then make each distractor the **same length (±20%), detail and grammar**. Across the file the correct answer should be the longest option in only about 1 question in 4 and the shortest in about 1 in 4. Absolute words ("always", "never", "only", "all") must not appear only in distractors, and the correct answer must not be the only option that repeats the stem's key words. Details and before/after examples: `references/question-design.md`, "Don't let the answer give itself away".
 - **Explanations**: say why the right answer is right *and* address the most tempting distractor. Students read this immediately after answering, right or wrong. One to three sentences.
 - **Format mix** (unless the instructor chose otherwise): about 60% multiple choice (including 2–4 true/false) and about 10% each of multi, order, numeric and text, spread across property, milestone and core rows. Ordering suits milestone workflows and numeric suits calculations. Keep survey rows mostly multiple choice so pre/post scores stay comparable.
 - **Balance**: spread correct answers across positions 1–4. (The game shuffles options, but balance keeps the source file honest and reviewable.) Vary question stems.
 - **Wildcards (`mishap` rows)**: event text with an explicit amount such as `(-$100)` or `(+$150)`; the game pays exactly that amount. Put a related fun fact or practical lesson in `explanation`. Aim for roughly 2/3 penalties, 1/3 rewards, in the range $50–$200.
 - **IDs**: stable and readable, e.g. `prop_t1s1_01`, `mile_t2_03`, `surv_04`, `core_02`, `mis_01`, `conf_01`. They are how the instructor traces exported data back to questions.
 
-Write in batches by theme, and re-read each batch for accuracy and for answers that a test-wise student could guess without knowing the material.
+Write in batches by theme. **Self-check every batch before moving on (mandatory):**
+
+1. **Blind-student test**: read only the options of each question, without the stem. If you can tell which one is correct (longest, most hedged, echoes the stem, the only one without "always"/"never"), rewrite it.
+2. **Length tally**: for the batch, count the questions where the correct option is the longest and where it is the shortest. Each should be about a quarter. If the correct answer is the longest in more than a third, shorten correct answers (move reasons into the explanation) or lengthen distractors with real misconceptions.
+3. **Accuracy**: every fact, command and number is right; anything version-specific is flagged for the instructor.
+4. **Explanations** name options by content, never by letter ("option C"), because options are shuffled.
+
+The validator in step 6 measures the same cues for the whole file; the self-check keeps you from having to rewrite dozens of questions at the end.
 
 ## 5. Images (optional)
 
@@ -102,7 +110,7 @@ python scripts/build_tsv.py questions.json questions.tsv
 python scripts/validate_tsv.py questions.tsv --images images/
 ```
 
-`build_tsv.py` writes the columns in the right order, strips tabs and newlines from cells, and normalises formats. `validate_tsv.py` mirrors the game's own upload checker: it checks themes and subthemes per board, milestone and survey counts, `correctIndex` validity, numeric, multi and text answers, wildcard amounts, duplicate IDs and missing images. It also reports answer-position balance and prints a `Formats:` line with the count of each format. Fix every **ERROR**, and fix **WARNING**s unless there is a reason not to. Compare the `Formats:` line with the blueprint's formats table and add rows for any planned format that is missing. Rerun until it is clean.
+`build_tsv.py` writes the columns in the right order, strips tabs and newlines from cells, and normalises formats. `validate_tsv.py` mirrors the game's own upload checker: it checks themes and subthemes per board, milestone and survey counts, `correctIndex` validity, numeric, multi and text answers, wildcard amounts, duplicate IDs and missing images. It also reports answer-position balance, prints a `Formats:` line with the count of each format, and prints an `Answer cues:` line: how often a student who always picks the longest option, the shortest option, or the option that repeats the question's words would be right, compared with chance. It warns about single questions whose correct answer is 1.5× longer than the distractors, file-level length or wording cues, absolute words found only in distractors, "all of the above"-style options, a/an grammar cues, identical options, survey items that repeat board items, and (as an error) spreadsheet error values such as `#NAME?`. **Both length scores must be close to chance (about 25% for 4 options) before you deliver.** Fix every **ERROR**, and fix **WARNING**s unless there is a reason not to. Compare the `Formats:` line with the blueprint's formats table and add rows for any planned format that is missing. Rerun until it is clean.
 
 When working inside the SAB repository, you can also run `npm run validate-tsv -- questions.tsv`, which uses the game's real validator.
 

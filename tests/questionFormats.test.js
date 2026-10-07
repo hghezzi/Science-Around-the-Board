@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  parseFormat, parseTolerance, normalizeText, normalizeQuestion, prepareQuestion,
+  parseFormat, parseTolerance, parseNumber, normalizeText, normalizeQuestion, prepareQuestion,
   checkAnswer, hasResponse, parseMishapAmount, hasExplicitMishapAmount,
 } from "../src/questionFormats.js";
 
@@ -21,6 +21,20 @@ describe("parsing", () => {
     expect(parseTolerance("0.5")).toEqual({ abs: 0.5 });
     expect(parseTolerance("5%")).toEqual({ pct: 5 });
     expect(parseTolerance("abc")).toBeNull();
+    expect(parseTolerance("0,5")).toEqual({ abs: 0.5 });
+    expect(parseTolerance("-1")).toBeNull();
+  });
+  it("parses numbers with thousands separators or a decimal comma", () => {
+    expect(parseNumber("1,500")).toBe(1500);
+    expect(parseNumber("1,234,567.5")).toBe(1234567.5);
+    expect(parseNumber("1.234.567,5")).toBe(1234567.5);
+    expect(parseNumber("2,5")).toBe(2.5);
+    expect(parseNumber("0,500")).toBe(0.5);
+    expect(parseNumber("12 345")).toBe(12345);
+    expect(parseNumber("1e-3")).toBe(0.001);
+    expect(parseNumber(".5")).toBe(0.5);
+    expect(parseNumber(7)).toBe(7);
+    for (const bad of ["", "abc", "1,2.3", "1.2,3,4", "1,50,0", "5 5", "--1", "NaN", "Infinity"]) expect(parseNumber(bad)).toBeNaN();
   });
   it("normalizes text for comparison", () => {
     expect(normalizeText("  Beta-Diversity! ")).toBe("beta diversity");
@@ -86,6 +100,17 @@ describe("checkAnswer", () => {
     expect(checkAnswer(abs, 2.6).correct).toBe(true);
     expect(checkAnswer(abs, "2.61").correct).toBe(false);
   });
+  it("numeric accepts how people write numbers around the world", () => {
+    const q = normalizeQuestion(row({ format: "numeric", answer: "2.5" }));
+    for (const typed of ["2.5", " 2.5 ", "2,5", "+2.5", "2.50", "2,50"]) expect(checkAnswer(q, typed).correct).toBe(true);
+    const big = normalizeQuestion(row({ format: "numeric", answer: "1500" }));
+    const nbsp = String.fromCharCode(0xa0);
+    for (const typed of ["1500", "1,500", "1 500", `1${nbsp}500`, "1500%"]) expect(checkAnswer(big, typed).correct).toBe(true);
+    const neg = normalizeQuestion(row({ format: "numeric", answer: "-5" }));
+    const minus = String.fromCharCode(0x2212); // Unicode minus, e.g. pasted from a document
+    expect(checkAnswer(neg, `${minus}5`).correct).toBe(true);
+    expect(checkAnswer(neg, "5").correct).toBe(false);
+  });
   it("order requires the exact sequence", () => {
     const q = normalizeQuestion(row({ format: "order" }));
     expect(checkAnswer(q, ["A", "B", "C", "D"]).correct).toBe(true);
@@ -100,6 +125,9 @@ describe("checkAnswer", () => {
     expect(checkAnswer(q, "alpha").correct).toBe(false);
     expect(checkAnswer(q, "bet").correct).toBe(false);
     expect(checkAnswer(q, "").correct).toBe(false);
+    const decade = normalizeQuestion(row({ format: "text", answer: "1990s" }));
+    expect(checkAnswer(decade, "1990's").correct).toBe(true);
+    expect(checkAnswer(decade, "1980s").correct).toBe(false); // a different number is not a typo
     const short = normalizeQuestion(row({ format: "text", answer: ".qzv" }));
     expect(checkAnswer(short, "QZV").correct).toBe(true);
     expect(checkAnswer(short, "qza").correct).toBe(false);

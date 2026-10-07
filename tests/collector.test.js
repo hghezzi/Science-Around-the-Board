@@ -34,17 +34,20 @@ function fakeSheet() {
   return sheet;
 }
 
-function loadCollector() {
+function loadCollector({ withCache = false } = {}) {
   const sheets = {};
+  const store = {};
   const context = {
     SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: (n) => sheets[n] || null, insertSheet: (n) => (sheets[n] = fakeSheet()) }) },
-    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock() {}, releaseLock() {} }) },
+    ...(withCache ? { CacheService: { getScriptCache: () => ({ get: (k) => store[k] ?? null, put: (k, v) => { store[k] = v; } }) } } : {}),
     ContentService: { MimeType: { JSON: "json" }, createTextOutput: (text) => ({ setMimeType: () => ({ text }) }) },
   };
   vm.createContext(context);
   vm.runInContext(SOURCE, context);
-  const post = (data) => JSON.parse(context.doPost({ postData: { contents: JSON.stringify(data) } }).text);
-  return { sheets, post, get: () => JSON.parse(context.doGet().text) };
+  const postRaw = (contents) => JSON.parse(context.doPost({ postData: { contents } }).text);
+  const post = (data) => postRaw(JSON.stringify(data));
+  return { sheets, post, postRaw, get: () => JSON.parse(context.doGet().text) };
 }
 
 const submission = (extra = {}) => ({
@@ -91,6 +94,48 @@ describe("results collector (Apps Script)", () => {
 
   it("rejects anything that isn't a game submission", () => {
     expect(collector.post({ hello: "world" })).toMatchObject({ ok: false });
+    expect(collector.postRaw("not json")).toMatchObject({ ok: false });
+    expect(collector.postRaw("")).toMatchObject({ ok: false });
+    expect(collector.post(null)).toMatchObject({ ok: false });
     expect(collector.sheets.Summary).toBeUndefined();
+  });
+
+  it("refuses oversized submissions", () => {
+    expect(collector.postRaw("x".repeat(2000001))).toMatchObject({ ok: false });
+    expect(collector.post(submission({ rows: Array.from({ length: 5001 }, () => ({ a: 1 })) }))).toMatchObject({ ok: false });
+    expect(collector.post(submission({ summary: Array.from({ length: 21 }, () => ({ a: 1 })) }))).toMatchObject({ ok: false });
+    expect(collector.sheets.Details).toBeUndefined();
+  });
+
+  it("keeps column names simple and caps the number of columns", () => {
+    const junk = Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`col${i}`, i]));
+    collector.post(submission({ summary: [{ playerIndex: 0, "=evil()": 1, "a b": 2, _hidden: 3, ...junk }] }));
+    const [header] = collector.sheets.Summary.cells;
+    expect(header).toHaveLength(80);
+    expect(header).not.toContain("=evil()");
+    expect(header).not.toContain("a b");
+    expect(header).not.toContain("_hidden");
+  });
+
+  it("shortens very long text, flattens objects and keeps numbers", () => {
+    collector.post(submission({ summary: [{ playerIndex: 0, members: "a".repeat(5000), extra: { nested: "=1" }, score: 7 }] }));
+    const [header, row] = collector.sheets.Summary.cells;
+    expect(row[header.indexOf("members")]).toHaveLength(2000);
+    expect(row[header.indexOf("extra")]).toBe('{"nested":"=1"}');
+    expect(row[header.indexOf("score")]).toBe(7);
+  });
+
+  it("stops tab- and carriage-return-led text from becoming a formula too", () => {
+    collector.post(submission({ summary: [{ playerIndex: 0, members: "\t=1+1", team: "\r=2" }] }));
+    const [header, row] = collector.sheets.Summary.cells;
+    expect(row[header.indexOf("members")]).toBe("'\t=1+1");
+    expect(row[header.indexOf("team")]).toBe("'\r=2");
+  });
+
+  it("limits submissions per minute", () => {
+    const limited = loadCollector({ withCache: true });
+    const results = Array.from({ length: 125 }, () => limited.post(submission()));
+    expect(results.filter((r) => r.ok)).toHaveLength(120);
+    expect(results.at(-1)).toMatchObject({ ok: false, error: expect.stringMatching(/busy/) });
   });
 });

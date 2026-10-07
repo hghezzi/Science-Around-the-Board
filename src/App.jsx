@@ -1,8 +1,9 @@
 // src/App.jsx
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import CryptoJS from "crypto-js"; 
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { buildBoardFromTsv } from "./gameData"; 
-import GameScreen from "./GameScreen";
+import { lazyWithReload } from "./lazyLoad";
+import { lockFormat, decryptLockFile } from "./lockFile";
+import { setUpdateReloadSafe } from "./pwa";
 import { parseTsv, getAllTopics, getModulesForTopic } from "./tsvParser";
 import { validateQuestionRows } from "./tsvValidator";
 import { checkAnswer } from "./questionFormats";
@@ -11,7 +12,7 @@ import { readConfig } from "./config";
 import { saveSnapshot, loadSnapshot, clearSnapshot } from "./autosave";
 import { toCsv, resultsFilename, summarizeTeams, teamInfoRows, makeSessionId, buildPayload, sendResults, buildMailto, downloadText } from "./results";
 import { bestPreSurveyPlayer } from "./gameRules";
-import { resolveImage } from "./images";
+import { resolveImage, isUploaded } from "./images";
 import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
 import ConsentBanner from "./ConsentBanner";
@@ -20,6 +21,13 @@ import InstallButton from "./components/InstallButton";
 import { DECK_SHORTCUTS, buildShareLink, isUnpublishedSheet, normalizeDeckUrl, normalizeImagesBase, readDeckParams } from "./deckLinks";
 import { TEAM_COLORS, TEAM_SYMBOLS, TEAM_INK } from "./theme";
 import { teamDisplayName } from "./labels";
+
+// The board (and its animation library) loads after the start page, which keeps the first
+// visit fast. It is fetched in the background right away, so it is ready before a game starts.
+const loadGameScreen = () => import("./GameScreen");
+const GameScreen = lazyWithReload(loadGameScreen);
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // question files are a few hundred kB at most
+const TOO_BIG = "This file is too large to be a question file (over 5 MB).";
 
 import {
   Card, Typography, Container, ToggleButton, ToggleButtonGroup, Button,
@@ -182,7 +190,7 @@ function ValidationReport({ validation, imageMap, imageBase = "" }) {
   // A failed check (offline, or a host without CORS headers) is not proof that an image is missing.
   useEffect(() => {
     let cancelled = false;
-    const candidates = images.filter((img) => !imageMap[img] && !/^(https?:|data:)/i.test(img));
+    const candidates = images.filter((img) => !isUploaded(img, imageMap) && !/^(https?:|data:)/i.test(img));
     Promise.all(candidates.map(async (img) => {
       try {
         const res = await fetch(resolveImage(img, {}, imageBase), { method: "HEAD" });
@@ -391,6 +399,7 @@ export default function App() {
   const [imagesBase, setImagesBase] = useState(""); // image folder link (?images=)
   const [pendingCipher, setPendingCipher] = useState(null); // encrypted file waiting for its password
   const [passwordError, setPasswordError] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
   // Autosave: a saved session offered on the start page, the game's latest state and the state to resume from.
   const [resumeOffer, setResumeOffer] = useState(() => {
     const saved = loadSnapshot();
@@ -431,6 +440,16 @@ export default function App() {
     };
   }, [phase]);
 
+  // Fetch the board code in the background once the start page is showing.
+  useEffect(() => {
+    const warm = () => loadGameScreen().catch(() => { /* retried when the game starts */ });
+    const id = window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 3000 }) : window.setTimeout(warm, 1500);
+    return () => (window.cancelIdleCallback ? window.cancelIdleCallback(id) : window.clearTimeout(id));
+  }, []);
+
+  // A new version of the app may reload the page by itself only on an empty start page.
+  useEffect(() => { setUpdateReloadSafe(phase === "SETUP" && allTsvRows.length === 0 && !resumeOffer); }, [phase, allTsvRows, resumeOffer]);
+
   // Reset confirmation if file is cleared
   useEffect(() => {
     if (allTsvRows.length === 0) {
@@ -440,14 +459,6 @@ export default function App() {
 
   // --- Handlers ---
 
-  const decryptQuestionFile = (cipherText, password) => {
-    try {
-      const out = CryptoJS.AES.decrypt(cipherText.trim(), password).toString(CryptoJS.enc.Utf8);
-      return out && out.includes("\t") ? out : null;
-    } catch {
-      return null;
-    }
-  };
   const parseAndLoad = (text) => {
     let rows = [];
     try { rows = parseTsv(text); } catch { /* reported below */ }
@@ -455,16 +466,26 @@ export default function App() {
     else setLoadingError("This question file has no question rows. It needs a header line plus at least one row.");
   };
   const acceptQuestionText = (text) => {
-    // Files from encryptor.html (CryptoJS AES) always start with "U2FsdGVkX1" ("Salted__" in base64).
-    if (text.trim().startsWith("U2FsdGVkX1")) { setPasswordError(""); setPendingCipher(text); return; }
+    if (text.length > MAX_FILE_BYTES) { setLoadingError(TOO_BIG); return; }
+    // Encrypted files from encryptor.html (see lockFile.js for both formats).
+    if (lockFormat(text)) { setPasswordError(""); setPendingCipher(text); return; }
     if (!text.includes("\t")) {
       setLoadingError("This isn't a question file (.tsv or .lock). If you used a link, check that it points to the file itself, not to a web page.");
       return;
     }
     parseAndLoad(text);
   };
-  const unlock = (password) => {
-    const text = decryptQuestionFile(pendingCipher, password);
+  const unlock = async (password) => {
+    setUnlocking(true);
+    let text = null;
+    try {
+      text = await decryptLockFile(pendingCipher, password);
+    } catch (e) {
+      setUnlocking(false);
+      setPasswordError(e instanceof Error && /Web Crypto/.test(e.message) ? e.message : "Couldn't open the file. Check the internet connection and reload the page.");
+      return;
+    }
+    setUnlocking(false);
     if (!text) { setPasswordError("That password didn't work. Passwords are case-sensitive."); return; }
     setPendingCipher(null);
     parseAndLoad(text);
@@ -523,6 +544,7 @@ export default function App() {
     setLoadingError(null);
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > MAX_FILE_BYTES) { setLoadingError(TOO_BIG); e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = (evt) => acceptQuestionText(String(evt.target.result || ""));
     reader.readAsText(file);
@@ -667,7 +689,7 @@ export default function App() {
           </Typography>
         </Container>
         <ConsentBanner />
-        {pendingCipher != null && <PasswordDialog error={passwordError} onSubmit={unlock} onCancel={() => setPendingCipher(null)} />}
+        {pendingCipher != null && <PasswordDialog error={passwordError} busy={unlocking} onSubmit={unlock} onCancel={() => setPendingCipher(null)} />}
       </Box>
     );
   }
@@ -753,7 +775,7 @@ export default function App() {
   }
 
   if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); setPhase("SETUP"); setGameMode(null); }} />;
+  if (phase === "GAME") return <Suspense fallback={<Box role="status" sx={{ p: 6, textAlign: "center" }}><Typography>Setting up the board…</Typography></Box>}><GameScreen boardData={buildBoardFromTsv(gameMode, allTsvRows, selectedModule)} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); setPhase("SETUP"); setGameMode(null); }} /></Suspense>;
   if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
   return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} sessionId={sessionId} onReturn={() => { setPhase("SETUP"); setGameMode(null); resetFile(); }} />;
 }

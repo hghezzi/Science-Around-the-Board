@@ -1,5 +1,5 @@
 // src/GameScreen.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
 import {
   Button,
@@ -17,8 +17,11 @@ import {
 import { DEFAULT_CHANCE_CARDS } from './questionBank';
 import { LABELS, RULES, teamDisplayName, money, signedMoney } from './labels';
 import { matchesTopicAndModule } from './tsvBoardBuilder';
+import { BOARD_SIZE } from './gameData';
 import {
   getSubgroupTiles, getRentMultiplier, computeRent, rankPlayers, nextActivePlayer, activePlayers,
+  ECONOMY, QUIZ_RULES, drawQuestions, pickRandom, canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
+  bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale,
 } from './gameRules';
 import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
 import { resolveImage } from './images';
@@ -50,8 +53,64 @@ const modalStyle = {
   color: 'text.primary',
 };
 
+const HOP_MS = 200; // pawn speed, per tile
+const LANDING_PAUSE_MS = 600; // pause on the destination tile before its dialog opens
+
+// Milestone exam or Rescue Quiz in progress.
+const NO_QUIZ = {
+  active: false,
+  mode: null, // 'MILESTONE_ACQUIRE' | 'MILESTONE_CHALLENGE' | 'GRANT'
+  tile: null,
+  questions: [],
+  qIndex: 0,
+  score: 0,
+  mistakes: 0,
+  targetScore: 0,
+  maxMistakes: Infinity,
+  waiting: false, // answered; showing the explanation and the Next button
+  selected: null,
+  result: null,
+  isCorrect: null,
+  history: [], // UI only: right/wrong per answered question
+};
+
+function generatePlayers(count) {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    name: teamDisplayName(i, count),
+    color: TEAM_COLORS[i],
+    position: 0,
+    money: ECONOMY.startMoney,
+    jailed: false,
+    chaosTokens: 0,
+    rescueUsed: false,
+    eliminated: false,
+  }));
+}
+
+/**
+ * useState plus a ref that always holds the newest value, updated in the same
+ * call as the setter. Handlers and timers read the ref, so several updates in
+ * one handler (or a timer created renders ago) never see stale data.
+ * The setter accepts a value or a pure updater, like useState's.
+ */
+function useLatestState(initial) {
+  const [value, setValue] = useState(initial);
+  const ref = useRef(value);
+  const set = useCallback((next) => {
+    ref.current = typeof next === 'function' ? next(ref.current) : next;
+    setValue(ref.current);
+  }, []);
+  return [value, set, ref];
+}
+
 // ------------------------------------------------------------------
 //  MAIN COMPONENT
+//
+//  Turn flow: Roll -> pawn hops -> checkLanding opens a dialog -> the dialog
+//  ends with passTurn(). passTurn is the single place where a team in debt
+//  is sent to liquidation / the Rescue Quiz / elimination, so the feedback and
+//  explanation that caused the debt are always shown first.
 // ------------------------------------------------------------------
 
 export default function GameScreen({
@@ -69,42 +128,30 @@ export default function GameScreen({
   resume = null, // autosaved game to continue (see App.jsx / autosave.js)
   onSnapshot,
 }) {
-  const generatePlayers = (count) => {
-    const colors = TEAM_COLORS;
-    let p = [];
-    for (let i = 0; i < count; i++) {
-      p.push({
-        id: i,
-        name: teamDisplayName(i, count),
-        color: colors[i],
-        position: 0,
-        money: 2500,
-        jailed: false,
-        chaosTokens: 0,
-        rescueUsed: false,
-        eliminated: false,
-      });
-    }
-    return p;
-  };
-
   // A resumed game keeps the freshly built board (its tiles share question arrays)
   // and restores only what changes during play: each tile's owner and level.
-  const [board, setBoard] = useState(() => (resume?.tiles
+  const [board, setBoard, boardRef] = useLatestState(() => (resume?.tiles
     ? boardData.map((t, i) => ({ ...t, owner: resume.tiles[i]?.[0] ?? null, level: resume.tiles[i]?.[1] ?? 0 }))
     : boardData));
-  const [players, setPlayers] = useState(() => resume?.players ?? generatePlayers(playerCount));
+  const [players, setPlayers, playersRef] = useLatestState(() => resume?.players ?? generatePlayers(playerCount));
+  const [turn, setTurn, turnRef] = useLatestState(resume?.turn ?? (startingPlayerIndex || 0));
+  const [totalTurns, setTotalTurns, totalTurnsRef] = useLatestState(resume?.totalTurns ?? 0);
   const getImgSrc = (imgName) => resolveImage(imgName, imageMap, imageBase);
-  const [turn, setTurn] = useState(resume?.turn ?? (startingPlayerIndex || 0));
-  const turnRef = useRef(resume?.turn ?? (startingPlayerIndex || 0));
   // True from the roll until the turn is passed: never autosave a half-finished turn.
   const turnInProgressRef = useRef(false);
-  // Latest players for event handlers. Side effects must not run inside state
-  // updaters: React runs those twice in development (it doubled payouts).
-  const playersRef = useRef(players);
-  useEffect(() => { playersRef.current = players; }, [players]);
 
-  const [totalTurns, setTotalTurns] = useState(resume?.totalTurns ?? 0);
+  // Timers (pawn hops, landing pause, money floats) are cancelled if the game unmounts.
+  const timersRef = useRef(new Set());
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => { timers.forEach((id) => { clearTimeout(id); clearInterval(id); }); timers.clear(); };
+  }, []);
+  const later = (fn, ms) => {
+    const id = setTimeout(() => { timersRef.current.delete(id); fn(); }, ms);
+    timersRef.current.add(id);
+  };
+
+  // isMoving covers the whole move, up to the landing dialog: nothing else can open meanwhile.
   const [isMoving, setIsMoving] = useState(false);
   const [dice, setDice] = useState(resume?.dice ?? [1, 1]);
   const [rollId, setRollId] = useState(0);
@@ -124,26 +171,8 @@ export default function GameScreen({
   const [rulesOpen, setRulesOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [moneyFloats, setMoneyFloats] = useState({});
-
-  // Quiz state
-  const [quizState, setQuizState] = useState({
-    active: false,
-    mode: null,
-    qIndex: 0,
-    score: 0,
-    questions: [],
-    waiting: false,
-    selected: null,
-    isCorrect: null,
-    targetScore: 0,
-    mistakes: 0,
-    maxMistakes: 2,
-    tile: null,
-  });
-
+  const [quizState, setQuizState] = useState(NO_QUIZ);
   const [hoverTile, setHoverTile] = useState(null);
-  const [, setChaosMode] = useState(null);
-  const [chaosTargetTile, setChaosTargetTile] = useState(null);
   const [logRows, setLogRows] = useState(resume?.logRows ?? []);
 
   // Optional session timer: when it runs out, the game ends on net worth.
@@ -158,64 +187,21 @@ export default function GameScreen({
   const timeLeftMs = endsAt ? Math.max(0, endsAt - now) : null;
   const timeUp = endsAt != null && timeLeftMs === 0;
 
-  useEffect(() => {
-    turnRef.current = turn;
-  }, [turn]);
+  // Wildcard cards: the file's `mishap` rows for this game, or the built-in neutral set.
+  const mishapPool = useMemo(() => {
+    const fromFile = tsvRows
+      .filter((r) => (r.type || '').trim().toLowerCase() === 'mishap' && matchesTopicAndModule(r, bigTopic, module))
+      .map((r) => ({ msg: r.question, fact: r.explanation }));
+    return fromFile.length > 0 ? fromFile : DEFAULT_CHANCE_CARDS;
+  }, [tsvRows, bigTopic, module]);
 
-  // BANKRUPTCY CHECK
-  useEffect(() => {
-    const p = players[turnRef.current];
-    if (!p || p.eliminated) return;
-    if (p.money < 0 && !['LIQUIDATION', 'GRANT_INTRO', 'GRANT_QUIZ', 'GRANT_RESULT', 'ELIMINATED', 'STANDINGS', 'WIN'].includes(modalStage)) {
-        checkBankruptcyStatus(p);
-    }
-  }, [players, turn, modalStage]);
+  const currentPlayer = players[turn];
+  // The team whose turn it is, as of the latest update (for handlers and timers).
+  const activePlayer = () => playersRef.current[turnRef.current];
 
-  const checkBankruptcyStatus = (player) => {
-    const ownedTiles = board.filter(t => t.owner === player.id);
-    const assetValue = ownedTiles.reduce((sum, t) => {
-        const buildValue = (t.level || 0) * (t.houseCost || 0);
-        return sum + Math.floor((t.price + buildValue) * 0.5);
-    }, 0);
-
-    if (player.money + assetValue >= 0 && ownedTiles.length > 0) {
-        setActiveCard({ type: 'LIQUIDATION', debt: Math.abs(player.money), assets: ownedTiles });
-        setModalStage('LIQUIDATION');
-        setModalOpen(true);
-    } else if (player.rescueUsed) {
-        eliminatePlayer(player.id, 'Bankrupt again after using the Rescue Quiz');
-    } else {
-        setActiveCard({ type: 'GRANT', debt: Math.abs(player.money) });
-        setModalStage('GRANT_INTRO');
-        setModalOpen(true);
-    }
-  };
-
-  // A team that cannot pay its debts leaves the game; its tiles return to the bank.
-  const eliminatePlayer = (playerId, reason) => {
-    const name = players[playerId]?.name || 'Team';
-    setBoard((prev) => prev.map((t) => (t.owner === playerId ? { ...t, owner: null, level: 0 } : t)));
-    setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, eliminated: true, eliminatedAt: totalTurns, money: 0 } : p)));
-    addLog(`${name} has been eliminated.`);
-    addCSVEvent({ eventType: 'ELIMINATED', turn: totalTurns, playerIndex: playerId, playerName: name, notes: reason, timestamp: new Date().toISOString() });
-    setActiveCard({ type: 'ELIMINATED', playerId, name, reason });
-    setModalStage('ELIMINATED');
-    setModalOpen(true);
-  };
-
-  const continueAfterElimination = () => {
-    const remaining = activePlayers(players);
-    if (players.length > 1 && remaining.length === 1) {
-      setActiveCard({ type: 'WIN', msg: `${remaining[0].name} is the last team standing!` });
-      setModalStage('WIN');
-      addLog(`VICTORY: ${remaining[0].name} is the last team standing.`);
-    } else if (remaining.length === 0) {
-      openStandings(true, 'eliminated');
-    } else {
-      passTurn();
-    }
-  };
-
+  // ------------------------------------------------------------------
+  //  LOGGING (game log + CSV rows)
+  // ------------------------------------------------------------------
   const addLog = (msg) => {
     setLogs((prev) => {
       const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
@@ -231,9 +217,9 @@ export default function GameScreen({
   const logAnswer = (eventType, q, result, meta = {}) => {
     addCSVEvent({
       eventType,
-      turn: totalTurns,
+      turn: totalTurnsRef.current,
       playerIndex: turnRef.current,
-      playerName: players[turnRef.current]?.name || '',
+      playerName: activePlayer()?.name || '',
       questionId: q?.id || '',
       format: q?.format || 'mcq',
       prompt: q?.prompt || '',
@@ -246,45 +232,33 @@ export default function GameScreen({
   };
 
   // Unique questions across the board (property tiles share question arrays).
-  const allBoardQuestions = () => [...new Set(board.flatMap((t) => t.questions || []))];
-
-  const currentPlayer = players[turnRef.current];
+  const allBoardQuestions = () => [...new Set(boardRef.current.flatMap((t) => t.questions || []))];
 
   // ------------------------------------------------------------------
   //  TRANSACTIONS
+  //  CSV columns: action, amount, moneyBefore, moneyAfter, tileId, tileName, notes.
   // ------------------------------------------------------------------
   const handleTransaction = (playerId, amount, meta = {}) => {
-    setPlayers((prev) =>
-      prev.map((p) =>
-        p.id === playerId ? { ...p, money: p.money + amount } : p
-      )
-    );
+    const player = playersRef.current.find((p) => p.id === playerId);
+    const before = player?.money || 0;
+    setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, money: p.money + amount } : p)));
 
     const floatId = Date.now();
-    setMoneyFloats((prev) => ({
-      ...prev,
-      [playerId]: { amount, visible: true, id: floatId },
-    }));
-    setTimeout(() => {
-      setMoneyFloats((prev) => ({
-        ...prev,
-        [playerId]: { ...prev[playerId], visible: false },
-      }));
+    setMoneyFloats((prev) => ({ ...prev, [playerId]: { amount, visible: true, id: floatId } }));
+    later(() => {
+      setMoneyFloats((prev) => ({ ...prev, [playerId]: { ...prev[playerId], visible: false } }));
     }, 2000);
-
-    const before = (players.find(p => p.id === playerId)?.money) || 0;
-    const after = before + amount;
 
     addCSVEvent({
       eventType: 'TRANSACTION',
-      turn: totalTurns,
+      turn: totalTurnsRef.current,
       playerIndex: playerId,
-      playerName: players[playerId]?.name || '',
-      playerColor: players[playerId]?.color || '',
+      playerName: player?.name || '',
+      playerColor: player?.color || '',
       action: meta.action || 'MONEY_CHANGE',
       amount,
       moneyBefore: before,
-      moneyAfter: after,
+      moneyAfter: before + amount,
       tileId: meta.tileId ?? '',
       tileName: meta.tileName ?? '',
       notes: meta.notes ?? '',
@@ -292,143 +266,145 @@ export default function GameScreen({
   };
 
   // ------------------------------------------------------------------
-  //  LIQUIDATION (TOP-DOWN) + TURN PASSING
+  //  TURN PASSING, BANKRUPTCY, LIQUIDATION, ELIMINATION
   // ------------------------------------------------------------------
-  const handleSellAsset = (tile) => {
-    // Logic: If upgraded, downgrade WHOLE GROUP by 1. If level 0, sell deed.
-    
-    if (tile.level > 0) {
-        // --- DOWNGRADE MODE ---
-        const groupTiles = getSubgroupTiles(board, tile);
-        const groupSize = groupTiles.length;
-        const singleUpgradeCost = tile.houseCost || tile.price; 
-        const totalRefund = Math.floor((singleUpgradeCost * 0.5) * groupSize);
 
-        handleTransaction(currentPlayer.id, totalRefund, {
-            action: 'LIQUIDATION_DOWNGRADE',
-            tileId: tile.id,
-            tileName: tile.name,
-            notes: `Downgraded sub-theme to Level ${tile.level - 1}`
-        });
+  // Liquidation if assets cover the debt, else the one Rescue Quiz, else elimination.
+  const resolveDebt = (player) => {
+    const action = bankruptcyAction(player, boardRef.current);
+    if (action === 'liquidate') {
+      setActiveCard({ type: 'LIQUIDATION', debt: Math.abs(player.money), assets: boardRef.current.filter((t) => t.owner === player.id) });
+      setModalStage('LIQUIDATION');
+      setModalOpen(true);
+    } else if (action === 'eliminate') {
+      eliminatePlayer(player.id, 'Bankrupt again after using the Rescue Quiz');
+    } else if (action === 'rescue') {
+      setActiveCard({ type: 'GRANT', debt: Math.abs(player.money) });
+      setModalStage('GRANT_INTRO');
+      setModalOpen(true);
+    }
+  };
 
-        setBoard(prev => prev.map(t => {
-            if (t.type === 'property' && t.group === tile.group && t.sub === tile.sub) {
-                return { ...t, level: t.level - 1 };
-            }
-            return t;
-        }));
-        
-        // Refresh activeCard
-        const newBoard = board.map(t => {
-            if (t.type === 'property' && t.group === tile.group && t.sub === tile.sub) {
-                return { ...t, level: t.level - 1 };
-            }
-            return t;
-        });
-        const updatedAssets = newBoard.filter(t => t.owner === currentPlayer.id);
-        setActiveCard(prev => ({ ...prev, assets: updatedAssets }));
+  // End the current team's turn. A team in debt must settle it first.
+  const passTurn = () => {
+    const p = activePlayer();
+    if (p && !p.eliminated && p.money < 0) {
+      resolveDebt(p);
+      return;
+    }
+    turnInProgressRef.current = false;
+    setModalOpen(false);
+    setTurn(nextActivePlayer(playersRef.current, turnRef.current));
+  };
 
-        if (currentPlayer.money + totalRefund >= 0) {
-            addLog(`${currentPlayer.name} cleared debt. Turn ends.`);
-            passTurn(); // <--- TURN ENDS HERE
-        }
+  // A team that cannot pay its debts leaves the game; its tiles return to the bank.
+  const eliminatePlayer = (playerId, reason) => {
+    const name = playersRef.current[playerId]?.name || 'Team';
+    setBoard((prev) => releaseTiles(prev, playerId));
+    setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, eliminated: true, eliminatedAt: totalTurnsRef.current, money: 0 } : p)));
+    addLog(`${name} has been eliminated.`);
+    addCSVEvent({ eventType: 'ELIMINATED', turn: totalTurnsRef.current, playerIndex: playerId, playerName: name, notes: reason, timestamp: new Date().toISOString() });
+    setActiveCard({ type: 'ELIMINATED', playerId, name, reason });
+    setModalStage('ELIMINATED');
+    setModalOpen(true);
+  };
 
+  const continueAfterElimination = () => {
+    const all = playersRef.current;
+    const remaining = activePlayers(all);
+    if (all.length > 1 && remaining.length === 1) {
+      setActiveCard({ type: 'WIN', msg: `${remaining[0].name} is the last team standing!` });
+      setModalStage('WIN');
+      addLog(`VICTORY: ${remaining[0].name} is the last team standing.`);
+    } else if (remaining.length === 0) {
+      openStandings(true, 'eliminated');
     } else {
-        // --- SELL DEED MODE ---
-        const sellValue = Math.floor(tile.price * 0.5);
+      passTurn();
+    }
+  };
 
-        handleTransaction(currentPlayer.id, sellValue, {
-            action: 'LIQUIDATION_SALE',
-            tileId: tile.id,
-            tileName: tile.name,
-            notes: 'Sold deed'
-        });
-
-        const newBoard = board.map(t => t.id === tile.id ? { ...t, owner: null, level: 0 } : t);
-        setBoard(newBoard);
-        
-        const updatedAssets = newBoard.filter(t => t.owner === currentPlayer.id);
-        setActiveCard(prev => ({ ...prev, assets: updatedAssets }));
-
-        if (currentPlayer.money + sellValue >= 0) {
-            addLog(`${currentPlayer.name} cleared debt. Turn ends.`);
-            passTurn(); // <--- TURN ENDS HERE
-        }
+  // Liquidation: an upgraded tile loses one level across its subgroup; an
+  // unupgraded one is sold back to the bank. The turn ends once out of debt.
+  const handleSellAsset = (listedTile) => {
+    const player = activePlayer();
+    const tile = boardRef.current[listedTile.id];
+    if (!player || !tile || tile.owner !== player.id) return;
+    let nextBoard;
+    let cash;
+    if (tile.level > 0) {
+      const r = downgradeSubgroup(boardRef.current, tile, player.id);
+      nextBoard = r.board;
+      cash = r.refund;
+      setBoard(nextBoard);
+      handleTransaction(player.id, cash, { action: 'LIQUIDATION_DOWNGRADE', tileId: tile.id, tileName: tile.name, notes: `Downgraded sub-theme to Level ${tile.level - 1}` });
+    } else {
+      const r = sellDeed(boardRef.current, tile);
+      nextBoard = r.board;
+      cash = r.value;
+      setBoard(nextBoard);
+      handleTransaction(player.id, cash, { action: 'LIQUIDATION_SALE', tileId: tile.id, tileName: tile.name, notes: 'Sold deed' });
+    }
+    const money = player.money + cash;
+    if (money >= 0) {
+      addLog(`${player.name} cleared debt. Turn ends.`);
+      passTurn();
+    } else {
+      setActiveCard((prev) => ({ ...prev, debt: Math.abs(money), assets: nextBoard.filter((t) => t.owner === player.id) }));
     }
   };
 
   // ------------------------------------------------------------------
-  //  GRANT & CHAOS LOGIC
+  //  RESCUE QUIZ & CHAOS TOKENS
   // ------------------------------------------------------------------
   const startGrantExam = () => {
-    const allQuestions = allBoardQuestions();
-    if (allQuestions.length === 0) { handleGrantResult(true); return; }
-    let pool = [...allQuestions].sort(() => 0.5 - Math.random());
-    while (pool.length < 3) pool = [...pool, ...allQuestions];
-    pool = pool.slice(0, 3).map((q) => prepareQuestion(q));
-
+    const pool = drawQuestions(allBoardQuestions(), QUIZ_RULES.rescue.questions);
+    if (pool.length === 0) { handleGrantResult(true); return; }
     setQuizState({
-        active: true, mode: 'GRANT', qIndex: 0, score: 0, questions: pool,
-        targetScore: 2, waiting: false, selected: null, isCorrect: null, history: [],
+      ...NO_QUIZ, active: true, mode: 'GRANT', questions: pool.map((q) => prepareQuestion(q)), targetScore: QUIZ_RULES.rescue.pass,
     });
     setModalStage('GRANT_QUIZ');
   };
 
   const handleGrantResult = (passed) => {
+    const player = activePlayer();
     if (!passed) {
-        eliminatePlayer(currentPlayer.id, 'Did not pass the Rescue Quiz');
-        return;
+      eliminatePlayer(player.id, 'Did not pass the Rescue Quiz');
+      return;
     }
-    const debt = Math.abs(currentPlayer.money);
-    handleTransaction(currentPlayer.id, debt + 500, { action: 'EMERGENCY_GRANT', notes: 'Rescue Quiz passed' });
-    setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, rescueUsed: true } : p));
-    setFeedback({ tone: 'good', title: LABELS.rescued, detail: `Your ${money(debt)} debt is cleared and you receive $500 to keep playing.`, note: "This was your team's only rescue: if you go bankrupt again, you are out." });
+    const debt = Math.max(0, -player.money);
+    handleTransaction(player.id, debt + ECONOMY.rescueBonus, { action: 'EMERGENCY_GRANT', notes: 'Rescue Quiz passed' });
+    setPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, rescueUsed: true } : p)));
+    setFeedback({ tone: 'good', title: LABELS.rescued, detail: `Your ${money(debt)} debt is cleared and you receive ${money(ECONOMY.rescueBonus)} to keep playing.`, note: "This was your team's only rescue: if you go bankrupt again, you are out." });
     setModalStage('GRANT_RESULT');
   };
 
   const handleBuyChaosToken = () => {
-    // 1. NEW CHECK: Ensure all 4 milestones are owned (by anyone)
-    const milestones = board.filter(t => t.type === 'milestone');
-    const allCaptured = milestones.every(t => t.owner !== null);
-
-    if (!allCaptured) {
-        alert("Chaos Tokens are locked! They only become available after ALL 4 Milestones have been captured.");
-        return;
+    if (!chaosTokensForSale(boardRef.current)) {
+      alert('Chaos Tokens are locked! They only become available after ALL 4 Milestones have been captured.');
+      return;
     }
-
-    // 2. Existing Money Check
-    if (currentPlayer.money < 500) {
-        alert("Insufficient funds to buy a Chaos Token ($500).");
-        return;
+    const player = activePlayer();
+    if (player.money < ECONOMY.chaosTokenPrice) {
+      alert(`Insufficient funds to buy a Chaos Token ($${ECONOMY.chaosTokenPrice}).`);
+      return;
     }
-
-    // 3. Process Transaction
-    handleTransaction(currentPlayer.id, -500, { action: 'BUY_CHAOS', notes: 'Purchased token' });
-    setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, chaosTokens: p.chaosTokens + 1 } : p));
-    addLog(`${currentPlayer.name} bought a Chaos Token.`);
+    handleTransaction(player.id, -ECONOMY.chaosTokenPrice, { action: 'BUY_CHAOS', notes: 'Purchased token' });
+    setPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, chaosTokens: p.chaosTokens + 1 } : p)));
+    addLog(`${player.name} bought a Chaos Token.`);
   };
 
   // ------------------------------------------------------------------
-  //  GAME LOGIC
+  //  MILESTONE EXAMS (6 questions, 5 to pass, stop on the 2nd mistake)
   // ------------------------------------------------------------------
-  // QUIZ LOGIC
   const startQuiz = (tile, mode) => {
-    if (!tile.quiz || tile.quiz.length === 0) return;
-    let pool = [...tile.quiz];
-    while (pool.length < 10) pool = [...pool, ...tile.quiz];
-    pool.sort(() => Math.random() - 0.5);
-
-    // NEW LOGIC: Milestones now have 6 questions. 
-    // Target is 5 (Allows < 2 errors, i.e., 0 or 1 mistake).
-    const isMilestone = mode === 'MILESTONE_ACQUIRE' || mode === 'MILESTONE_CHALLENGE';
-    const qCount = isMilestone ? 6 : 10;
-    const target = isMilestone ? 5 : 9;
-
+    // A milestone without its own questions (the validator reports it) borrows the board's.
+    const source = tile.quiz?.length ? tile.quiz : allBoardQuestions();
+    if (source.length === 0) return;
+    const rules = QUIZ_RULES.milestone;
     setQuizState({
-      active: true, mode, qIndex: 0, score: 0, questions: pool.slice(0, qCount).map((q) => prepareQuestion(q)), tile,
-      wrongAnswers: 0, waiting: false, selected: null, isCorrect: null,
-      targetScore: target, mistakes: 0, maxMistakes: 2, // maxMistakes 2 means you fail on the 2nd error
-      history: [], // UI only: right/wrong per answered question
+      ...NO_QUIZ, active: true, mode, tile,
+      questions: drawQuestions(source, rules.questions).map((q) => prepareQuestion(q)),
+      targetScore: rules.pass, maxMistakes: rules.maxMistakes,
     });
     setLastAnswer(null);
     setModalStage('QUIZ_START');
@@ -439,106 +415,91 @@ export default function GameScreen({
     if (quizState.waiting) return;
     const currentQ = quizState.questions[quizState.qIndex];
     const result = checkAnswer(currentQ, response);
-    const isCorrect = result.correct;
     logAnswer(quizState.mode === 'GRANT' ? 'GRANT_Q' : 'MILESTONE_Q', currentQ, result, {
       tileId: quizState.tile?.id ?? '', tileName: quizState.tile?.name ?? '', questionNumber: quizState.qIndex + 1,
     });
-
-    // Calculate score updates immediately
-    let newScore = quizState.score;
-    let newMistakes = quizState.mistakes;
-    if (isCorrect) newScore++;
-    else newMistakes++;
-
-    // Set waiting to true to show Explanation + Next Button
-    setQuizState((prev) => ({ 
-      ...prev, 
-      waiting: true, 
-      selected: response, 
+    // Show the explanation and a Next button.
+    setQuizState((prev) => ({
+      ...prev,
+      waiting: true,
+      selected: response,
       result,
-      isCorrect, 
-      score: newScore, 
-      mistakes: newMistakes,
-      history: [...(prev.history || []), isCorrect],
+      isCorrect: result.correct,
+      score: prev.score + (result.correct ? 1 : 0),
+      mistakes: prev.mistakes + (result.correct ? 0 : 1),
+      history: [...(prev.history || []), result.correct],
     }));
   };
 
-  // 2. Handle moving to next question (Called by Next Button)
   const handleNextQuestion = () => {
-    const maxQs = quizState.questions.length;
     const isGrant = quizState.mode === 'GRANT';
-
-    // Check for failure (unless it's a Grant exam which finishes regardless)
+    // A milestone exam stops at the 2nd mistake; the Rescue Quiz always runs to the end.
     if (!isGrant && quizState.mistakes >= quizState.maxMistakes) {
-         finishQuiz(false, quizState.score, quizState.mistakes);
-         return;
+      finishQuiz(false);
+      return;
     }
-
-    if (quizState.qIndex < maxQs - 1) {
-        // Advance to next question
-        setQuizState((prev) => ({
-            ...prev,
-            qIndex: prev.qIndex + 1,
-            waiting: false,
-            selected: null,
-            isCorrect: null
-        }));
-    } else {
-        // Finish Quiz
-        if (isGrant) {
-            handleGrantResult(quizState.score >= quizState.targetScore);
-        } else {
-            finishQuiz(quizState.score >= quizState.targetScore, quizState.score, quizState.mistakes);
-        }
+    if (quizState.qIndex < quizState.questions.length - 1) {
+      setQuizState((prev) => ({ ...prev, qIndex: prev.qIndex + 1, waiting: false, selected: null, result: null, isCorrect: null }));
+      return;
     }
+    const passed = quizState.score >= quizState.targetScore;
+    if (isGrant) handleGrantResult(passed);
+    else finishQuiz(passed);
   };
 
-  const finishQuiz = (passed, score) => {
-    const tile = quizState.tile;
-    const mode = quizState.mode;
+  const finishQuiz = (passed) => {
+    const { tile, mode } = quizState;
+    const playerId = turnRef.current;
+    const owner = boardRef.current[tile.id]?.owner;
 
     if (mode === 'MILESTONE_ACQUIRE') {
-      // CHANGED: Score needs to be >= 5 (since total is 6)
-      if (passed && score >= 5) {
-        handleTransaction(turnRef.current, -tile.price, { action: 'MILESTONE_ACQUIRE', tileId: tile.id, tileName: tile.name });
-        const newBoard = board.map((t) => t.id === tile.id ? { ...t, owner: turnRef.current } : t);
-        setBoard(newBoard);
-        setPlayers((prev) => prev.map((p) => p.id === turnRef.current ? { ...p, chaosTokens: p.chaosTokens + 1 } : p));
-        addLog(`${players[turnRef.current].name} captured the ${tile.name} milestone!`);
+      if (passed) {
+        handleTransaction(playerId, -tile.price, { action: 'MILESTONE_ACQUIRE', tileId: tile.id, tileName: tile.name });
+        setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: playerId } : t)));
+        setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, chaosTokens: p.chaosTokens + 1 } : p)));
+        addLog(`${activePlayer().name} captured the ${tile.name} milestone!`);
         setModalStage('MILESTONE_SUCCESS');
       } else {
-        addLog(`${players[turnRef.current].name} didn't pass the ${tile.name} exam.`);
+        addLog(`${activePlayer().name} didn't pass the ${tile.name} exam.`);
         setModalStage('MILESTONE_FAIL');
       }
     } else if (mode === 'MILESTONE_CHALLENGE') {
       const baseRent = tile.baseRent || 0;
-      // CHANGED: Score >= 5 (Allows 1 mistake)
-      if (passed && score >= 5) {
-        const halfRent = Math.floor(baseRent / 2);
-        handleTransaction(turnRef.current, -halfRent, { action: 'MILESTONE_CHALLENGE_SUCCESS', tileId: tile.id, tileName: tile.name, rentPaid: halfRent, correct: true });
-        if (tile.owner !== 99 && tile.owner != null) handleTransaction(tile.owner, halfRent, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
-        setFeedback({ tone: 'good', title: 'Exam passed!', detail: `You pay only half the milestone fee: ${money(halfRent)}.` });
-        addLog(`${players[turnRef.current].name} passed the ${tile.name} exam and paid half the fee.`);
-        setModalStage('FEEDBACK_INCORRECT');
-      } else {
-        const fullRent = baseRent;
-        handleTransaction(turnRef.current, -fullRent, { action: 'MILESTONE_CHALLENGE_FAIL', tileId: tile.id, tileName: tile.name, rentPaid: fullRent, correct: false });
-        if (tile.owner !== 99 && tile.owner != null) handleTransaction(tile.owner, fullRent, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
-        setFeedback({ tone: 'bad', title: 'Exam not passed', detail: `You pay the full milestone fee: ${money(fullRent)}.` });
-        addLog(`${players[turnRef.current].name} paid the full ${tile.name} fee.`);
-        setModalStage('FEEDBACK_INCORRECT');
-      }
+      const fee = passed ? Math.floor(baseRent / 2) : baseRent;
+      handleTransaction(playerId, -fee, { action: passed ? 'MILESTONE_CHALLENGE_SUCCESS' : 'MILESTONE_CHALLENGE_FAIL', tileId: tile.id, tileName: tile.name });
+      if (owner != null) handleTransaction(owner, fee, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
+      setFeedback(passed
+        ? { tone: 'good', title: 'Exam passed!', detail: `You pay only half the milestone fee: ${money(fee)}.` }
+        : { tone: 'bad', title: 'Exam not passed', detail: `You pay the full milestone fee: ${money(fee)}.` });
+      addLog(`${activePlayer().name} paid ${money(fee)} on the ${tile.name} milestone.`);
+      setModalStage('FEEDBACK_INCORRECT');
     }
   };
 
+  // Landing on a rival's milestone and declining the exam.
+  const payMilestoneFee = () => {
+    const tile = boardRef.current[activeCard.data.id];
+    const fee = tile.baseRent || 0;
+    handleTransaction(turnRef.current, -fee, { action: 'MILESTONE_FULL_FEE', tileId: tile.id, tileName: tile.name });
+    if (tile.owner != null) handleTransaction(tile.owner, fee, { action: 'MILESTONE_RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
+    passTurn();
+  };
+
+  // ------------------------------------------------------------------
+  //  MOVING AND LANDING
+  // ------------------------------------------------------------------
+  const openCard = (card, stage) => {
+    setActiveCard(card);
+    setModalStage(stage);
+    setModalOpen(true);
+  };
+
   const checkLanding = (didPassGo) => {
-    const currentPlayers = playersRef.current;
-    const currentTurnIndex = turnRef.current;
-    const p = currentPlayers[currentTurnIndex];
-    const tile = board[p.position];
+    const p = activePlayer();
+    const tile = boardRef.current[p.position];
 
     if (didPassGo) {
-      handleTransaction(p.id, 200, { action: 'PASS_GO' });
+      handleTransaction(p.id, ECONOMY.lapBonus, { action: 'PASS_GO' });
       addLog(LABELS.passStart);
     }
 
@@ -546,82 +507,52 @@ export default function GameScreen({
     setLastAnswer(null);
 
     if (tile.owner === p.id) {
-      setActiveCard({ type: 'MSG', data: tile, msg: LABELS.ownTile });
-      setModalStage('MSG');
-      setModalOpen(true);
+      openCard({ type: 'MSG', data: tile, msg: LABELS.ownTile }, 'MSG');
       return;
     }
 
     if (tile.type === 'milestone') {
-      if (tile.owner == null) {
-        if (p.money >= tile.price) {
-          setActiveCard({ type: 'MILESTONE', data: tile });
-          setModalStage('MILESTONE_INTRO');
-          setModalOpen(true);
-        } else {
-          setActiveCard({ type: 'MSG', data: tile, msg: LABELS.cannotAffordMilestone(tile.price) });
-          setModalStage('MSG');
-          setModalOpen(true);
-        }
-      } else if (tile.owner !== p.id) {
-        setActiveCard({ type: 'MILESTONE_CHALLENGE', data: tile, ownerId: tile.owner });
-        setModalStage('MILESTONE_CHALLENGE_INTRO');
-        setModalOpen(true);
+      if (tile.owner != null) {
+        openCard({ type: 'MILESTONE_CHALLENGE', data: tile, ownerId: tile.owner }, 'MILESTONE_CHALLENGE_INTRO');
+      } else if (activePlayer().money >= tile.price) {
+        openCard({ type: 'MILESTONE', data: tile }, 'MILESTONE_INTRO');
+      } else {
+        openCard({ type: 'MSG', data: tile, msg: LABELS.cannotAffordMilestone(tile.price) }, 'MSG');
       }
       return;
     }
 
     if (tile.questions && tile.questions.length > 0) {
-      if (tile.owner != null && tile.owner !== p.id) {
-        const rentBase = tile.type === 'sequencing_core' ? tile.baseRent : computeRent(board, tile);
-        const qPool = tile.questions || [];
-        const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
-        setActiveCard({ type: 'RENT_DEFENSE', data: tile, rent: rentBase, ownerName: players[tile.owner]?.name || LABELS.rivalTeam, ownerId: tile.owner, payerId: p.id, payerName: p.name, q: randomQ });
-        setModalStage('QUESTION');
-        setModalOpen(true);
+      const q = prepareQuestion(pickRandom(tile.questions));
+      if (tile.owner != null) {
+        openCard({
+          type: 'RENT_DEFENSE', data: tile, q, rent: computeRent(boardRef.current, tile),
+          ownerName: playersRef.current[tile.owner]?.name || LABELS.rivalTeam, ownerId: tile.owner, payerId: p.id, payerName: p.name,
+        }, 'QUESTION');
       } else {
-        const qPool = tile.questions || [];
-        const randomQ = prepareQuestion(qPool[Math.floor(Math.random() * qPool.length)]);
-        setActiveCard({ type: 'QUESTION', data: tile, q: randomQ });
-        setModalStage('QUESTION');
-        setModalOpen(true);
+        openCard({ type: 'QUESTION', data: tile, q }, 'QUESTION');
       }
-    } else {
-      let msg = 'Event triggered.';
-      let amount = 0;
-      let fact = null;
-      if (tile.type === 'chance') {
-        // 1. Look for 'mishap' rows in the TSV
-        const tsvMishaps = tsvRows
-          .filter(r => (r.type || '').trim().toLowerCase() === 'mishap' && matchesTopicAndModule(r, bigTopic, module))
-          .map(r => ({ msg: r.question, fact: r.explanation }));
-
-        // 2. Use TSV mishaps if found; otherwise fallback to defaults
-        const mishapPool = tsvMishaps.length > 0 ? tsvMishaps : DEFAULT_CHANCE_CARDS;
-        
-        const randomMishap = mishapPool.length > 0 ? mishapPool[Math.floor(Math.random() * mishapPool.length)] : { msg: 'Unexpected expense (-$100)', fact: null };
-        amount = parseMishapAmount(randomMishap.msg);
-        msg = randomMishap.msg;
-        fact = randomMishap.fact || null;
-        if (amount !== 0) handleTransaction(currentTurnIndex, amount, { action: 'LAB_MISHAP', tileId: tile.id, tileName: tile.name, notes: msg });
-        addLog(`${LABELS.chanceCard} for ${p.name}${amount ? ` (${signedMoney(amount)})` : ''}.`);
-        setActiveCard({ type: 'MISHAP', data: { ...tile, fact }, msg, amount });
-        setModalStage('MISHAP');
-        setModalOpen(true);
-      } else {
-        setActiveCard({ type: 'MSG', data: tile, msg });
-        setModalStage('MSG');
-        setModalOpen(true);
-      }
+      return;
     }
+
+    if (tile.type === 'chance') {
+      const card = pickRandom(mishapPool) || { msg: 'Unexpected expense (-$100)', fact: null };
+      const amount = parseMishapAmount(card.msg);
+      if (amount !== 0) handleTransaction(p.id, amount, { action: 'LAB_MISHAP', tileId: tile.id, tileName: tile.name, notes: card.msg });
+      addLog(`${LABELS.chanceCard} for ${p.name}${amount ? ` (${signedMoney(amount)})` : ''}.`);
+      openCard({ type: 'MISHAP', data: { ...tile, fact: card.fact || null }, msg: card.msg, amount }, 'MISHAP');
+      return;
+    }
+
+    // A tile with no questions (e.g. no core rows in the file).
+    openCard({ type: 'MSG', data: tile, msg: 'Event triggered.' }, 'MSG');
   };
 
   const handleRoll = () => {
-    if (isMoving || timeUp || players[turn].eliminated) return;
-    if (players[turn].money < 0) {
-        alert("Your team is in debt! Sort out your debt before rolling again.");
-        return;
-    }
+    const p = activePlayer();
+    if (isMoving || timeUp || turnInProgressRef.current || !p || p.eliminated) return;
+    // Debts are settled before a turn ends, so this only happens with a game saved by an older version.
+    if (p.money < 0) { resolveDebt(p); return; }
     const d1 = Math.floor(Math.random() * 6) + 1;
     const d2 = Math.floor(Math.random() * 6) + 1;
     setDice([d1, d2]);
@@ -629,177 +560,140 @@ export default function GameScreen({
     turnInProgressRef.current = true;
     setIsMoving(true);
 
-    const startPos = players[turn].position;
     const steps = d1 + d2;
-    const passesGo = startPos + steps >= 36;
+    const passesGo = p.position + steps >= BOARD_SIZE;
     let stepsTaken = 0;
-
-    const hopInterval = setInterval(() => {
-      setPlayers((prevPlayers) => prevPlayers.map((player, index) => index === turnRef.current ? { ...player, position: (player.position + 1) % 36 } : player));
+    const hop = setInterval(() => {
+      setPlayers((prev) => prev.map((player, index) => (index === turnRef.current ? { ...player, position: (player.position + 1) % BOARD_SIZE } : player)));
       stepsTaken++;
-      if (stepsTaken >= steps) {
-        clearInterval(hopInterval);
-        setIsMoving(false);
-        setTotalTurns((prev) => prev + 1);
-        setTimeout(() => checkLanding(passesGo), 600);
-      }
-    }, 200);
+      if (stepsTaken < steps) return;
+      clearInterval(hop);
+      timersRef.current.delete(hop);
+      setTotalTurns((n) => n + 1);
+      later(() => { setIsMoving(false); checkLanding(passesGo); }, LANDING_PAUSE_MS);
+    }, HOP_MS);
+    timersRef.current.add(hop);
   };
 
+  // ------------------------------------------------------------------
+  //  QUESTIONS ON PROPERTY AND CORE TILES
+  // ------------------------------------------------------------------
+
+  // Unowned tile: right answer -> option to buy; wrong answer -> small fine.
   const handleAnswer = (response) => {
-    const q = activeCard.q;
+    const { q, data: tile } = activeCard;
     const result = checkAnswer(q, response);
-    logAnswer('PROPERTY_Q', q, result, { tileId: activeCard.data.id, tileName: activeCard.data.name });
+    logAnswer('PROPERTY_Q', q, result, { tileId: tile.id, tileName: tile.name });
     setLastAnswer({ q, response, result });
     if (result.correct) {
       setFeedback({ tone: 'good', title: 'Correct!', explanation: q.explanation || '' });
       setModalStage('DECISION');
     } else {
-      setFeedback({ tone: 'bad', title: 'Not quite', detail: 'That costs your team $20.', explanation: q.explanation || '' });
-      handleTransaction(turnRef.current, -20, { action: 'QUESTION_PENALTY', tileId: activeCard.data.id, notes: 'Incorrect on acquisition question' });
+      setFeedback({ tone: 'bad', title: 'Not quite', detail: `That costs your team ${money(ECONOMY.wrongAnswerPenalty)}.`, explanation: q.explanation || '' });
+      handleTransaction(turnRef.current, -ECONOMY.wrongAnswerPenalty, { action: 'QUESTION_PENALTY', tileId: tile.id, tileName: tile.name, notes: 'Incorrect on acquisition question' });
       setModalStage('FEEDBACK_INCORRECT');
     }
   };
 
   const handleBuy = () => {
     const tile = activeCard.data;
-    if (currentPlayer.money < tile.price) { alert("Insufficient funds!"); return; }
+    if (activePlayer().money < tile.price) { alert('Insufficient funds!'); return; }
     handleTransaction(turnRef.current, -tile.price, { action: 'BUY_PROPERTY', tileId: tile.id, tileName: tile.name });
-    setBoard((prev) => prev.map((t) => t.id === tile.id ? { ...t, owner: turnRef.current } : t));
-    addLog(`${currentPlayer.name} bought ${tile.type === 'property' ? tile.sub : tile.name} for ${money(tile.price)}.`);
+    setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: turnRef.current } : t)));
+    addLog(`${activePlayer().name} bought ${tile.type === 'property' ? tile.sub : tile.name} for ${money(tile.price)}.`);
     passTurn();
   };
 
-  const passTurn = () => {
-    turnInProgressRef.current = false;
-    setModalOpen(false);
-    setTurn((prev) => nextActivePlayer(players, prev));
+  // Rival's tile: a right answer halves the rent.
+  const handleRentChallengeAnswer = (response) => {
+    const { q, data: tile, rent, payerId, ownerId } = activeCard;
+    const result = checkAnswer(q, response);
+    logAnswer('RENT_Q', q, result, { tileId: tile.id, tileName: tile.name });
+    const rentToPay = result.correct ? Math.floor(rent / 2) : rent;
+    const ownerName = activeCard.ownerName;
+    setLastAnswer({ q, response, result });
+    setFeedback(result.correct
+      ? { tone: 'good', title: 'Correct: half rent!', detail: `You pay ${money(rentToPay)} to ${ownerName} instead of ${money(rent)}.`, explanation: q.explanation || '' }
+      : { tone: 'bad', title: 'Not quite: full rent', detail: `You pay ${money(rentToPay)} to ${ownerName}.`, explanation: q.explanation || '' });
+    addLog(`${activeCard.payerName} paid ${money(rentToPay)} rent to ${ownerName}.`);
+    handleTransaction(payerId, -rentToPay, { action: 'RENT_PAYMENT', tileId: tile.id, tileName: tile.name });
+    if (ownerId != null) handleTransaction(ownerId, rentToPay, { action: 'RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
+    setModalStage('FEEDBACK_INCORRECT');
   };
 
   // Autosave between turns only: a refresh in the middle of a turn returns to its start.
   useEffect(() => {
     if (!onSnapshot || isMoving || modalOpen || manageOpen || turnInProgressRef.current) return;
     onSnapshot({ tiles: board.map((t) => [t.owner ?? null, t.level || 0]), players, turn, totalTurns, logs, logRows, dice, endsAt });
-  }, [board, players, turn, totalTurns, logRows, isMoving, modalOpen, manageOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onSnapshot, board, players, turn, totalTurns, logs, logRows, dice, endsAt, isMoving, modalOpen, manageOpen]);
 
-  const handleRentChallengeAnswer = (response) => {
-    const tile = activeCard.data;
-    const result = checkAnswer(activeCard.q, response);
-    const isCorrect = result.correct;
-    logAnswer('RENT_Q', activeCard.q, result, { tileId: tile.id, tileName: tile.name });
-    const rentBase = tile.type === 'sequencing_core' ? tile.baseRent : computeRent(board, tile);
-    const rentToPay = isCorrect ? Math.floor(rentBase / 2) : rentBase;
-    setLastAnswer({ q: activeCard.q, response, result });
-    setFeedback(isCorrect
-      ? { tone: 'good', title: 'Correct: half rent!', detail: `You pay ${money(rentToPay)} to ${activeCard.ownerName} instead of ${money(rentBase)}.`, explanation: activeCard.q.explanation || '' }
-      : { tone: 'bad', title: 'Not quite: full rent', detail: `You pay ${money(rentToPay)} to ${activeCard.ownerName}.`, explanation: activeCard.q.explanation || '' });
-    addLog(`${activeCard.payerName} paid ${money(rentToPay)} rent to ${activeCard.ownerName}.`);
-    handleTransaction(activeCard.payerId, -rentToPay, { action: 'RENT_PAYMENT', tileId: tile.id, tileName: tile.name, rentPaid: rentToPay, correct: isCorrect });
-    if (activeCard.ownerId !== 99 && activeCard.ownerId != null) handleTransaction(activeCard.ownerId, rentToPay, { action: 'RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
-    setModalStage('FEEDBACK_INCORRECT');
-  };
-
+  // ------------------------------------------------------------------
+  //  CHAOS CHALLENGE (spend a token to try to steal a rival's property)
+  // ------------------------------------------------------------------
   const openChaosSelect = () => {
-    setChaosMode('SELECT_PROPERTY');
     setFeedback(null);
     setLastAnswer(null);
-    setModalStage('CHAOS_SELECT');
-    setActiveCard({ type: 'CHAOS_SELECT' });
-    setModalOpen(true);
+    openCard({ type: 'CHAOS_SELECT' }, 'CHAOS_SELECT');
   };
 
   const handleSelectChaosTarget = (tile) => {
-    if (currentPlayer.chaosTokens <= 0) { alert('No chaos tokens available.'); return; }
+    if (activePlayer().chaosTokens <= 0) { alert('No chaos tokens available.'); return; }
     // Duel on the target tile's own questions (fallback: any board question).
     const pool = tile.questions?.length ? tile.questions : allBoardQuestions();
     if (pool.length === 0) { alert('This question file has no questions for a Chaos challenge.'); return; }
-    setChaosTargetTile(tile);
-    const q = prepareQuestion(pool[Math.floor(Math.random() * pool.length)]);
-    setActiveCard({ type: 'CHAOS_CHALLENGE', data: tile, q, ownerId: tile.owner });
-    setChaosMode('CHALLENGE');
+    setActiveCard({ type: 'CHAOS_CHALLENGE', data: tile, q: prepareQuestion(pickRandom(pool)), ownerId: tile.owner });
     setModalStage('CHAOS_QUESTION');
   };
 
   const handleChaosAnswer = (response) => {
-    const q = activeCard.q;
-    const tile = chaosTargetTile;
+    const { q } = activeCard;
+    const player = activePlayer();
+    const tile = boardRef.current[activeCard.data.id];
     const result = checkAnswer(q, response);
-    const isCorrect = result.correct;
-    logAnswer('CHAOS_Q', q, result, { tileId: tile?.id ?? '', tileName: tile?.name ?? '' });
-    if (!tile) { setModalStage('FEEDBACK_INCORRECT'); setFeedback({ tone: 'neutral', title: 'Something went wrong', detail: 'No target tile was chosen.' }); return; }
+    logAnswer('CHAOS_Q', q, result, { tileId: tile.id, tileName: tile.name });
     setLastAnswer({ q, response, result });
-    const ownerName = players[tile.owner]?.name || LABELS.rivalTeam;
-    setPlayers((prev) => prev.map((p) => p.id === currentPlayer.id ? { ...p, chaosTokens: Math.max(0, p.chaosTokens - 1) } : p));
+    const ownerName = playersRef.current[tile.owner]?.name || LABELS.rivalTeam;
+    setPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, chaosTokens: Math.max(0, p.chaosTokens - 1) } : p)));
 
-    if (isCorrect) {
-      const cost = Math.floor((tile.price || 0) * 0.5);
-      if (currentPlayer.money < cost) { setFeedback({ tone: 'neutral', title: 'Correct, but not enough cash', detail: `Taking this tile costs ${money(cost)} and your team has ${money(currentPlayer.money)}.`, explanation: q.explanation || '' }); setModalStage('FEEDBACK_INCORRECT'); return; }
-      handleTransaction(currentPlayer.id, -cost, { action: 'CHAOS_STEAL', tileId: tile.id, tileName: tile.name });
-      if (tile.owner != null && tile.owner !== 99) handleTransaction(tile.owner, cost, { action: 'CHAOS_SELL', tileId: tile.id, tileName: tile.name });
-      setBoard((prev) => prev.map((t) => t.id === tile.id ? { ...t, owner: currentPlayer.id, level: 0 } : t));
+    if (result.correct) {
+      const cost = chaosStealCost(tile);
+      if (player.money < cost) { setFeedback({ tone: 'neutral', title: 'Correct, but not enough cash', detail: `Taking this tile costs ${money(cost)} and your team has ${money(player.money)}.`, explanation: q.explanation || '' }); setModalStage('FEEDBACK_INCORRECT'); return; }
+      handleTransaction(player.id, -cost, { action: 'CHAOS_STEAL', tileId: tile.id, tileName: tile.name });
+      if (tile.owner != null) handleTransaction(tile.owner, cost, { action: 'CHAOS_SELL', tileId: tile.id, tileName: tile.name });
+      setBoard((prev) => prev.map((t) => (t.id === tile.id ? { ...t, owner: player.id, level: 0 } : t)));
       setFeedback({ tone: 'good', title: 'Chaos success!', detail: `You take ${tile.sub || tile.name} from ${ownerName} for ${money(cost)}.`, explanation: q.explanation || '' });
-      addLog(`${currentPlayer.name} took ${tile.sub || tile.name} from ${ownerName} with a chaos token.`);
-      setModalStage('FEEDBACK_INCORRECT');
+      addLog(`${player.name} took ${tile.sub || tile.name} from ${ownerName} with a chaos token.`);
     } else {
-      const penalty = Math.floor((tile.baseRent || 20) * 0.5) || 20;
-      handleTransaction(currentPlayer.id, -penalty, { action: 'CHAOS_FAIL', tileId: tile.id, tileName: tile.name });
+      const penalty = chaosFailPenalty(tile);
+      handleTransaction(player.id, -penalty, { action: 'CHAOS_FAIL', tileId: tile.id, tileName: tile.name });
       setFeedback({ tone: 'bad', title: 'Chaos challenge failed', detail: `Penalty: ${money(penalty)}.`, explanation: q.explanation || '' });
-      setModalStage('FEEDBACK_INCORRECT');
     }
+    setModalStage('FEEDBACK_INCORRECT');
   };
 
-  const canUpgradeSubgroup = (tile, playerId) => {
-    if (!tile || tile.type !== 'property') return false;
-    if (tile.owner !== playerId) return false;
-    const groupTiles = getSubgroupTiles(board, tile);
-    if (groupTiles.length === 0) return false;
-    if (!groupTiles.every((t) => t.owner === playerId)) return false;
-    return true;
-  };
-
-  const nextAllowedLevel = (tile) => {
-    const groupTiles = getSubgroupTiles(board, tile);
-    if (groupTiles.length === 0) return tile.level;
-    const levels = groupTiles.map((t) => t.level || 0);
-    const minLevel = Math.min(...levels);
-    const maxLevel = Math.max(...levels);
-    if (minLevel !== maxLevel) return tile.level;
-    if (maxLevel >= 4) return 4;
-    return maxLevel + 1;
-  };
-
-  const getUpgradeCostForLevel = (tile, newLevel) => {
-    if (!tile || tile.type !== 'property') return 0;
-    if (newLevel >= 4) return tile.castleCost || tile.price * 2;
-    return tile.houseCost || tile.price;
-  };
-
+  // ------------------------------------------------------------------
+  //  UPGRADES
+  // ------------------------------------------------------------------
   const handleUpgrade = () => {
-    const tile = activeCard.data;
     const playerId = turnRef.current;
-    if (!canUpgradeSubgroup(tile, playerId)) { alert('You must own all tiles in this sub-theme and keep node levels even.'); return; }
-    const desiredLevel = nextAllowedLevel(tile, playerId);
-    if (desiredLevel <= tile.level) { alert('No upgrades available.'); return; }
-    const cost = getUpgradeCostForLevel(tile, desiredLevel);
-    if (players[playerId].money < cost) { alert('Insufficient funds.'); return; }
-    handleTransaction(playerId, -cost, { action: 'UPGRADE_SUBTHEME', tileId: tile.id, tileName: tile.name, notes: `Level ${desiredLevel}` });
-    setBoard((prev) => prev.map((t) => {
-        if (t.type === 'property' && t.group === tile.group && t.sub === tile.sub && t.owner === playerId) {
-          return { ...t, level: desiredLevel };
-        }
-        return t;
-      })
-    );
-    addLog(`${players[playerId].name} upgraded ${tile.sub} to level ${desiredLevel}.`);
+    const tile = boardRef.current[activeCard.data.id];
+    if (!canUpgradeSubgroup(boardRef.current, tile, playerId)) { alert('You must own all tiles in this sub-theme and keep node levels even.'); return; }
+    const level = nextUpgradeLevel(boardRef.current, tile);
+    if (level <= tile.level) { alert('No upgrades available.'); return; }
+    const cost = upgradeCost(tile, level);
+    if (activePlayer().money < cost) { alert('Insufficient funds.'); return; }
+    handleTransaction(playerId, -cost, { action: 'UPGRADE_SUBTHEME', tileId: tile.id, tileName: tile.name, notes: `Level ${level}` });
+    setBoard((prev) => applyUpgrade(prev, tile, playerId, level));
+    addLog(`${activePlayer().name} upgraded ${tile.sub} to level ${level}.`);
     setModalOpen(false);
   };
 
-  const openLabManager = () => { 
-    setFeedback(null); 
-    setModalStage(null); 
-    setManageOpen(true); 
+  const openLabManager = () => {
+    setFeedback(null);
+    setModalStage(null);
+    setManageOpen(true);
   };
-  
+
   const handleTileHover = (tile) => {
     if (!tile) { setHoverTile(null); return; }
     const rent = (tile.type === 'property' || tile.type === 'sequencing_core') ? computeRent(board, tile) : 0;
@@ -808,13 +702,16 @@ export default function GameScreen({
   };
   const clearHover = () => setHoverTile(null);
 
+  // ------------------------------------------------------------------
+  //  END OF GAME
+  // ------------------------------------------------------------------
+
   // Final standings: opened by END GAME, by the timer, or after a last-standing win.
   const openStandings = (forced, reason) => {
-    setActiveCard({ type: 'STANDINGS', forced, reason });
-    setModalStage('STANDINGS');
-    setModalOpen(true);
+    openCard({ type: 'STANDINGS', forced, reason }, 'STANDINGS');
   };
 
+  // Time's up: let the current turn finish (no dialog open, pawn not moving), then end.
   useEffect(() => {
     if (timeUp && !standingsShownRef.current && !modalOpen && !isMoving && !manageOpen) {
       standingsShownRef.current = true;
@@ -824,16 +721,16 @@ export default function GameScreen({
   });
 
   useEffect(() => {
-    if (modalOpen && modalStage === 'WIN') celebrate();
-    if (modalOpen && modalStage === 'MILESTONE_SUCCESS') celebrate(players[turnRef.current]?.color);
-    if (modalOpen && modalStage === 'STANDINGS' && players.length > 1) celebrate();
-  }, [modalOpen, modalStage]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!modalOpen) return;
+    if (modalStage === 'WIN' || (modalStage === 'STANDINGS' && players.length > 1)) celebrate();
+    if (modalStage === 'MILESTONE_SUCCESS') celebrate(playersRef.current[turnRef.current]?.color);
+  }, [modalOpen, modalStage, players.length, playersRef, turnRef]);
 
   const handleEndGame = (reason = 'ended') => {
-    const standings = rankPlayers(players, board);
+    const standings = rankPlayers(playersRef.current, boardRef.current);
     const resultRows = standings.map((r) => ({
       eventType: 'GAME_RESULT',
-      turn: totalTurns,
+      turn: totalTurnsRef.current,
       playerIndex: r.id,
       playerName: r.name,
       rank: r.rank,
@@ -875,7 +772,8 @@ export default function GameScreen({
 
   const title = module || bigTopic || 'Science Around the Board';
   const inDebt = currentPlayer.money < 0;
-  const rollLabel = timeUp ? "Time's up" : isMoving ? 'Moving…' : (inDebt ? 'In debt' : `Roll — ${currentPlayer.name}`);
+  // In debt (only possible with a game saved by an older version), Roll opens the debt dialog.
+  const rollLabel = timeUp ? "Time's up" : isMoving ? 'Moving…' : (inDebt ? 'Settle debt' : `Roll — ${currentPlayer.name}`);
   const tileLabel = (t) => (t?.type === 'property' ? t.sub : t?.name) || '';
   const ownerName = (id) => (id === 99 || id == null ? LABELS.rivalTeam : players[id]?.name || LABELS.rivalTeam);
 
@@ -888,9 +786,9 @@ export default function GameScreen({
       const owned = groupTiles.filter((g) => g.owner === turn).length;
       const full = owned === groupTiles.length;
       const level = t.level || 0;
-      const next = nextAllowedLevel(t);
+      const next = nextUpgradeLevel(board, t);
       const canLevel = full && next > level;
-      const cost = canLevel ? getUpgradeCostForLevel(t, next) : 0;
+      const cost = canLevel ? upgradeCost(t, next) : 0;
       return { tile: t, size: groupTiles.length, owned, full, level, next, canLevel, cost };
     });
   })();
@@ -930,7 +828,7 @@ export default function GameScreen({
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button variant="text" onClick={() => setRulesOpen(true)} startIcon={<span aria-hidden>📖</span>}>{LABELS.howToPlay}</Button>
-          <Button variant="outlined" color="warning" onClick={() => openStandings(false, 'ended')}>End game</Button>
+          <Button variant="outlined" color="warning" disabled={isMoving} onClick={() => openStandings(false, 'ended')}>End game</Button>
           <Button variant="text" color="error" onClick={() => setExitOpen(true)}>Exit session</Button>
         </Box>
       </Box>
@@ -953,7 +851,7 @@ export default function GameScreen({
               variant="contained"
               size="large"
               onClick={handleRoll}
-              disabled={timeUp || inDebt}
+              disabled={timeUp}
               aria-disabled={isMoving || undefined}
               sx={{
                 bgcolor: TEAM_INK[currentPlayer.id], color: 'common.white', px: 5, py: 1.25, fontSize: '1.15rem', boxShadow: 3, minWidth: 220,
@@ -964,8 +862,8 @@ export default function GameScreen({
               {rollLabel}
             </Button>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Button variant="outlined" onClick={openLabManager} startIcon={<span aria-hidden>⭐</span>}>{LABELS.upgrades}</Button>
-              <Button variant="outlined" color="secondary" onClick={openChaosSelect} startIcon={<span aria-hidden>⚡</span>}>
+              <Button variant="outlined" disabled={isMoving} onClick={openLabManager} startIcon={<span aria-hidden>⭐</span>}>{LABELS.upgrades}</Button>
+              <Button variant="outlined" color="secondary" disabled={isMoving} onClick={openChaosSelect} startIcon={<span aria-hidden>⚡</span>}>
                 Chaos tokens: {currentPlayer.chaosTokens}
               </Button>
             </Box>
@@ -1022,8 +920,8 @@ export default function GameScreen({
                 if (groupsSeen.has(key)) return;
                 groupsSeen.add(key);
                 const n = getSubgroupTiles(board, t).length;
-                rows.push({ t, kind: 'downgrade', value: Math.floor((t.houseCost || t.price) * 0.5 * n), n });
-              } else rows.push({ t, kind: 'sell', value: Math.floor(t.price * 0.5) });
+                rows.push({ t, kind: 'downgrade', value: downgradeSubgroup(board, t, currentPlayer.id).refund, n });
+              } else rows.push({ t, kind: 'sell', value: sellDeed(board, t).value });
             });
             return (
               <>
@@ -1060,7 +958,7 @@ export default function GameScreen({
                 Your team is <strong>{money(activeCard.debt)}</strong> in debt, and selling everything still wouldn't cover it.
               </Typography>
               <Typography sx={{ mb: 2 }}>
-                One last chance: the <strong>{LABELS.rescueQuiz}</strong>. Answer <strong>2 of 3</strong> questions correctly and your debt is cleared, plus $500 to keep playing.
+                One last chance: the <strong>{LABELS.rescueQuiz}</strong>. Answer <strong>2 of 3</strong> questions correctly and your debt is cleared, plus {money(ECONOMY.rescueBonus)} to keep playing.
               </Typography>
               <Alert severity="warning" sx={{ mb: 3 }}>
                 Each team gets <strong>one</strong> rescue per game. If you don't pass, or you go bankrupt again later, your team is out and its tiles return to the bank.
@@ -1071,7 +969,7 @@ export default function GameScreen({
 
           {modalStage === 'GRANT_QUIZ' && quizState.active && (
             <>
-              <QuizProgress title={LABELS.rescueQuiz} quiz={quizState} need={2} rescue />
+              <QuizProgress title={LABELS.rescueQuiz} quiz={quizState} need={quizState.targetScore} rescue />
               {renderQuestion(quizState.questions[quizState.qIndex], handleQuizAnswer, {
                 key: `grant-${quizState.qIndex}`,
                 reveal: quizState.waiting ? { ...quizState.result, response: quizState.selected } : null,
@@ -1203,12 +1101,7 @@ export default function GameScreen({
                 <Stakes good={`pass the 6-question exam (5 right) and pay half: ${money(Math.floor(fee / 2))}.`} bad={`fail it and pay the full ${money(fee)}.`} />
                 <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                   <Button sx={{ flex: '1 1 200px' }} size="large" variant="contained" color="warning" autoFocus onClick={() => startQuiz(activeCard.data, 'MILESTONE_CHALLENGE')}>Accept challenge</Button>
-                  <Button sx={{ flex: '1 1 200px' }} size="large" variant="outlined" onClick={() => {
-                    const fullRent = board.find((t) => t.id === activeCard.data.id)?.baseRent;
-                    handleTransaction(turnRef.current, -fullRent, { action: 'MILESTONE_FULL_FEE', tileId: activeCard.data.id, tileName: activeCard.data.name, rentPaid: fullRent });
-                    if (activeCard.ownerId !== 99) handleTransaction(activeCard.ownerId, fullRent, { action: 'MILESTONE_RENT_RECEIVED', tileId: activeCard.data.id, tileName: activeCard.data.name });
-                    setModalOpen(false); passTurn();
-                  }}>Pay full fee ({money(fee)})</Button>
+                  <Button sx={{ flex: '1 1 200px' }} size="large" variant="outlined" onClick={payMilestoneFee}>Pay full fee ({money(fee)})</Button>
                 </Box>
               </>
             );
@@ -1220,7 +1113,7 @@ export default function GameScreen({
                 title={`Milestone exam · ${quizTile?.name || ''}`}
                 quiz={quizState}
                 need={quizState.targetScore}
-                onQuit={quizState.waiting ? null : () => finishQuiz(false, quizState.score, quizState.mistakes)}
+                onQuit={quizState.waiting ? null : () => finishQuiz(false)}
               />
               {renderQuestion(quizState.questions[quizState.qIndex], handleQuizAnswer, {
                 key: `quiz-${quizState.qIndex}`,
@@ -1271,7 +1164,7 @@ export default function GameScreen({
           {activeCard?.type === 'QUESTION' && modalStage === 'QUESTION' && (
             <>
               <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 1.5 }}>{LABELS.questionTitle} · {tileLabel(activeCard.data)}</Typography>
-              <Stakes good={`you may buy this tile for ${money(activeCard.data.price)}.`} bad="your team pays $20." />
+              <Stakes good={`you may buy this tile for ${money(activeCard.data.price)}.`} bad={`your team pays ${money(ECONOMY.wrongAnswerPenalty)}.`} />
               {renderQuestion(activeCard.q, handleAnswer)}
             </>
           )}
@@ -1395,10 +1288,9 @@ export default function GameScreen({
           )}
 
           {modalStage === 'CHAOS_SELECT' && activeCard?.type === 'CHAOS_SELECT' && (() => {
-            const targets = board.filter((t) => t.type === 'property' && t.owner != null && t.owner !== currentPlayer.id && t.owner !== 99);
-            const allCaptured = board.filter((t) => t.type === 'milestone').every((t) => t.owner !== null);
+            const targets = chaosTargets(board, currentPlayer.id);
             const tokens = currentPlayer.chaosTokens;
-            const buyBlocked = !allCaptured ? 'Unlocks once all 4 milestones have been captured.' : currentPlayer.money < 500 ? 'Your team needs $500.' : '';
+            const buyBlocked = !chaosTokensForSale(board) ? 'Unlocks once all 4 milestones have been captured.' : currentPlayer.money < ECONOMY.chaosTokenPrice ? `Your team needs ${money(ECONOMY.chaosTokenPrice)}.` : '';
             return (
               <>
                 <Typography id={TITLE_ID} variant="h5" component="h2" gutterBottom><span aria-hidden>⚡ </span>Chaos tokens</Typography>
@@ -1415,7 +1307,7 @@ export default function GameScreen({
                         <TeamDot player={players[t.owner]} size={22} />
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 800 }}>{t.sub} {t.level > 0 && <Stars level={t.level} inline />}</Typography>
-                          <Typography variant="body2" color="text.secondary">{t.group} · owned by {ownerName(t.owner)} · take it for {money(Math.floor(t.price * 0.5))}</Typography>
+                          <Typography variant="body2" color="text.secondary">{t.group} · owned by {ownerName(t.owner)} · take it for {money(chaosStealCost(t))}</Typography>
                         </Box>
                         <Button variant="contained" disabled={tokens <= 0} onClick={() => handleSelectChaosTarget(t)} aria-label={`Challenge for ${t.sub} owned by ${ownerName(t.owner)}`}>Challenge</Button>
                       </Box>
@@ -1424,24 +1316,21 @@ export default function GameScreen({
                 )}
                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                   <Box sx={{ flex: '1 1 200px' }}>
-                    <Typography sx={{ fontWeight: 800 }}>Buy a token for $500</Typography>
+                    <Typography sx={{ fontWeight: 800 }}>Buy a token for {money(ECONOMY.chaosTokenPrice)}</Typography>
                     <Typography variant="body2" color="text.secondary">{buyBlocked || 'Available now.'}</Typography>
                   </Box>
                   <Button variant="outlined" color="secondary" disabled={Boolean(buyBlocked)} onClick={handleBuyChaosToken}>Buy token</Button>
                 </Box>
-                <Button fullWidth size="large" autoFocus sx={{ mt: 2 }} onClick={() => { setModalOpen(false); setChaosMode(null); }}>Cancel</Button>
+                <Button fullWidth size="large" autoFocus sx={{ mt: 2 }} onClick={() => setModalOpen(false)}>Cancel</Button>
               </>
             );
           })()}
 
           {modalStage === 'CHAOS_QUESTION' && activeCard?.type === 'CHAOS_CHALLENGE' && (
             <>
-              <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 0.5 }}>Chaos challenge · {tileLabel(chaosTargetTile)}</Typography>
-              <Typography sx={{ mb: 1.5 }}>Owned by <strong>{ownerName(chaosTargetTile?.owner)}</strong>. One question decides it.</Typography>
-              <Stakes
-                good={`take the tile for ${money(Math.floor((chaosTargetTile?.price || 0) * 0.5))}.`}
-                bad={`pay a ${money(Math.floor((chaosTargetTile?.baseRent || 20) * 0.5) || 20)} penalty.`}
-              />
+              <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 0.5 }}>Chaos challenge · {tileLabel(activeCard.data)}</Typography>
+              <Typography sx={{ mb: 1.5 }}>Owned by <strong>{ownerName(activeCard.data?.owner)}</strong>. One question decides it.</Typography>
+              <Stakes good={`take the tile for ${money(chaosStealCost(activeCard.data))}.`} bad={`pay a ${money(chaosFailPenalty(activeCard.data))} penalty.`} />
               {renderQuestion(activeCard.q, handleChaosAnswer)}
             </>
           )}

@@ -97,6 +97,21 @@ describe("question formats in the validator", () => {
     expect(e).toMatch(/Unknown format.*"x1" \(essay\)/);
   });
 
+  it("warns when a multiple-choice row lists several correct options", () => {
+    const r = run(row("mc2", { correctIndex: "1,3" }));
+    expect(r.errors).toEqual([]);
+    expect(r.warnings.join("\n")).toMatch(/several options .* only the first counts: "mc2"/);
+  });
+
+  it("errors when every accepted short answer is only punctuation", () => {
+    const e = run(row("t2", { format: "text", options: ["", "", "", ""], answer: "?|!" })).errors.join("\n");
+    expect(e).toMatch(/Short-text.*"t2"/);
+  });
+
+  it("accepts a decimal comma in numeric answers", () => {
+    expect(run(row("n3", { format: "numeric", options: ["", "", "", ""], answer: "2,5", tolerance: "0,1" })).errors).toEqual([]);
+  });
+
   it("warns about mishaps without an explicit amount", () => {
     const w = run(["mm", "Something broke", "", "", "", "", "", "Fact", "Topic", "Mod", "", "", "mishap", "", "", "", ""].join("\t")).warnings.join("\n");
     expect(w).toMatch(/Mishap without an explicit amount.*"mm"/);
