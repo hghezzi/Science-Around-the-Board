@@ -53,8 +53,8 @@ const modalStyle = {
   color: 'text.primary',
 };
 
-const HOP_MS = 200; // pawn speed, per tile
-const LANDING_PAUSE_MS = 600; // pause on the destination tile before its dialog opens
+const HOP_MS = 170; // pawn speed, per tile
+const LANDING_PAUSE_MS = 400; // pause on the destination tile before its dialog opens
 
 // Milestone exam or Rescue Quiz in progress.
 const NO_QUIZ = {
