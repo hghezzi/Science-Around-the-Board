@@ -109,6 +109,23 @@ export function normalizeText(s) {
     .trim();
 }
 
+/** Roman numerals that name things ("Type I", "Photosystem II"): a typo is never forgiven in them. */
+export const ROMAN_NUMERALS = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"];
+const romanTokens = (t) => t.split(" ").filter((w) => ROMAN_NUMERALS.includes(w)).join(" ");
+
+/**
+ * A numeric response with a unit after the number ("12 kg", "0.5 mL", "25 °C") counts
+ * as the number: the unit is in the question. "2 × 10⁴" is still rejected.
+ */
+export function parseNumericResponse(value) {
+  const s = String(value ?? "").trim().replace(/\s*%$/, "");
+  const x = parseNumber(s);
+  if (!Number.isNaN(x)) return x;
+  const m = s.match(/^(.*\d)\s*([^\d]+)$/u);
+  if (!m || !/^[\p{L}°µμ][\p{L}\p{No}°µμ/·.⁺⁻\s-]*$/u.test(m[2])) return NaN;
+  return parseNumber(m[1].trim());
+}
+
 /** Short-answer responses need this many characters before one typo is forgiven. */
 export const TYPO_MIN_LENGTH = 8;
 
@@ -258,8 +275,8 @@ export function checkAnswer(q, response) {
         break;
       }
       case "numeric": {
-        // "50%" counts as 50: the unit is already in the question.
-        const x = parseNumber(String(response).trim().replace(/\s*%$/, ""));
+        // "50%" counts as 50 and "12 kg" as 12: the unit is already in the question.
+        const x = parseNumericResponse(response);
         const target = q.numericAnswer;
         if (!Number.isNaN(x) && !Number.isNaN(target)) {
           const t = q.tolerance || { abs: 0 };
@@ -279,10 +296,12 @@ export function checkAnswer(q, response) {
           const want = normalizeText(a);
           if (got === want || got.replace(/ /g, "") === want.replace(/ /g, "")) return true; // "1990's" = "1990s"
           // One typo is forgiven on answers of TYPO_MIN_LENGTH+ characters, but never in a
-          // number ("1980s" is not "1990s") or in the first letter ("methanol" is not
-          // "ethanol"). Shorter terms must be exact: "alkene" is not a typo of "alkane".
+          // number ("1980s" is not "1990s"), a Roman numeral ("type ii" is not "type i") or
+          // the first letter ("methanol" is not "ethanol"). Shorter terms must be exact:
+          // "alkene" is not a typo of "alkane".
           const digits = (t) => t.replace(/\D/g, "");
-          return want.length >= TYPO_MIN_LENGTH && got[0] === want[0] && digits(got) === digits(want) && editDistance(got, want) <= 1;
+          return want.length >= TYPO_MIN_LENGTH && got[0] === want[0] && digits(got) === digits(want)
+            && romanTokens(got) === romanTokens(want) && editDistance(got, want) <= 1;
         });
         break;
       }

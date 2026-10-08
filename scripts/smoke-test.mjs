@@ -112,7 +112,15 @@ async function playTurns(page, label, rolls = ROLLS) {
 }
 
 async function finishGame(page, teams, label) {
-  if (!(await page.getByText(/Final Standings/i).count())) await page.getByRole("button", { name: /^End game$/ }).click();
+  if (!(await page.getByText(/Final Standings/i).count())) {
+    // "No" must leave the game running; only "Yes" ends it.
+    await page.getByRole("button", { name: /^End game$/ }).click();
+    await page.getByRole("button", { name: /^No, keep playing$/ }).click();
+    await page.getByText("End the game now?").waitFor({ state: "hidden" });
+    if (await page.getByText(/Final Standings/i).count()) fail(`${label}: "No, keep playing" ended the game`);
+    await page.getByRole("button", { name: /^End game$/ }).click();
+    await page.getByRole("button", { name: /^Yes, end the game$/ }).click();
+  }
   await page.getByRole("button", { name: /Continue to post-survey/i }).click();
   await doSurvey(page, teams, `${label} post`);
   await page.getByText(/Session complete/).waitFor();
@@ -201,6 +209,7 @@ async function resultsScenario() {
   await finishGame(page, 1, "results");
   const send = page.getByRole("button", { name: /Send results to instructor/ });
   if (await send.isEnabled()) fail("results: Send should be disabled until names are typed");
+  if (await page.getByRole("button", { name: /Download results/ }).isEnabled()) fail("results: Download should be disabled until names are typed");
   await page.getByLabel(/names or student IDs/).first().fill("Test Student");
   await send.click();
   await page.getByText(/^Sent!/).waitFor({ timeout: 10000 });
@@ -633,6 +642,7 @@ async function onlineScenario() {
   while (await host.locator(".MuiModal-root").count()) await playOnline(pages, owner, 0, "online settle");
   if (await guestA.getByRole("button", { name: /^End game$/ }).count()) fail("online: a device can end the game");
   await host.getByRole("button", { name: /^End game$/ }).click();
+  await host.getByRole("button", { name: /^Yes, end the game$/ }).click();
   await host.getByRole("button", { name: /Continue to post-survey/i }).click();
   await Promise.all([
     onlineSurvey(host, /^Done$/, "online host post"),

@@ -79,9 +79,9 @@ The core tiles (the ones in the middle of each side) work like other tiles: you 
 **If you play as a group, talk it over before you answer.** Clicking a multiple-choice option submits it straight away. The order of the options changes every time a question appears. Your instructor may also use these formats:
 
 - **Select all that apply:** tick every correct option, then click **Submit answer**. You need exactly the right set.
-- **Number:** type a number, then click **Submit answer**. For estimates, an answer close enough counts.
+- **Number:** type a number (a unit after it, such as "12 kg", is fine), then click **Submit answer**. For estimates, an answer close enough counts.
 - **Put in order:** use the ↑ and ↓ buttons to arrange the steps, then click **Submit answer**.
-- **Short answer:** type a word or short phrase. Capital letters and punctuation don't matter, and one small typo is forgiven in long words (8+ letters). Short terms must be spelled exactly.
+- **Short answer:** type a word or short phrase. Capital letters and punctuation don't matter, and one small typo is forgiven in long words (8+ letters), but never in a number or a Roman numeral ("Type II" is not "Type I"). Short terms must be spelled exactly.
 
 After every answer you see the correct answer and an explanation, so read it before you click **Continue**. The same ideas come back later in the game.
 
@@ -123,10 +123,10 @@ If your cash drops below $0, the game helps you recover:
 
 **This part counts: your instructor needs your results file.**
 
-1. When the timer ends, or when your instructor says so, click **End game** (top right). The **Final Standings** show the winner. Then click **Continue to post-survey**.
-   - Don't click **Exit session** unless you really want to quit, because it throws away this game and its results.
+1. When the timer ends, or when your instructor says so, click **End game** (top right), then **Yes, end the game**. The **Final Standings** show the winner. Then click **Continue to post-survey**.
+   - Don't click **Exit session** unless you really want to quit, because it throws away this game and its results. Both buttons ask first: answer **No** to carry on playing.
 2. **Post-game survey:** each player answers the same sliders and questions as before. The last player clicks **Finish Surveys**.
-3. On the **Session complete** screen, type the **names or student IDs** of everyone who played as your player.
+3. On the **Session complete** screen, type the **names or student IDs** of everyone who played as your player. If your instructor requires them, the buttons below stay grey until every player's box is filled.
 4. Hand in your results the way your instructor asked:
    - **Send results to instructor:** sends them straight to your instructor. Wait until the button shows **Sent ✓**.
    - **Email results to instructor:** downloads the results file and opens your email app. **Attach the downloaded file** before you send the email.

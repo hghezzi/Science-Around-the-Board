@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseTsv, parseTsvHeaders } from "../src/tsvParser.js";
 import { checkItemQuality, contentWords, formatCueSummary } from "../src/itemQuality.js";
-import { validateQuestionRows } from "../src/tsvValidator.js";
+import { validateQuestionRows, formatValidationReport } from "../src/tsvValidator.js";
 import { DEMO_TSV, HEADER, makeTsv } from "./helpers.js";
 
 vi.spyOn(console, "log").mockImplementation(() => {});
@@ -126,7 +126,7 @@ describe("other answer cues", () => {
     expect(r.errors.join("\n")).toMatch(/Spreadsheet error value \(such as #NAME\?\)/);
   });
 
-  it.each(["#NAME?", "#REF!", "#VALUE!", "#DIV/0!", "#N/A", "#NUM!", "#NULL!"])("errors on %s in any cell", (value) => {
+  it.each(["#NAME?", "#REF!", "#VALUE!", "#DIV/0!", "#N/A", "#NUM!", "#NULL!", "#ERROR!"])("errors on %s in any cell", (value) => {
     expect(checkItemQuality([q("Fine question?", ["A", "B", "C", "D"], 1, { explanation: value })]).errors).toHaveLength(1);
     expect(checkItemQuality([{ id: "m", type: "mishap", question: value }]).errors).toHaveLength(1);
   });
@@ -146,6 +146,132 @@ describe("other answer cues", () => {
 
   it("extracts content words without function words or plural s", () => {
     expect([...contentWords("Which of these samples have the most reads?")]).toEqual(["sample", "read"]);
+  });
+
+  it("reads words in any script, without accents", () => {
+    expect([...contentWords("¿Qué proceso de fotosíntesis ocurre en la atmósfera?")]).toEqual(["proceso", "fotosintesi", "ocurre", "atmosfera"]);
+    expect([...contentWords("Какой процесс?")]).toEqual(["какои", "процесс"]);
+  });
+
+  it("counts Spanish, French and Portuguese absolute words", () => {
+    const rows = Array.from({ length: 8 }, (_, k) =>
+      q(`¿Pregunta ${k}?`, ["Depende de los datos", "Siempre ocurre así", "Nunca pasa nada", "Sólo en verano"]));
+    const r = checkItemQuality(rows);
+    expect(r.cues.absoluteOptions).toBe(24);
+    expect(r.warnings.join("\n")).toMatch(/Absolute-word cue: 24 options/);
+  });
+
+  it("reads Spanish absolutes such as ningún and nadie, but not 'todo el año'", () => {
+    const absolutes = Array.from({ length: 8 }, (_, k) =>
+      q(`¿Pregunta ${k}?`, ["Depende de los datos", "Ningún cambio ocurre", "Nadie lo observa", "Únicamente en verano"]));
+    expect(checkItemQuality(absolutes).cues.absoluteOptions).toBe(24);
+    const plain = Array.from({ length: 8 }, (_, k) =>
+      q(`¿Pregunta ${k}?`, ["Llueve todo el año", "Sobre todo en verano", "En primavera", "En otoño"]));
+    expect(checkItemQuality(plain).cues.absoluteOptions).toBe(0);
+  });
+
+  it("flags Spanish and Portuguese 'all of the above' options", () => {
+    const r = checkItemQuality([q("¿Cuál?", ["Rojo", "Azul", "Todas las anteriores", "Verde"], 3), q("Qual?", ["A", "B", "Nenhuma das alternativas", "C"])]);
+    expect(r.warnings.join("\n")).toMatch(/Option refers to other options .*"q\d+", "q\d+"/);
+  });
+
+  it("warns about a leading apostrophe, which a spreadsheet may drop", () => {
+    const r = checkItemQuality([q("Which statement is a warning sign?", ["'Everyone would be better off'", "b", "c", "d"]), q("Fine?", ["\"Quoted\" speech", "b", "c", "d"])]);
+    const w = r.warnings.join("\n");
+    expect(w).toMatch(/Cell starts with an apostrophe \('\): "q\d+"\. Excel and Google Sheets may take/);
+    expect(w.split("\n").find((l) => l.startsWith("Cell starts with an apostrophe")).match(/"q\d+"/g)).toHaveLength(1);
+  });
+
+  it("ignores a leading apostrophe in a text answer, where punctuation doesn't count", () => {
+    const row = { id: "t1", type: "property", format: "text", question: "Which word?", answer: "'tis|tis", explanation: "x", theme: "T", subtheme: "S" };
+    expect(checkItemQuality([row]).warnings.join("\n")).not.toMatch(/apostrophe/);
+  });
+
+  it("checks the milestone pool's length cue on its own", () => {
+    const mile = Array.from({ length: 12 }, (_, k) => q(`M${k}?`, ["Right", "A long wrong answer", "A longer wrong answer here", "Mid wrong"], 1, { type: "milestone" }));
+    const balancedProps = Array.from({ length: 60 }, (_, k) => q(`P${k}?`, ["Alpha", "Bravo", "Charl", "Delta"], (k % 4) + 1));
+    const w = checkItemQuality([...mile, ...balancedProps]).warnings.join("\n");
+    expect(w).toMatch(/^Length cue in the milestone questions: always picking the longest option would answer only 0% of the 12 milestone multiple-choice questions correctly \(chance is 25%\)/m);
+    expect(w).not.toMatch(/^Length cue: always picking the longest/m);
+  });
+
+  it("warns about cells a spreadsheet would turn into a formula", () => {
+    const r = checkItemQuality([
+      q("Which flag sets the depth?", ["`--p-depth`", "x", "y", "z"], 1, { explanation: "--p-depth sets it." }),
+      q("=SUM(A1)?", ["A", "B", "C", "D"]),
+      q("Who?", ["@me", "B", "C", "D"]),
+    ]);
+    expect(r.warnings.join("\n")).toMatch(/Cell starts with "-", "\+", "=" or "@": "q\d+", "q\d+", "q\d+"\. Excel and Google Sheets/);
+  });
+
+  it("leaves numbers, placeholders and numeric answers alone", () => {
+    const r = checkItemQuality([
+      q("Which slope?", ["-0.2", "+5", "-12%", "0"]),
+      { id: "c", type: "confidence", question: "I can do it.", option1: "-", explanation: "-" },
+      q("Change?", [], 1, { format: "numeric", answer: "-3.5", tolerance: "" }),
+    ]);
+    expect(r.warnings.join("\n")).not.toMatch(/Cell starts with/);
+  });
+
+  it("warns when select-all questions nearly always have the same number of correct options", () => {
+    const same = Array.from({ length: 6 }, (_, k) => q(`Pick all ${k}`, ["A", "B", "C", "D"], "1,3", { format: "multi" }));
+    const r = checkItemQuality(same);
+    expect(r.cues.multiCounts).toEqual({ 2: 6 });
+    expect(r.warnings.join("\n")).toMatch(/Select-all cue: 6 of the 6 select-all-that-apply questions have exactly 2 correct options, so students can learn to tick 2/);
+    const varied = ["1", "1,2", "1,2,3", "2,4", "3", "1,2,3,4"].map((c, k) => q(`Pick all ${k}`, ["A", "B", "C", "D"], c, { format: "multi" }));
+    expect(checkItemQuality(varied).warnings.join("\n")).not.toMatch(/Select-all cue/);
+    expect(checkItemQuality(same.slice(0, 5)).warnings.join("\n")).not.toMatch(/Select-all cue/);
+  });
+
+  it("warns when the correct answer is almost never the longest (an overcorrection)", () => {
+    const rows = Array.from({ length: 20 }, (_, k) => q(`Q${k}?`, ["Right", "A long wrong answer", "A longer wrong answer here", "Mid wrong"]));
+    const r = checkItemQuality(rows);
+    expect(r.cues.longest).toBe(0);
+    expect(r.warnings.join("\n")).toMatch(/always picking the longest option would answer only 0% of the 20 multiple-choice questions correctly \(chance is 25%\), so students can rule the longest option out/);
+  });
+
+  it("warns when a short answer would also accept a different term", () => {
+    const text = (id, answer) => q("Name it", [], 1, { id, format: "text", answer });
+    const r = checkItemQuality([
+      text("roman", "type I error|type 1 error"),
+      text("swap", "absorption"),
+      q("Which?", ["adsorption", "diffusion", "osmosis", "filtration"]),
+      text("plural", "make the environment safe"),
+      q("Best step?", ["make the environment safer", "b", "c", "d"]),
+      text("fine", "photosynthesis"),
+      text("digits", "type 1 diabetes"),
+    ]);
+    const w = r.warnings.join("\n");
+    expect(w).toMatch(/Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: "swap" \("adsorption"\)\. Use multiple choice/);
+    // The game never forgives a typo in a number or a Roman numeral, so these are safe.
+    expect(w).not.toMatch(/"roman"|"plural"|"fine"|"digits"/);
+  });
+});
+
+describe("per-game answer cues", () => {
+  const validate = (text) => validateQuestionRows(parseTsv(text), parseTsvHeaders(text));
+  // Two games: module A has balanced options, module B always has the longest correct.
+  const board = (module) => makeTsv().split("\n").slice(1).map((l) => l.replace(/\tMod\t/, `\t${module}\t`).replace(/^q(\d+)/, `${module}$1`));
+  const longRows = (module) => Array.from({ length: 14 }, (_, k) =>
+    [`${module}long${k}`, `Question ${k}?`, "A careful, detailed and qualified correct statement", "Wrong one", "Wrong two", "Nope", "1", "Why.", "Topic", module, "T1", "T1-a", "property", ""].join("\t"));
+  const balancedRows = (module) => Array.from({ length: 40 }, (_, k) =>
+    [`${module}bal${k}`, `Balanced ${k}?`, "Alpha", "Bravo", "Charl", "Delta", String((k % 4) + 1), "Why.", "Topic", module, "T1", "T1-a", "property", ""].join("\t"));
+  const text = [HEADER, ...board("A"), ...balancedRows("A"), ...board("B"), ...longRows("B")].join("\n");
+
+  it("reports a cue that only one game has, which the file-wide numbers hide", () => {
+    const r = validate(text);
+    expect(r.games.map((g) => g.name)).toEqual(["Topic / A", "Topic / B"]);
+    expect(r.cues.games).toHaveLength(2);
+    expect(r.games[1].cues.longest).toBeGreaterThan(0.4);
+    expect(r.games[0].cues.longest).toBeCloseTo(0.25);
+    expect(r.warnings.join("\n")).toMatch(/\[Topic \/ B\] Length cue: always picking the longest option would answer \d+% of the 57 multiple-choice questions/);
+    expect(r.warnings.join("\n")).not.toMatch(/\[Topic \/ A\] Length cue/);
+    expect(r.warnings.some((w) => w.startsWith("Length cue"))).toBe(false);
+  });
+
+  it("prints formats and cues per game in the report", () => {
+    const report = formatValidationReport(validate(text));
+    expect(report).toMatch(/Game: Topic \/ B\n(?:.*\n)*? {2}formats: mcq \d+ \(true\/false 0\), multi 0, numeric 0, order 0, text 0\n {2}Answer cues \(57 multiple-choice/);
   });
 });
 
@@ -235,5 +361,107 @@ describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_ts
     const js = checkItemQuality(parseTsv(fixture));
     expect(js.errors).toHaveLength(1);
     expect(js.warnings.length).toBeGreaterThanOrEqual(6);
+  });
+
+  // Every structural and quality message, in two games, so the whole report is compared.
+  const H = `${HEADER}\tformat\tanswer\ttolerance`;
+  const row = (cells) => cells.concat(Array(17 - cells.length).fill("")).join("\t");
+  const prop = (id, mod, theme, sub, opts, c = "1", extra = []) => row([id, `Question ${id}?`, ...opts, c, "Why.", "Topic", mod, theme, sub, "property", "", ...extra]);
+  const broken = [
+    H,
+    // Game "One": 3 themes (error), a theme with too few milestones, cue and format problems.
+    ...["T1", "T2", "T3"].flatMap((t) => [prop(`${t}p`, "One", t, `${t}a`, ["A", "B", "C", "D"]), row([`${t}m`, "Milestone?", "A", "B", "C", "D", "2", "Why.", "Topic", "One", t, "", "milestone"])]),
+    ...Array.from({ length: 12 }, (_, k) => prop(`ov${k}`, "One", "T1", "T1a", ["Right", "A long wrong answer", "A longer wrong answer here", "Mid wrong"])),
+    ...Array.from({ length: 6 }, (_, k) => prop(`mu${k}`, "One", "T1", "T1a", ["A", "B", "C", "D"], "2,4", ["multi"])),
+    ...Array.from({ length: 8 }, (_, k) => prop(`es${k}`, "One", "T2", "T2a", ["Depende de los datos", "Siempre ocurre así", "Nunca pasa nada", "Sólo en verano"])),
+    prop("roman", "One", "T2", "T2a", ["", "", "", ""], "", ["text", "Photosystem I|photosystem 1"]),
+    prop("swap", "One", "T2", "T2a", ["", "", "", ""], "", ["text", "absorption"]),
+    prop("adso", "One", "T2", "T2a", ["adsorption", "diffusion", "osmosis", "filtration"]),
+    prop("flag", "One", "T3", "T3a", ["`--p-depth`", "x", "y", "z"], "1", []).replace("\tWhy.\t", "\t--p-depth sets it.\t"),
+    prop("err", "One", "T3", "T3a", ["#ERROR!", "x", "y", "z"]),
+    prop("apos", "One", "T3", "T3a", ["'Everyone would be better off'", "x", "y", "z"]),
+    prop("todas", "One", "T3", "T3a", ["Todas las anteriores", "x", "y", "z"]),
+    ...Array.from({ length: 12 }, (_, k) => row([`ml${k}`, `Milestone ${k}?`, "Right", "A long wrong answer", "A longer wrong answer here", "Mid wrong", "1", "Why.", "Topic", "One", "T1", "", "milestone"])),
+    prop("badidx", "One", "T3", "T3a", ["A", "B", "", ""], "3"),
+    prop("badmulti", "One", "T3", "T3a", ["A", "B", "C", ""], "1,4", ["multi"]),
+    prop("badnum", "One", "T3", "T3a", ["", "", "", ""], "", ["numeric", "abc", "x%"]),
+    prop("badfmt", "One", "T3", "T3a", ["A", "B", "", ""], "1", ["essay"]),
+    prop("ov0", "One", "T3", "T3a", ["A", "B", "", ""]),
+    row(["mis", "Something happened", "", "", "", "", "", "Fact.", "Topic", "One", "", "", "mishap"]),
+    row(["noexp", "No explanation?", "A", "B", "", "", "1", "", "Topic", "One", "T1", "T1a", "core"]),
+    row(["weird", "Post", "A", "B", "", "", "1", "E", "Topic", "One", "", "", "post"]),
+    // Game "Two": a complete small board with one survey item.
+    ...["U1", "U2", "U3", "U4"].flatMap((t) => [prop(`${t}p1`, "Two", t, `${t}a`, ["A", "B", "C", "D"]), prop(`${t}p2`, "Two", t, `${t}b`, ["A", "B", "C", "D"]),
+      ...Array.from({ length: 6 }, (_, k) => row([`${t}m${k}`, `Milestone ${k}?`, "A", "B", "C", "D", "2", "Why.", "Topic", "Two", t, "", "milestone"]))]),
+    row(["s1", "Survey?", "A", "B", "C", "D", "1", "", "Topic", "Two", "", "", "survey"]),
+    // Config rows (whole file).
+    row(["results_url", "https://docs.google.com/forms/d/e/1FAIpQLSf-Test/viewform", "", "", "", "", "", "", "", "", "", "", "config"]),
+    row(["results_url", "https://script.google.com/macros/s/AKfyTest/exec", "", "", "", "", "", "", "", "", "", "", "config"]),
+    row(["instructor_email", "prof@uni.edu", "", "", "", "", "", "", "", "", "", "", "config"]),
+    row(["course", "BIOL 101", "", "", "", "", "", "", "", "", "", "", "config"]),
+    row(["ask_names", "maybe", "", "", "", "", "", "", "", "", "", "", "config"]),
+  ].join("\n");
+
+  it.each([["broken two-game", broken], ["demo", DEMO_TSV], ["statistics example", STATS_TSV]])("gives the same full report as the game's validator on the %s file", (_, text) => {
+    const js = validateQuestionRows(parseTsv(text), parseTsvHeaders(text));
+    const py = runPython(text);
+    expect(py.errors.sort()).toEqual([...js.errors].sort());
+    // The Python copy adds authoring-only notes (answer positions, image folder).
+    expect(py.warnings.filter((w) => !/multiple-choice answers are option|Image file\(s\) not found/.test(w)).sort()).toEqual([...js.warnings].sort());
+    expect(py.delivery).toBe(js.delivery);
+    expect(py.games.map((g) => g.name)).toEqual(js.games.map((g) => g.name));
+    expect(py.games.map((g) => g.format_counts)).toEqual(js.games.map((g) => g.formatCounts));
+    (js.cues.games || []).forEach((g, i) => {
+      const pg = py.stats.answer_cues.games[i];
+      ["items", "overlapItems", "absoluteOptions", "absoluteCorrect", "multiItems"].forEach((k) => expect(pg[k]).toBe(g[k]));
+      expect(pg.multiCounts).toEqual(g.multiCounts);
+      ["longest", "shortest", "chance"].forEach((k) => (g[k] === null ? expect(pg[k]).toBeNull() : expect(pg[k]).toBeCloseTo(g[k], 10)));
+    });
+  });
+
+  it("exercises every new check on the broken file", () => {
+    const js = validateQuestionRows(parseTsv(broken), parseTsvHeaders(broken));
+    const all = [...js.errors, ...js.warnings].join("\n");
+    [/Spreadsheet error value/, /Cell starts with/, /would also accept a different term[^\n]*: "swap" \("adsorption"\)\./,
+      /\[Topic \/ One\] Select-all cue/, /\[Topic \/ One\] Absolute-word cue/, /Cell starts with an apostrophe \('\): "apos"/,
+      /Option refers to other options .*"todas"/, /\[Topic \/ One\] Length cue in the milestone questions: always picking the longest option would answer only \d+% of the 15/,
+      /\[Topic \/ One\] The board needs 4 themes/, /Invalid tolerance/, /Unknown format/, /Duplicate id/, /ask_names" should be yes or no/]
+      .forEach((re) => expect(all).toMatch(re));
+    // The line reports what the game will do: it reads an unrecognised ask_names value ("maybe") as no.
+    expect(js.delivery).toBe("Results are sent to: the results collector at https://script.google.com/macros/s/AKfyTest/exec and an email to prof@uni.edu (students attach the file). Name/ID field: optional. Course label: BIOL 101.");
+    expect(all).toMatch(/is a Google Form, Google Sheet or test/);
+  });
+});
+
+// build_tsv.py: JSON to TSV for the question-writer skill.
+const BUILDER = fileURLToPath(new URL("../.claude/skills/sab-question-writer/scripts/build_tsv.py", import.meta.url));
+describe.skipIf(python.error || python.status !== 0)("build_tsv.py", () => {
+  const build = (rows, args = []) => {
+    const dir = mkdtempSync(join(tmpdir(), "sab-build-"));
+    writeFileSync(join(dir, "q.json"), JSON.stringify(rows));
+    spawnSync("python3", [BUILDER, join(dir, "q.json"), join(dir, "q.tsv"), ...args], { encoding: "utf8" });
+    return { dir, rows: parseTsv(readFileSync(join(dir, "q.tsv"), "utf8")) };
+  };
+
+  it("keeps quoted code options exactly as written", () => {
+    const { rows } = build([{ id: "q1", type: "property", question: "Which mode appends?", options: ['"w"', '"a"', '"Py" + "thon"', "plain"], correct: 2 }]);
+    expect([rows[0].option1, rows[0].option2, rows[0].option3, rows[0].option4]).toEqual(['"w"', '"a"', '"Py" + "thon"', "plain"]);
+  });
+
+  it("fills --bigTopic/--module only where the key is missing, so a blank stays shared", () => {
+    const { rows } = build([
+      { id: "a", type: "core", question: "Q", options: ["x", "y"], correct: 1 },
+      { id: "b", type: "core", question: "Q", options: ["x", "y"], correct: 1, bigTopic: "", module: "" },
+      { id: "c", type: "config", question: "BIOL 1" },
+    ], ["--bigTopic", "Topic", "--module", "Mod"]);
+    expect(rows.map((r) => [r.bigTopic, r.module])).toEqual([["Topic", "Mod"], ["", ""], ["", ""]]);
+  });
+
+  it("converts an existing file to JSON and back without changing a cell", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sab-rt-"));
+    const src = fileURLToPath(new URL("../public/SAB_questions_Jan22_Filtered.tsv", import.meta.url));
+    spawnSync("python3", [BUILDER, "--to-json", src, join(dir, "q.json")], { encoding: "utf8" });
+    spawnSync("python3", [BUILDER, join(dir, "q.json"), join(dir, "q.tsv"), "--bigTopic", "X", "--module", "Y"], { encoding: "utf8" });
+    expect(parseTsv(readFileSync(join(dir, "q.tsv"), "utf8"))).toEqual(parseTsv(DEMO_TSV));
   });
 });

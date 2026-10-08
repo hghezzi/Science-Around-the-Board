@@ -8,7 +8,11 @@ A standard-library mirror of the game's own checker (src/tsvValidator.js and
 src/itemQuality.js in the SAB repository), plus authoring stats (answer-position
 balance, image files). It also measures answer cues: how often a student who
 always picks the longest (or shortest) option, or the option that repeats the
-question's words, would be right, compared with chance.
+question's words, would be right, compared with chance; how many correct options
+the select-all questions have; cells a spreadsheet would turn into formulas; and
+short answers the game would also accept for a different term. Cue statistics
+are reported per game when the file holds several. The report ends with the
+"Results are sent to:" line, which says where the game sends student results.
 Exit code 1 if any ERROR is found.
 """
 import argparse
@@ -124,6 +128,13 @@ def normalize_text(s):
     return " ".join(s.split())
 
 
+def parse_index_list(v):
+    """Mirror of parseIndexList: unique 0-based indices from "1,3"; None marks an invalid entry."""
+    parts = [p for p in re.split(r"[,;|\s]+", str(v if v is not None else "")) if p]
+    vals = {(n - 1) if n is not None else None for n in (js_parse_int(p) for p in parts)}
+    return sorted(vals, key=lambda x: (x is None, x if x is not None else 0))
+
+
 def js_parse_int(v):
     """parseInt(v, 10) from JavaScript: the leading integer, or None."""
     m = re.match(r"\s*([-+]?[0-9]+)", str(v if v is not None else ""))
@@ -145,6 +156,11 @@ def explicit_amount(text):
     return bool(re.search(r"[+\-−]\s*\$\s*\d", s) or re.search(r"\(\s*[+\-−]\s*\d[\d,]*\s*\)", s))
 
 
+# Links instructors often paste instead of the collector's Web app URL; they can never work.
+NOT_A_COLLECTOR = re.compile(r"^https://(?:docs\.google\.com/(?:forms|spreadsheets)/|forms\.gle/|script\.google\.com/.*/dev(?:[?#/]|$))", re.I)
+COLLECTOR = re.compile(r"^https://script\.google\.com/(?:a/macros/[^/]+|macros)/s/[^/]+/exec(?:[?#]|$)", re.I)
+
+
 def check_config(r, label, errors, warnings):
     """Instructor settings (type = config): setting name in `id`, value in `question`."""
     key = (r.get("id") or "").strip().lower()
@@ -158,7 +174,9 @@ def check_config(r, label, errors, warnings):
     if key == "results_url":
         if not re.match(r"^https://", value, re.I):
             errors.append('Config "results_url" must be an https:// link (the Web app URL from Google Apps Script).')
-        elif not re.match(r"^https://script\.google\.com/macros/s/.+/exec", value, re.I):
+        elif NOT_A_COLLECTOR.match(value):
+            errors.append('Config "results_url" is a Google Form, Google Sheet or test (/dev) link, not the collector\'s Web app URL (https://script.google.com/macros/s/…/exec), so "Send results to instructor" would fail. Follow the collector setup and copy the Web app URL that ends in /exec.')
+        elif not COLLECTOR.match(value):
             warnings.append('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.')
     if key == "instructor_email" and not EMAIL_RE.match(value):
         errors.append('Config "instructor_email" is not a valid email address.')
@@ -172,13 +190,22 @@ def summarize(labels, n=5):
 
 # ---------- Answer-option quality (mirror of src/itemQuality.js) ----------
 # Same rules, thresholds and messages as the game's checker; keep them in step.
+# Students play one game (bigTopic + module) at a time, so when a file holds several
+# games the statistical cues are measured per game; single-row checks are file-wide.
 BOARD_TYPES = ["property", "milestone", "core"]
 MIN_CUE_ITEMS, CUE_MARGIN, Z_95 = 10, 0.1, 1.645
 LONG_RATIO, LONG_MIN_GAP = 1.5, 10
 MIN_ABSOLUTE_OPTIONS, SURVEY_DUP_JACCARD = 6, 0.6
+MIN_MULTI_ITEMS, MULTI_COUNT_SHARE = 6, 0.7
+TYPO_MIN_LENGTH = 8  # mirrors TYPO_MIN_LENGTH in src/questionFormats.js
+# English, then Spanish, French and Portuguese (accents are removed before matching).
 ABSOLUTE_WORDS = [
     "always", "never", "all", "none", "only", "every", "must", "cannot", "impossible",
     "completely", "entirely", "totally", "absolutely", "guaranteed", "guarantees",
+    "siempre", "nunca", "jamas", "solo", "solamente", "unicamente", "exclusivamente", "totalmente", "todos", "todas",
+    "ninguno", "ninguna", "ningun", "nada", "nadie", "imposible",
+    "toujours", "jamais", "seulement", "uniquement", "tous", "toutes", "aucun", "aucune",
+    "sempre", "apenas", "somente", "nenhum", "nenhuma", "impossivel",
 ]
 STOPWORDS = set("""
 about after also among another because been before being best between both does doing each either
@@ -186,12 +213,15 @@ from have having here into just least less like many more most much must need on
 should show some such than that their them then there these they this those through under used using
 very were what when where which while will with would your following true false statement
 """.split())
-SPREADSHEET_ERROR = re.compile(r"^#(?:NAME\?|REF!|VALUE!|DIV/0!|N/A|NUM!|NULL!|SPILL!|CALC!)$", re.I)
+SPREADSHEET_ERROR = re.compile(r"^#(?:NAME\?|REF!|VALUE!|DIV/0!|N/A|NUM!|NULL!|SPILL!|CALC!|ERROR!)$", re.I)
 OPTION_REFERENCE = [
     re.compile(r"\b(?:all|none|both|neither)\s+of\s+(?:the\s+)?(?:above|below|these|those|the\s+(?:other\s+)?(?:options|answers|choices))\b", re.I),
     re.compile(r"\b(?:[Oo]ptions?|[Aa]nswers?|[Cc]hoices?)\s+[A-D1-4]\b"),
     re.compile(r"\b(?:[Bb]oth|[Ee]ither|[Nn]either|[Oo]nly)\s+[A-D]\s+(?:and|or|nor)\s+[A-D]\b"),
+    re.compile(r"\b(?:todas|ninguna|nenhuma)\s+(?:(?:de|das|dos)\s+)?(?:(?:las|as|os)\s+)?(?:anteriores|opciones|alternativas)\b", re.I),
 ]
+TEXT_CELLS = ["question", "option1", "option2", "option3", "option4", "explanation", "answer"]
+ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"]  # mirrors ROMAN_NUMERALS in src/questionFormats.js
 
 
 def js_round(x):
@@ -204,7 +234,8 @@ def pct(x):
 
 
 def words(text):
-    return re.findall(r"[a-z0-9]+", str(text or "").lower())
+    """Words in any script: accents and punctuation removed, as the game does for typed answers."""
+    return [w for w in normalize_text(text).split(" ") if w]
 
 
 def content_words(text):
@@ -219,6 +250,72 @@ def content_words(text):
 
 def has_absolute(text):
     return any(w in ABSOLUTE_WORDS for w in words(text))
+
+
+def leading_apostrophe(value):
+    """Text whose leading apostrophe a spreadsheet may take as its "keep as text" mark and drop."""
+    return (value or "").strip().startswith("'")
+
+
+def formula_prone(value):
+    """Text a spreadsheet would turn into a formula: starts with - + = @, and isn't just a number."""
+    s = (value or "").strip()
+    return len(s) >= 2 and s[0] in "-+=@" and parse_number(re.sub(r"%$", "", s)) is None
+
+
+def edit_distance(a, b):
+    dp = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        prev, dp[0] = dp[0], i
+        for j in range(1, len(b) + 1):
+            tmp = dp[j]
+            dp[j] = min(dp[j] + 1, dp[j - 1] + 1, prev + (0 if a[i - 1] == b[j - 1] else 1))
+            prev = tmp
+    return dp[len(b)]
+
+
+def text_accepts(response, answers):
+    """Mirror of checkAnswer for the text format in src/questionFormats.js."""
+    got = normalize_text(response)
+    if not got:
+        return False
+    for a in answers:
+        want = normalize_text(a)
+        if got == want or got.replace(" ", "") == want.replace(" ", ""):
+            return True
+        digits = lambda t: re.sub(r"[^0-9]", "", t)  # noqa: E731
+        romans = lambda t: " ".join(w for w in t.split(" ") if w in ROMAN)  # noqa: E731
+        if (len(want) >= TYPO_MIN_LENGTH and got[0] == want[0] and digits(got) == digits(want)
+                and romans(got) == romans(want)
+                and abs(len(got) - len(want)) <= 1 and edit_distance(got, want) <= 1):
+            return True
+    return False
+
+
+def text_near_miss(r, terms):
+    """First near miss the game would also accept (mirror of textNearMiss in src/itemQuality.js).
+
+    Another term from the file one letter different from an accepted answer ("adsorption"
+    for "absorption"). Numbers and Roman numerals must match exactly in the game. Terms that
+    only add or drop a letter ("safer" for "safe") are left alone.
+    """
+    answers = [a.strip() for a in str(r.get("answer") or "").split("|") if a.strip()]
+    own = [x for x in (normalize_text(a) for a in answers) if x]
+    if not own:
+        return None
+
+    def same_term(c):
+        return any(c == a or c.replace(" ", "") == a.replace(" ", "") for a in own)
+
+    candidates = [c for c in (normalize_text(t) for t in terms) if any(len(a) == len(c) for a in own)]
+    seen = set()
+    for c in candidates:
+        if not c or c in seen:
+            continue
+        seen.add(c)
+        if not same_term(c) and text_accepts(c, answers):
+            return c
+    return None
 
 
 def fmt_num(x):
@@ -241,9 +338,16 @@ def add_to_tally(t, score, n):
     t["variance"] += (1 / n) * (1 - 1 / n)
 
 
+def cue_margin(t):
+    return max(CUE_MARGIN * t["items"], Z_95 * math.sqrt(t["variance"]))
+
+
 def beats_chance(t):
-    margin = max(CUE_MARGIN * t["items"], Z_95 * math.sqrt(t["variance"]))
-    return t["items"] >= MIN_CUE_ITEMS and t["score"] - t["chance"] > margin
+    return t["items"] >= MIN_CUE_ITEMS and t["score"] - t["chance"] > cue_margin(t)
+
+
+def below_chance(t):
+    return t["items"] >= MIN_CUE_ITEMS and t["chance"] - t["score"] > cue_margin(t)
 
 
 def jaccard(a, b):
@@ -253,94 +357,207 @@ def jaccard(a, b):
     return shared / (len(a) + len(b) - shared)
 
 
-def check_item_quality(rows):
-    """Cues that let test-wise students find the answer without the content."""
-    errors, warnings = [], []
-    sheet_errors, option_refs, dup_options, article_cue, long_items = [], [], [], [], []
+def row_facts(r, label, t):
+    """What one quiz row contributes to the statistical cue checks."""
+    fmt = FORMAT_ALIASES.get((r.get("format") or "").strip().lower())
+    options = [(r.get(f"option{k}") or "").strip() for k in range(1, 5)]
+    options = [o for o in options if o]
+    f = {"row": id(r), "label": label, "type": t, "format": fmt, "options": options,
+         "stem_words": content_words(r.get("question") or ""), "mcq": None, "multi_correct": None}
+    if fmt == "multi" and len(options) >= 3:
+        idxs = parse_index_list(r.get("correctIndex"))
+        if idxs and all(k is not None and 0 <= k < len(options) for k in idxs):
+            f["multi_correct"] = len(idxs)
+    if fmt != "mcq" or len(options) < 3:
+        return f
+    m = re.match(r"^\s*([-+]?\d+)", str(r.get("correctIndex") or ""))
+    if not m:
+        return f
+    correct = int(m.group(1)) - 1
+    if correct < 0 or correct >= len(options):
+        return f
+    n = len(options)
+    lengths = [len(o) for o in options]
+    longest_idx = [k for k, ln in enumerate(lengths) if ln == max(lengths)]
+    shortest_idx = [k for k, ln in enumerate(lengths) if ln == min(lengths)]
+    # Word-overlap cue: the option that echoes the question's wording.
+    shared = [len(content_words(o) & f["stem_words"]) for o in options]
+    overlap = None
+    if max(shared) > 0:
+        overlap = strategy_score([k for k, sh in enumerate(shared) if sh == max(shared)], correct)
+    f["mcq"] = {
+        "n": n, "correct": correct, "lengths": lengths, "longest_idx": longest_idx,
+        "longest": strategy_score(longest_idx, correct), "shortest": strategy_score(shortest_idx, correct),
+        "overlap": overlap, "absolute": [k for k, o in enumerate(options) if has_absolute(o)],
+    }
+    return f
+
+
+def tally_cues(facts):
+    """Statistical cues over one set of rows (the file, or one game)."""
     longest, shortest, overlap = new_tally(), new_tally(), new_tally()
+    mile_longest, mile_shortest = new_tally(), new_tally()
     absolute = {"options": 0, "correct": 0, "chance": 0.0, "variance": 0.0}
-    survey_stems, board_stems = [], []
+    multi_counts, multi_items = {}, 0
+    for f in facts:
+        if f["multi_correct"]:
+            multi_items += 1
+            multi_counts[f["multi_correct"]] = multi_counts.get(f["multi_correct"], 0) + 1
+        q = f["mcq"]
+        if not q:
+            continue
+        n = q["n"]
+        add_to_tally(longest, q["longest"], n)
+        add_to_tally(shortest, q["shortest"], n)
+        if f["type"] == "milestone":
+            add_to_tally(mile_longest, q["longest"], n)
+            add_to_tally(mile_shortest, q["shortest"], n)
+        if q["overlap"] is not None:
+            add_to_tally(overlap, q["overlap"], n)
+        for k in q["absolute"]:
+            absolute["options"] += 1
+            if k == q["correct"]:
+                absolute["correct"] += 1
+            absolute["chance"] += 1 / n
+            absolute["variance"] += (1 / n) * (1 - 1 / n)
+    # Survey items that repeat a board item (the pre/post survey would measure memory of it).
+    boards = [f for f in facts if f["type"] in BOARD_TYPES]
+    survey_dups = []
+    for s in (f for f in facts if f["type"] == "survey"):
+        match = next((b for b in boards if jaccard(s["stem_words"], b["stem_words"]) >= SURVEY_DUP_JACCARD), None)
+        if match:
+            survey_dups.append(f"{s['label']} ≈ {match['label']}")
+    return {"longest": longest, "shortest": shortest, "mile_longest": mile_longest, "mile_shortest": mile_shortest, "overlap": overlap, "absolute": absolute,
+            "multi_counts": multi_counts, "multi_items": multi_items, "survey_dups": survey_dups}
+
+
+def cue_warnings(t, prefix):
+    warnings = []
+    for which in ("longest", "shortest"):
+        tally = t[which]
+        rate = pct(tally["score"] / tally["items"]) if tally["items"] else 0
+        chance = pct(tally["chance"] / tally["items"]) if tally["items"] else 0
+        if beats_chance(tally):
+            warnings.append(f"{prefix}Length cue: always picking the {which} option would answer {rate}% of the {tally['items']} multiple-choice questions correctly (chance is {chance}%). Vary which option is {which}, so that length gives nothing away.")
+        elif below_chance(tally):
+            warnings.append(f"{prefix}Length cue: always picking the {which} option would answer only {rate}% of the {tally['items']} multiple-choice questions correctly (chance is {chance}%), so students can rule the {which} option out. Vary which option is {which}, so that length gives nothing away.")
+    # The milestone exam (5 of 6) is where a shape cue pays most, so its pool is checked on its own.
+    for which in ("longest", "shortest"):
+        tally = t[f"mile_{which}"]
+        if not beats_chance(tally) and not below_chance(tally):
+            continue
+        only = "only " if below_chance(tally) else ""
+        warnings.append(f"{prefix}Length cue in the milestone questions: always picking the {which} option would answer {only}{pct(tally['score'] / tally['items'])}% of the {tally['items']} milestone multiple-choice questions correctly (chance is {pct(tally['chance'] / tally['items'])}%). Vary which option is {which} within the milestone pools too.")
+    overlap, absolute = t["overlap"], t["absolute"]
+    if beats_chance(overlap):
+        warnings.append(f"{prefix}Wording cue: picking the option that repeats the most words from the question would answer {pct(overlap['score'] / overlap['items'])}% of the {overlap['items']} multiple-choice questions where an option repeats a question word (chance is {pct(overlap['chance'] / overlap['items'])}%). Echo the question's key words in the distractors too, or in none of the options.")
+    if absolute["options"] >= MIN_ABSOLUTE_OPTIONS and absolute["chance"] - absolute["correct"] >= max(1.5, Z_95 * math.sqrt(absolute["variance"])):
+        which = "none" if absolute["correct"] == 0 else f"only {absolute['correct']}"
+        warnings.append(f'{prefix}Absolute-word cue: {absolute["options"]} options use words such as "always", "never", "all" or "only", but {which} of them are correct answers (about {js_round(absolute["chance"])} expected by chance). Test-wise students rule such options out; use these words in correct answers too, or avoid them.')
+    if t["multi_items"] >= MIN_MULTI_ITEMS:
+        count, items = sorted(t["multi_counts"].items(), key=lambda kv: (-kv[1], kv[0]))[0]
+        if items / t["multi_items"] >= MULTI_COUNT_SHARE:
+            plural = "" if count == 1 else "s"
+            warnings.append(f"{prefix}Select-all cue: {items} of the {t['multi_items']} select-all-that-apply questions have exactly {count} correct option{plural}, so students can learn to tick {count}. Vary the number of correct options (anywhere from 1 to 4).")
+    if t["survey_dups"]:
+        warnings.append(f"{prefix}Survey question nearly repeats a board question, so students practise the survey item itself during the game: {summarize(t['survey_dups'])}. Write a different item on the same learning objective.")
+    return warnings
+
+
+def cue_stats(t):
+    def rate(x):
+        return x["score"] / x["items"] if x["items"] else None
+
+    lo, ov, ab = t["longest"], t["overlap"], t["absolute"]
+    return {
+        "items": lo["items"],
+        "chance": lo["chance"] / lo["items"] if lo["items"] else None,
+        "longest": rate(lo),
+        "shortest": rate(t["shortest"]),
+        "overlap": rate(ov),
+        "overlapItems": ov["items"],
+        "overlapChance": ov["chance"] / ov["items"] if ov["items"] else None,
+        "absoluteOptions": ab["options"],
+        "absoluteCorrect": ab["correct"],
+        "absoluteChance": ab["chance"],
+        "multiItems": t["multi_items"],
+        "multiCounts": {str(k): v for k, v in sorted(t["multi_counts"].items())},
+    }
+
+
+def check_item_quality(rows, games=None):
+    """Cues that let test-wise students find the answer without the content.
+
+    `games` is a list of (name, rows) pairs; with more than one, the statistical
+    cues are measured and reported per game (and listed in cues["games"]).
+    """
+    games = games or []
+    errors, warnings = [], []
+    apostrophe_cells = []
+    sheet_errors, formula_cells, option_refs, dup_options, article_cue, long_items, near_misses = [], [], [], [], [], [], []
+    facts = []
+    # Terms a short answer could be confused with: every option and every accepted answer.
+    terms = []
+    for r in rows:
+        if (r.get("type") or "").strip().lower() not in QUIZ_TYPES:
+            continue
+        terms.extend((r.get(f"option{k}") or "").strip() for k in range(1, 5) if (r.get(f"option{k}") or "").strip())
+        if FORMAT_ALIASES.get((r.get("format") or "").strip().lower()) == "text":
+            terms.extend(a.strip() for a in str(r.get("answer") or "").split("|") if a.strip())
+
     for i, r in enumerate(rows):
         label = f'"{r["id"]}"' if r.get("id") else f"row {i + 2}"
         t = (r.get("type") or "").strip().lower()
         if not t or t == "config":
             continue
-        cells = ["question", "option1", "option2", "option3", "option4", "explanation", "answer"]
-        if any(SPREADSHEET_ERROR.match((r.get(c) or "").strip()) for c in cells):
+        if any(SPREADSHEET_ERROR.match((r.get(c) or "").strip()) for c in TEXT_CELLS):
             sheet_errors.append(label)
+        fmt = FORMAT_ALIASES.get((r.get("format") or "").strip().lower())
+        if any(not (c == "answer" and fmt == "numeric") and formula_prone(r.get(c)) for c in TEXT_CELLS):
+            formula_cells.append(label)
+        # The matcher ignores punctuation in text answers, so a lost apostrophe there is harmless.
+        if any(c != "answer" and leading_apostrophe(r.get(c)) for c in TEXT_CELLS):
+            apostrophe_cells.append(label)
         if t not in QUIZ_TYPES:
             continue
-        fmt = FORMAT_ALIASES.get((r.get("format") or "").strip().lower())
-        options = [(r.get(f"option{k}") or "").strip() for k in range(1, 5)]
-        options = [o for o in options if o]
-        stem = r.get("question") or ""
-        if t == "survey":
-            survey_stems.append((label, content_words(stem)))
-        elif t in BOARD_TYPES:
-            board_stems.append((label, content_words(stem)))
+        f = row_facts(r, label, t)
+        facts.append(f)
+        if fmt == "text":
+            miss = text_near_miss(r, terms)
+            if miss:
+                near_misses.append(f'{label} ("{miss}")')
         if fmt not in ("mcq", "multi"):
             continue
+        options = f["options"]
         if any(rx.search(o) for o in options for rx in OPTION_REFERENCE):
             option_refs.append(label)
         lowered = [o.lower() for o in options]
         if len(set(lowered)) < len(lowered):
             dup_options.append(label)
-        if fmt != "mcq" or len(options) < 3:
+        q = f["mcq"]
+        if not q:
             continue
-        m = re.match(r"^\s*([-+]?\d+)", str(r.get("correctIndex") or ""))
-        if not m:
-            continue
-        correct = int(m.group(1)) - 1
-        if correct < 0 or correct >= len(options):
-            continue
-        n = len(options)
-
         # Grammatical cue: "...is an" followed by options that don't all fit.
-        end = re.sub(r"[\s:._…-]+$", "", stem.strip()).lower()
+        end = re.sub(r"[\s:._…-]+$", "", (r.get("question") or "").strip()).lower()
         art = re.search(r"\b(an?)$", end)
         if art:
             fits = [bool(re.match(r"[aeiou]", o, re.I)) == (art.group(1) == "an") for o in options]
             if not all(fits):
                 article_cue.append(label)
-
-        # Length cues.
-        lengths = [len(o) for o in options]
-        longest_idx = [k for k, ln in enumerate(lengths) if ln == max(lengths)]
-        shortest_idx = [k for k, ln in enumerate(lengths) if ln == min(lengths)]
-        add_to_tally(longest, strategy_score(longest_idx, correct), n)
-        add_to_tally(shortest, strategy_score(shortest_idx, correct), n)
+        # A single correct answer much longer than its distractors.
+        lengths, correct = q["lengths"], q["correct"]
         others = [ln for k, ln in enumerate(lengths) if k != correct]
         mean_other = sum(others) / len(others)
         lc = lengths[correct]
-        if longest_idx == [correct] and lc >= LONG_RATIO * mean_other and lc - mean_other >= LONG_MIN_GAP:
+        if q["longest_idx"] == [correct] and lc >= LONG_RATIO * mean_other and lc - mean_other >= LONG_MIN_GAP:
             long_items.append(f"{label} ({lc} vs {js_round(mean_other)} characters)")
 
-        # Word-overlap cue: the option that echoes the question's wording.
-        stem_words = content_words(stem)
-        shared = [len(content_words(o) & stem_words) for o in options]
-        if max(shared) > 0:
-            picked = [k for k, sh in enumerate(shared) if sh == max(shared)]
-            add_to_tally(overlap, strategy_score(picked, correct), n)
-
-        # Absolute words ("always", "never") that only appear in distractors.
-        for k, o in enumerate(options):
-            if not has_absolute(o):
-                continue
-            absolute["options"] += 1
-            if k == correct:
-                absolute["correct"] += 1
-            absolute["chance"] += 1 / n
-            absolute["variance"] += (1 / n) * (1 - 1 / n)
-
-    # Survey items that repeat a board item (the pre/post survey would measure memory of it).
-    survey_dups = []
-    for s_label, s_words in survey_stems:
-        match = next((b for b in board_stems if jaccard(s_words, b[1]) >= SURVEY_DUP_JACCARD), None)
-        if match:
-            survey_dups.append(f"{s_label} ≈ {match[0]}")
-
     if sheet_errors:
-        errors.append(f'Spreadsheet error value (such as #NAME?) instead of text: {summarize(sheet_errors)}. A spreadsheet treated text starting with "-", "+" or "=" as a formula. Retype it with an apostrophe in front (for example \'--input-path), then export the file again.')
+        errors.append(f'Spreadsheet error value (such as #NAME?) instead of text: {summarize(sheet_errors)}. A spreadsheet treated text starting with "-", "+", "=" or "@" as a formula. Retype it with an apostrophe in front (for example \'--input-path), then export the file again.')
+    if formula_cells:
+        warnings.append(f'Cell starts with "-", "+", "=" or "@": {summarize(formula_cells)}. Excel and Google Sheets turn such text into a formula (#NAME? or #ERROR!) when the file is opened there. Start the cell with a word, or wrap a command or flag in backticks (for example `--p-trim-left`).')
+    if apostrophe_cells:
+        warnings.append(f"Cell starts with an apostrophe ('): {summarize(apostrophe_cells)}. Excel and Google Sheets may take a leading apostrophe as their \"keep as text\" mark and drop it when the file is edited there. Use double quotes for quoted speech, or backticks for code.")
     if option_refs:
         warnings.append(f'Option refers to other options ("all of the above", "both A and B", "option 2"): {summarize(option_refs)}. Options are shuffled in the game, so use the multi (select all that apply) format instead.')
     if dup_options:
@@ -349,33 +566,21 @@ def check_item_quality(rows):
         warnings.append(f'Question ends with "a" or "an", which rules out options that don\'t fit grammatically: {summarize(article_cue)}. End with "a(n)" or rephrase the question.')
     if long_items:
         warnings.append(f"Correct answer much longer than the other options ({fmt_num(LONG_RATIO)}× their average length or more): {summarize(long_items)}. Students can pick it without knowing the content; make the distractors just as detailed, or trim the correct answer.")
-    if beats_chance(longest):
-        warnings.append(f"Length cue: always picking the longest option would answer {pct(longest['score'] / longest['items'])}% of the {longest['items']} multiple-choice questions correctly (chance is {pct(longest['chance'] / longest['items'])}%). Vary which option is longest, so that length gives nothing away.")
-    if beats_chance(shortest):
-        warnings.append(f"Length cue: always picking the shortest option would answer {pct(shortest['score'] / shortest['items'])}% of the {shortest['items']} multiple-choice questions correctly (chance is {pct(shortest['chance'] / shortest['items'])}%). Vary which option is shortest, so that length gives nothing away.")
-    if beats_chance(overlap):
-        warnings.append(f"Wording cue: picking the option that repeats the most words from the question would answer {pct(overlap['score'] / overlap['items'])}% of the {overlap['items']} multiple-choice questions where an option repeats a question word (chance is {pct(overlap['chance'] / overlap['items'])}%). Echo the question's key words in the distractors too, or in none of the options.")
-    if absolute["options"] >= MIN_ABSOLUTE_OPTIONS and absolute["chance"] - absolute["correct"] >= max(1.5, Z_95 * math.sqrt(absolute["variance"])):
-        which = "none" if absolute["correct"] == 0 else f"only {absolute['correct']}"
-        warnings.append(f'Absolute-word cue: {absolute["options"]} options use words such as "always", "never", "all" or "only", but {which} of them are correct answers (about {js_round(absolute["chance"])} expected by chance). Test-wise students rule such options out; use these words in correct answers too, or avoid them.')
-    if survey_dups:
-        warnings.append(f"Survey question nearly repeats a board question, so students practise the survey item itself during the game: {summarize(survey_dups)}. Write a different item on the same learning objective.")
+    if near_misses:
+        warnings.append(f"Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: {summarize(near_misses)}. Use multiple choice when two terms differ by one letter (absorption and adsorption), or add the other spelling to the accepted answers if it is also correct.")
 
-    def rate(t):
-        return t["score"] / t["items"] if t["items"] else None
-
-    cues = {
-        "items": longest["items"],
-        "chance": longest["chance"] / longest["items"] if longest["items"] else None,
-        "longest": rate(longest),
-        "shortest": rate(shortest),
-        "overlap": rate(overlap),
-        "overlapItems": overlap["items"],
-        "overlapChance": overlap["chance"] / overlap["items"] if overlap["items"] else None,
-        "absoluteOptions": absolute["options"],
-        "absoluteCorrect": absolute["correct"],
-        "absoluteChance": absolute["chance"],
-    }
+    # Statistical cues: per game when the file has several, otherwise for the whole file.
+    total = tally_cues(facts)
+    cues = cue_stats(total)
+    if len(games) > 1:
+        cues["games"] = []
+        for name, game_rows in games:
+            in_game = {id(r) for r in game_rows}
+            t = tally_cues([f for f in facts if f["row"] in in_game])
+            warnings.extend(cue_warnings(t, f"[{name}] "))
+            cues["games"].append({"name": name, **cue_stats(t)})
+    else:
+        warnings.extend(cue_warnings(total, ""))
     return errors, warnings, cues
 
 
@@ -390,10 +595,68 @@ def format_cue_summary(c):
     return f"Answer cues ({c['items']} multiple-choice questions with 3+ options): {', '.join(parts)}"
 
 
+def format_multi_summary(c):
+    """One-line summary of how many correct options the select-all questions have."""
+    if not c or not c.get("multiItems"):
+        return ""
+    parts = [f"{k} correct: {v}" for k, v in sorted(c["multiCounts"].items(), key=lambda kv: int(kv[0]))]
+    return f"Select-all questions ({c['multiItems']}): {', '.join(parts)}"
+
+
+def read_config(rows):
+    """Mirror of readConfig in src/config.js: the settings the game actually uses."""
+    raw = {}
+    for r in rows:
+        if (r.get("type") or "").strip().lower() != "config":
+            continue
+        key, value = (r.get("id") or "").strip().lower(), (r.get("question") or "").strip()
+        if key and value:
+            raw[key] = value
+    url = raw.get("results_url", "") if re.match(r"^https://", raw.get("results_url", ""), re.I) else ""
+    email = raw.get("instructor_email", "") if EMAIL_RE.match(raw.get("instructor_email", "")) else ""
+    ask = raw.get("ask_names", "").lower()
+    ask_names = ask in ("yes", "y", "true", "1") if ask else bool(url or email)
+    return {"resultsUrl": url, "instructorEmail": email, "course": raw.get("course", ""), "askNames": ask_names}
+
+
+def describe_delivery(rows):
+    """Where the end screen sends results (mirror of describeDelivery in src/tsvValidator.js)."""
+    cfg = read_config(rows)
+    to = []
+    if cfg["resultsUrl"]:
+        url = cfg["resultsUrl"]
+        to.append(f"the results collector at {url}" if COLLECTOR.match(url) else f"the web address {url} (not a recognised Apps Script collector)")
+    if cfg["instructorEmail"]:
+        to.append(f"an email to {cfg['instructorEmail']} (students attach the file)")
+    where = " and ".join(to) if to else "nowhere; students only download the results file (CSV)"
+    # The end screen keeps Send, Email and Download disabled while required names are missing.
+    names = "required before Send, Email or Download" if cfg["askNames"] else "optional"
+    course = f" Course label: {cfg['course']}." if cfg["course"] else ""
+    return f"Results are sent to: {where}. Name/ID field: {names}.{course}"
+
+
+def count_formats(rows):
+    counts = {"mcq": 0, "trueFalse": 0, "multi": 0, "numeric": 0, "order": 0, "text": 0}
+    for r in rows:
+        if (r.get("type") or "").strip().lower() not in QUIZ_TYPES:
+            continue
+        fmt = FORMAT_ALIASES.get((r.get("format") or "").strip().lower())
+        if fmt is None:
+            continue
+        counts[fmt] += 1
+        if fmt == "mcq" and len([o for o in (r.get(f"option{k}", "") for k in range(1, 5)) if o]) == 2:
+            counts["trueFalse"] += 1
+    return counts
+
+
+def format_line(f):
+    return f"mcq {f['mcq']} (true/false {f['trueFalse']}), multi {f['multi']}, numeric {f['numeric']}, order {f['order']}, text {f['text']}"
+
+
 def validate(headers, rows, image_dir=None):
     errors, warnings, games = [], [], []
     if not rows:
-        return {"errors": ["The file has no question rows."], "warnings": [], "games": [], "stats": {}}
+        return {"errors": ["The file has no question rows (it needs a header line plus at least one row)."], "warnings": [], "games": [], "stats": {}, "delivery": ""}
 
     missing = [h for h in REQUIRED if h not in headers]
     if missing:
@@ -453,12 +716,8 @@ def validate(headers, rows, image_dir=None):
         elif fmt == "multi":
             if len(opts) < 2:
                 buckets["few"].append(label)
-            parts = [p for p in re.split(r"[,;|\s]+", str(r.get("correctIndex", ""))) if p]
-            try:
-                idxs = [int(p) for p in parts]
-            except ValueError:
-                idxs = []
-            if not idxs or any(x < 1 or x > len(opts) for x in idxs):
+            idxs = parse_index_list(r.get("correctIndex", ""))
+            if not idxs or any(x is None or x < 0 or x >= len(opts) for x in idxs):
                 buckets["multi"].append(label)
         elif fmt == "order":
             if len(opts) < 2:
@@ -476,7 +735,7 @@ def validate(headers, rows, image_dir=None):
 
     dups = [f'"{k}"' for k, n in ids.items() if n > 1]
     if dups:
-        warnings.append(f"Duplicate id(s): {summarize(dups)}.")
+        warnings.append(f"Duplicate id(s): {summarize(dups)}. Ids should be unique so exported data can be traced back to questions.")
     b = buckets
     if b["type"]:
         warnings.append(f"Unknown type, row will be ignored: {summarize(b['type'])}. Valid types: {', '.join(KNOWN_TYPES)}.")
@@ -487,9 +746,9 @@ def validate(headers, rows, image_dir=None):
     if b["few"]:
         errors.append(f"Fewer than 2 answer options: {summarize(b['few'])}.")
     if b["ans"]:
-        errors.append(f"correctIndex is missing or does not point to a filled option (use 1-4): {summarize(b['ans'])}.")
+        errors.append(f"correctIndex is missing or does not point to a filled option (use 1-4): {summarize(b['ans'])}. These questions can never be answered correctly.")
     if b["fmt"]:
-        errors.append(f"Unknown format: {summarize(b['fmt'])}. Valid formats: {', '.join(FORMATS)} (blank = mcq).")
+        errors.append(f"Unknown format: {summarize(b['fmt'])}. Valid formats: {', '.join(FORMATS)} (blank = mcq). These rows are skipped by this check.")
     if b["mcqmany"]:
         warnings.append(f"correctIndex lists several options but the format is multiple choice, so only the first counts: {summarize(b['mcqmany'])}. For select-all-that-apply, set format to multi.")
     if b["multi"]:
@@ -497,18 +756,16 @@ def validate(headers, rows, image_dir=None):
     if b["num"]:
         errors.append(f'Numeric questions need a number in the "answer" column: {summarize(b["num"])}.')
     if b["tol"]:
-        errors.append(f"Invalid tolerance (use 0.5 or 5%): {summarize(b['tol'])}.")
+        errors.append(f"Invalid tolerance (use a number like 0.5 or a percentage like 5%): {summarize(b['tol'])}.")
     if b["text"]:
         errors.append(f'Short-text questions need accepted answers (with letters or digits) in the "answer" column, separated by | : {summarize(b["text"])}.')
     if b["mishap"]:
-        warnings.append(f"Mishap without an explicit amount such as (+$100) or (-$50): {summarize(b['mishap'])}.")
+        warnings.append(f"Mishap without an explicit amount such as (+$100) or (-$50): {summarize(b['mishap'])}. The default +$50 / -$100 will be used.")
     if b["noexp"]:
-        warnings.append(f"No explanation: {summarize(b['noexp'])}.")
+        warnings.append(f"No explanation: {summarize(b['noexp'])}. Explanations are shown after every answer and are the main teaching moment.")
 
-    q_errors, q_warnings, cues = check_item_quality(rows)
-    errors.extend(q_errors)
-    warnings.extend(q_warnings)
-
+    # The games (bigTopic + module) players can pick.
+    scopes = []
     topics = ordered_unique(t for r in rows for t in parse_list((r.get("bigTopic") or "").strip())) or [None]
     for topic in topics:
         modules = []
@@ -519,46 +776,54 @@ def validate(headers, rows, image_dir=None):
             )
         for module in modules or [None]:
             name = " / ".join(x for x in [topic, module] if x) or "(all rows)"
-            scoped = [r for r in rows if matches(r, topic, module)]
-            typ = lambda r: (r.get("type") or "").strip().lower()  # noqa: E731
-            counts = Counter(typ(r) for r in scoped)
-            themes = ordered_unique((r.get("theme") or "").strip() for r in scoped if typ(r) in ("property", "milestone"))
-            game = {"name": name, "themes": [], "counts": {t: counts.get(t, 0) for t in KNOWN_TYPES}}
-            if len(themes) < SIDES:
-                errors.append(f"[{name}] The board needs {SIDES} themes but found {len(themes)}: {', '.join(themes) or 'none'}.")
-            elif len(themes) > SIDES:
-                warnings.append(f"[{name}] {len(themes)} themes found; only the first {SIDES} are used. Ignored: {', '.join(themes[SIDES:])}.")
-            for th in themes[:SIDES]:
-                props = [r for r in scoped if typ(r) == "property" and (r.get("theme") or "").strip() == th]
-                miles = [r for r in scoped if typ(r) == "milestone" and (r.get("theme") or "").strip() == th]
-                subs = ordered_unique((r.get("subtheme") or "").strip() for r in props)
-                game["themes"].append({
-                    "name": th,
-                    "subthemes": {s: sum(1 for r in props if (r.get("subtheme") or "").strip() == s) for s in subs},
-                    "milestone": len(miles),
-                })
-                if not props:
-                    errors.append(f'[{name}] Theme "{th}" has no property questions.')
-                elif len(subs) < SUBS:
-                    warnings.append(f'[{name}] Theme "{th}" has {len(subs)} subtheme(s); each side uses {SUBS}.')
-                elif len(subs) > SUBS:
-                    warnings.append(f'[{name}] Theme "{th}" has {len(subs)} subthemes; only the first {SUBS} are used. Ignored: {", ".join(subs[SUBS:])}.')
-                if not miles:
-                    errors.append(f'[{name}] Theme "{th}" has no milestone questions.')
-                elif len(miles) < MILESTONE_Q:
-                    warnings.append(f'[{name}] Theme "{th}" has {len(miles)} milestone question(s); exams ask {MILESTONE_Q}.')
-            c = game["counts"]
-            if c["core"] == 0:
-                warnings.append(f'[{name}] No "core" questions.')
-            if c["mishap"] == 0:
-                warnings.append(f'[{name}] No "mishap" rows; the built-in general wildcards will be used.')
-            if c["survey"] == 0:
-                warnings.append(f'[{name}] No "survey" questions; the pre/post check will be empty.')
-            elif c["survey"] < SURVEY_Q:
-                warnings.append(f'[{name}] Only {c["survey"]} survey question(s); each player normally gets {SURVEY_Q}.')
-            if c["confidence"] == 0:
-                warnings.append(f'[{name}] No "confidence" rows.')
-            games.append(game)
+            scopes.append((name, [r for r in rows if matches(r, topic, module)]))
+
+    q_errors, q_warnings, cues = check_item_quality(rows, scopes)
+    errors.extend(q_errors)
+    warnings.extend(q_warnings)
+
+    typ = lambda r: (r.get("type") or "").strip().lower()  # noqa: E731
+    for gi, (name, scoped) in enumerate(scopes):
+        counts = Counter(typ(r) for r in scoped)
+        themes = ordered_unique((r.get("theme") or "").strip() for r in scoped if typ(r) in ("property", "milestone"))
+        game = {"name": name, "themes": [], "counts": {t: counts.get(t, 0) for t in KNOWN_TYPES},
+                "format_counts": count_formats(scoped), "cues": cues["games"][gi] if "games" in cues else None}
+        if len(themes) < SIDES:
+            found = f": {', '.join(themes)}" if themes else ""
+            errors.append(f"[{name}] The board needs {SIDES} themes (one per side) but found {len(themes)}{found}. The board will be incomplete and the game can break.")
+        elif len(themes) > SIDES:
+            warnings.append(f"[{name}] Found {len(themes)} themes; only the first {SIDES} are used ({', '.join(themes[:SIDES])}). Ignored: {', '.join(themes[SIDES:])}.")
+        for th in themes[:SIDES]:
+            props = [r for r in scoped if typ(r) == "property" and (r.get("theme") or "").strip() == th]
+            miles = [r for r in scoped if typ(r) == "milestone" and (r.get("theme") or "").strip() == th]
+            subs = ordered_unique((r.get("subtheme") or "").strip() for r in props)
+            game["themes"].append({
+                "name": th,
+                "subthemes": {s: sum(1 for r in props if (r.get("subtheme") or "").strip() == s) for s in subs},
+                "milestone": len(miles),
+            })
+            if not props:
+                errors.append(f'[{name}] Theme "{th}" has no property questions, so its 6 property tiles cannot ask anything.')
+            elif len(subs) < SUBS:
+                warnings.append(f'[{name}] Theme "{th}" has {len(subs)} subtheme(s); each side uses {SUBS}. Both property groups will reuse the same questions.')
+            elif len(subs) > SUBS:
+                warnings.append(f'[{name}] Theme "{th}" has {len(subs)} subthemes; only the first {SUBS} are used. Ignored: {", ".join(subs[SUBS:])}.')
+            if not miles:
+                errors.append(f'[{name}] Theme "{th}" has no milestone questions, so its corner exam cannot start.')
+            elif len(miles) < MILESTONE_Q:
+                warnings.append(f'[{name}] Theme "{th}" has {len(miles)} milestone question(s); exams ask {MILESTONE_Q}, so questions will repeat within an exam.')
+        c = game["counts"]
+        if c["core"] == 0:
+            warnings.append(f'[{name}] No "core" questions; the 4 core tiles will show a generic event instead of a question.')
+        if c["mishap"] == 0:
+            warnings.append(f'[{name}] No "mishap" rows; the built-in general wildcards will be used.')
+        if c["survey"] == 0:
+            warnings.append(f'[{name}] No "survey" questions; the pre/post knowledge check will be empty.')
+        elif c["survey"] < SURVEY_Q:
+            warnings.append(f'[{name}] Only {c["survey"]} survey question(s); each player normally gets {SURVEY_Q}.')
+        if c["confidence"] == 0:
+            warnings.append(f'[{name}] No "confidence" rows; the pre/post surveys will have no confidence sliders.')
+        games.append(game)
 
     stats = {"rows": len(rows), "mcq_correct_positions": dict(sorted(positions.items())), "images": sorted(images),
              "format_counts": format_counts, "answer_cues": cues}
@@ -573,7 +838,7 @@ def validate(headers, rows, image_dir=None):
         most, n = max(positions.items(), key=lambda kv: kv[1])
         if n / total > 0.4:
             warnings.append(f"{n} of {total} multiple-choice answers are option {most}; spread correct answers across positions.")
-    return {"errors": errors, "warnings": warnings, "games": games, "stats": stats}
+    return {"errors": errors, "warnings": warnings, "games": games, "stats": stats, "delivery": describe_delivery(rows)}
 
 
 def main():
@@ -598,13 +863,17 @@ def main():
                 print(f"  Side {i}: {t['name']} | subthemes: {subs} | milestone: {t['milestone']}")
             c = g["counts"]
             print(f"  core: {c['core']}, mishap: {c['mishap']}, survey: {c['survey']}, confidence: {c['confidence']}")
+            if len(result["games"]) > 1:
+                print(f"  formats: {format_line(g['format_counts'])}")
+                for line in (format_cue_summary(g["cues"]), format_multi_summary(g["cues"])):
+                    if line:
+                        print(f"  {line}")
         s = result["stats"]
         print(f"Rows: {s['rows']}; mcq correct positions: {s['mcq_correct_positions']}")
-        f = s["format_counts"]
-        print(f"Formats: mcq {f['mcq']} (true/false {f['trueFalse']}), multi {f['multi']}, numeric {f['numeric']}, order {f['order']}, text {f['text']}")
-        cue_line = format_cue_summary(s.get("answer_cues"))
-        if cue_line:
-            print(cue_line)
+        print(f"Formats: {format_line(s['format_counts'])}")
+        for line in (format_cue_summary(s.get("answer_cues")), format_multi_summary(s.get("answer_cues")), result["delivery"]):
+            if line:
+                print(line)
         if s["images"]:
             print(f"Images referenced: {', '.join(s['images'])}")
         print()

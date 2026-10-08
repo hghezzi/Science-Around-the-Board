@@ -202,6 +202,7 @@ export default function GameScreen({
   // The question just answered, shown again with the answer revealed (UI only).
   const [lastAnswer, setLastAnswer] = useShared(gv, 'lastAnswer', null);
   const [exitOpen, setExitOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
   // A new game opens with the quick rules; a resumed one doesn't.
   const [rulesOpen, setRulesOpen] = useState(() => !resume);
   const [manageOpen, setManageOpen] = useState(false);
@@ -913,7 +914,7 @@ export default function GameScreen({
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button variant="text" onClick={() => setRulesOpen(true)} startIcon={<span aria-hidden>📖</span>}>{LABELS.howToPlay}</Button>
-          {!isGuest && <Button variant="outlined" color="warning" disabled={isMoving} onClick={() => openStandings(false, 'ended')}>End game</Button>}
+          {!isGuest && <Button variant="outlined" color="warning" disabled={isMoving} onClick={() => setEndOpen(true)}>End game</Button>}
           <Button variant="text" color="error" onClick={() => setExitOpen(true)}>{isGuest ? 'Leave game' : 'Exit session'}</Button>
         </Box>
       </Box>
@@ -1484,8 +1485,19 @@ export default function GameScreen({
             : 'The current game and its results will be lost. To finish properly, use End game instead.'}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button autoFocus onClick={() => setExitOpen(false)}>Stay in the game</Button>
-          <Button color="error" variant="contained" onClick={() => { setExitOpen(false); onExit(); }}>Leave game</Button>
+          <Button autoFocus onClick={() => setExitOpen(false)}>No, stay in the game</Button>
+          <Button color="error" variant="contained" onClick={() => { setExitOpen(false); onExit(); }}>Yes, leave</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={endOpen} onClose={() => setEndOpen(false)} aria-labelledby="end-title" aria-describedby="end-text">
+        <DialogTitle id="end-title">End the game now?</DialogTitle>
+        <DialogContent>
+          <Typography id="end-text">The final standings are shown, ranked by net worth, and then everyone takes the post-game survey.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button autoFocus onClick={() => setEndOpen(false)}>No, keep playing</Button>
+          <Button color="warning" variant="contained" onClick={() => { setEndOpen(false); openStandings(false, 'ended'); }}>Yes, end the game</Button>
         </DialogActions>
       </Dialog>
     </Box>

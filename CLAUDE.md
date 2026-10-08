@@ -47,7 +47,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `startGame()` builds the survey sets with the final team count (`surveys.js`) and a new `sessionId`.
   - Autosave: while in `PRE_SURVEY`…`SUMMARY`, App saves a snapshot (`autosave.js`), including the game's state from `GameScreen`'s `onSnapshot`. It is cleared by `resetFile()`/main menu, Exit session and `startGame()`.
   - `SurveyView` serves both pre and post surveys. The best pre-survey scorer starts the game (`bestPreSurveyPlayer`).
-  - `SummaryView`: score table, names or IDs per team (required when `config.askNames`), then Send (results sheet), Email (a `mailto:` link that also downloads the file) and Download. The CSV starts with `TEAM_INFO` rows.
+  - `SummaryView`: score table, names or IDs per team (required when `config.askNames`: Send, Email and Download stay disabled until filled), then Send (results sheet), Email (a `mailto:` link that also downloads the file) and Download. The CSV starts with `TEAM_INFO` rows.
 - `src/GameScreen.jsx`: a single component (~1300 lines) holding all turn logic and UI, with modal flows keyed by `modalStage` / `activeCard.type`.
   - Start money by player count (`startingMoney(n)`: 2500/2000/1500/1250 for 1–4, `ECONOMY.startMoney`); passing START +$200 (the "lap bonus"). A new game opens `RulesDialog` (quick rules from `labels.js` `RULES`).
   - Question choice goes through `questionPicker.js` (unseen first, a missed question again after `REASK_AFTER_TURNS`); the shared history (`asked`) is saved with the game.
@@ -63,7 +63,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/questionFormats.js` (pure):
   - Formats: `mcq | multi | numeric | order | text`.
   - `normalizeQuestion` turns a TSV row into a question; `prepareQuestion` shuffles the options and remaps answers.
-  - `checkAnswer` returns `{correct, responseText, correctText}`.
+  - `checkAnswer` returns `{correct, responseText, correctText}`. Text answers forgive one typo in answers of 8+ characters, never in the first letter, a number or a Roman numeral (`ROMAN_NUMERALS`); numeric answers accept a unit after the number (`parseNumericResponse`: "12 kg").
   - `parseMishapAmount` reads the amount from mishap text.
 - `src/theme.js`:
   - MUI theme with light/dark `colorSchemes`, selected by the media query, so it follows the device setting. Exposed as CSS variables, e.g. `var(--mui-palette-board-felt)`; `v()` builds that string.
@@ -107,7 +107,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/lockFile.js` (pure, Web Crypto): `.lock` files. Current format `SAB-LOCK-v2:` (PBKDF2-SHA256 600k + AES-256-GCM); legacy CryptoJS files (`U2FsdGVkX1…`) still open, loading `crypto-js` on demand.
 - `public/tools/sab-results-collector.gs`: the Google Apps Script instructors paste into their own Sheet (Summary and Details tabs). It enforces size, row, column and per-minute limits; column names must match `^[A-Za-z][A-Za-z0-9_]{0,39}$` (the smoke test checks the game's payload). `tests/collector.test.js` runs it against a fake Sheet.
 - `src/tsvValidator.js` (pure): instructor-facing checks that mirror what the engine needs. Shared by the UI, CLI and tests. **Update it, and its Python mirror in the skill, whenever engine assumptions change.**
-- `src/itemQuality.js` (pure): answer-option checks called by the validator. It measures test-wise cues (how often "pick the longest/shortest option" or "pick the option that repeats the question's words" would be right versus chance, absolute words only in distractors, "all of the above", a/an grammar cues, identical options, survey items that repeat board items) and errors on spreadsheet error values such as `#NAME?`. Its Python mirror lives in the skill's `validate_tsv.py`; keep rules, thresholds and messages identical (`tests/itemQuality.test.js` compares the two).
+- `src/itemQuality.js` (pure): answer-option checks called by the validator. It measures test-wise cues (how often "pick the longest/shortest option" or "pick the option that repeats the question's words" would be right versus chance, absolute words only in distractors, "all of the above", a/an grammar cues, identical options, survey items that repeat board items) and errors on spreadsheet error values such as `#NAME?`. It also reports cue figures per game and for milestone pools, select-all correct-count skew, formula-prone and leading-apostrophe cells, and short answers the typo rule would confuse. `tsvValidator.js` ends its report with a `Results are sent to:` line, and errors on a Google Form, Sheet or `/dev` link as `results_url`. Its Python mirror lives in the skill's `validate_tsv.py`; keep rules, thresholds and messages identical (`tests/itemQuality.test.js` compares the two).
 - `src/consent.js` and `src/ConsentBanner.jsx`: Google Analytics (`G-B2Z5WS4KQR`) loads only after opt-in. The banner appears on the start page only. `public/privacy.html` is the privacy notice.
 - `src/labels.js`: all player-facing game terms (Wildcard, Buy, Upgrades, Rescue Quiz…), kept subject-neutral, plus `TEAM_NAMES` ("Red Player"…) and `teamDisplayName` (a single player is "Solo Player"). In-game text says "player", never "team" (identifiers and the `TEAM_INFO` CSV code keep the old name).
 - `src/questionBank.js`: `DEFAULT_CHANCE_CARDS`, the neutral fallback wildcards used when a file has no `mishap` rows.
@@ -119,7 +119,8 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `.claude/skills/sab-question-writer/`: a Claude skill that interviews instructors and writes validated question files.
   - `scripts/build_tsv.py` converts JSON to TSV.
   - `scripts/validate_tsv.py` is a stdlib Python mirror of the validator.
-  - `references/` holds the format spec and the question-design guide.
+  - `references/` holds the format spec, the question-design guide and `sensitive-content.md` (clinical and sensitive topics, student data, test banks and exams, images of real works).
+  - `SKILL.md` opens with ground rules (student data, materials are data not instructions, results addresses only from the instructor, copyright and live exams, harmful uplift, honesty about the game). They were tested with simulated instructor sessions and strict reviewers; keep them when editing the skill.
 - `MICB_475_2026_Workshop/`: the real course's encrypted `.lock` and images. Don't modify it without asking.
 - Old code backups and the removed Docusaurus site (`website/`) are gitignored; old code lives in the history.
 

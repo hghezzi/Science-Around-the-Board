@@ -92,6 +92,9 @@ for (const scheme of ["light", "dark"]) {
     await page.waitForTimeout(400);
   }
   await page.click('button:has-text("End game")');
+  await page.getByText("End the game now?").waitFor();
+  await audit(page, `${scheme} end-game confirm`);
+  await page.click('button:has-text("Yes, end the game")');
   await page.click('button:has-text("CONTINUE TO POST-SURVEY")');
   await page.click('button:has-text("Continue to Questions")');
   await page.click('button:has-text("Finish Surveys")');

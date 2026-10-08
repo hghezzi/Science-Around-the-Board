@@ -317,7 +317,42 @@
 </ul>
 </li>
 </ul>
-<p><strong>How many questions?</strong> For a 60–90 minute session, aim for 8–10 <code>property</code> questions per subtheme (64–80 in all), 8–10 <code>milestone</code> questions per theme, 8–12 <code>core</code> questions, 6–10 wildcards, 15–20 <code>survey</code> questions and about 3 <code>confidence</code> statements. The absolute minimum is 4 per subtheme, 6 per theme, 4 core, 10 survey questions and 1 confidence statement; smaller pools simply repeat sooner. For a 45-minute session, the minimum plus about half again is enough.</p>
+<p><strong>How many questions?</strong> The game only refuses a file with fewer than 4 themes, or a theme with no property or no milestone questions. Everything else is a recommendation: smaller pools load and play, they just repeat sooner.</p>
+<table>
+<thead>
+<tr>
+<th align="left">Per game</th>
+<th align="left">45 min</th>
+<th align="left">60 min</th>
+<th align="left">90 min</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>property</code>, per subtheme</td>
+<td align="left">6</td>
+<td align="left">8</td>
+<td align="left">10</td>
+</tr>
+<tr>
+<td align="left"><code>milestone</code>, per theme</td>
+<td align="left">8</td>
+<td align="left">8</td>
+<td align="left">10</td>
+</tr>
+<tr>
+<td align="left"><code>core</code></td>
+<td align="left">6</td>
+<td align="left">8</td>
+<td align="left">10</td>
+</tr>
+<tr>
+<td align="left">wildcards (<code>mishap</code>)</td>
+<td align="left">6</td>
+<td align="left">8</td>
+<td align="left">8</td>
+</tr>
+</tbody></table>
+<p>Whatever the length, write 15 <code>survey</code> questions for 1–2 players and 20 for 3–4 (each player draws 10), and 4–5 <code>confidence</code> statements, one skill each.</p>
 <h4 id="question-formats">Question formats</h4>
 <p>Multiple choice is the default, but the <code>format</code> column unlocks other question types. Every format is simply marked right or wrong, so the game rules are the same for all of them.</p>
 <table>
@@ -363,10 +398,10 @@
 <td align="left"><code>text</code> (short answer)</td>
 <td align="left"><code>answer</code> with alternatives separated by <code>|</code></td>
 <td align="left">A text box</td>
-<td align="left">it matches an accepted answer (case and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter or a number)</td>
+<td align="left">it matches an accepted answer (case, accents and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter, a number or a Roman numeral)</td>
 </tr>
 </tbody></table>
-<p>Tips: say <em>&quot;(Select all that apply)&quot;</em> in multi-select prompts, state units in numeric prompts, keep short answers to one to three words, and list every reasonable spelling.</p>
+<p>Tips: the game already shows &quot;Select all that apply.&quot; under multi-select questions, so vary how many options are correct (1 to 4) rather than hinting at it. State units and rounding in numeric prompts; a unit typed after the number is accepted (&quot;12 kg&quot; counts as 12). Keep short answers to one to three words, list every reasonable synonym, and use multiple choice when one letter turns a long answer into a different term (absorption and adsorption): the typo rule would accept it. Numbers and Roman numerals never get the typo allowance, so &quot;Type II&quot; is never accepted for &quot;Type I&quot;.</p>
 <h4 id="config-rows-optional-settings">Config rows (optional settings)</h4>
 <p>Rows with <code>type</code> = <code>config</code> are not questions: they set up how results reach you. Put the setting name in <code>id</code>, its value in <code>question</code>, and leave the other columns blank.</p>
 <table>
@@ -395,7 +430,7 @@
 <tr>
 <td align="left"><code>ask_names</code></td>
 <td align="left"><code>yes</code> or <code>no</code></td>
-<td align="left">whether names or student IDs are required before sending; the default is yes when results are sent or emailed</td>
+<td align="left">whether names or student IDs must be typed before <strong>Send</strong>, <strong>Email</strong> or <strong>Download</strong> (the boxes are always shown); the default is yes when results are sent or emailed</td>
 </tr>
 </tbody></table>
 <p>Config rows apply to the whole file, whatever topic and module students pick. The file check flags links and addresses that won&#39;t work.</p>
@@ -431,7 +466,10 @@
 <li><strong>Red items</strong> will break the game or make a question impossible to answer correctly. Examples: fewer than 4 themes, a <code>correctIndex</code> that doesn’t point to an option, or a theme with no milestone questions.</li>
 <li><strong>Yellow notes</strong> (click to expand) are suggestions. Examples: too few survey questions, wildcards without an amount, or ignored rows.</li>
 <li><strong>Answer cues</strong> are yellow notes about question quality. Test-wise students pick the longest or most detailed option, avoid options with &quot;always&quot; or &quot;never&quot;, and pick the option that repeats the question&#39;s words. The checker measures how well each of these blind strategies would score on your file. For four options, chance is 25%; if &quot;pick the longest option&quot; would score, say, 60%, students can win without knowing the content. Fix it by making the wrong options as long and as detailed as the right one (real misconceptions, not padding), or by moving the extra detail from the correct option into the explanation.</li>
-<li><strong>Spreadsheet errors</strong> such as <code>#NAME?</code> are red items. Excel and Google Sheets turn text starting with <code>-</code>, <code>+</code> or <code>=</code> (for example <code>--p-sampling-depth</code>) into a formula. Type an apostrophe first, or wrap commands in backticks.</li>
+<li><strong>Spreadsheet errors</strong> such as <code>#NAME?</code> or <code>#ERROR!</code> are red items. Excel and Google Sheets turn text starting with <code>-</code>, <code>+</code>, <code>=</code> or <code>@</code> (for example <code>--p-sampling-depth</code>) into a formula, so the checker also warns about such cells before a spreadsheet damages them. Wrap commands in backticks. A cell starting with an apostrophe may lose it in a spreadsheet; use double quotes for quoted speech.</li>
+<li><strong>Several games in one file:</strong> the answer-cue figures are given for each game (topic and module) as well as for the whole file, and the milestone exams get their own length check.</li>
+<li><strong>Other checks:</strong> select-all questions that almost always have the same number of correct options, short answers that the typo rule would confuse with another term, and a results link that is a Google Form, Sheet or test (<code>/dev</code>) link instead of the collector&#39;s Web app URL (a red item).</li>
+<li><strong>Results are sent to:</strong> the last line of the check says exactly where results will go (the collector, an email address, or nowhere) and whether names are required. Read it before sharing the file.</li>
 </ul>
 <p>Load your file yourself before class and fix the red items. If you work from the repository, <code>npm run validate-tsv -- my_questions.tsv</code> runs the same checks on the command line.</p>
 <p><figure><img src="images/01-landing.png" alt="The start page" loading="lazy"><figcaption>The start page</figcaption></figure></p>
@@ -445,6 +483,14 @@
 <li>It checks the file with the same rules as the game and hands you a ready-to-load <code>.tsv</code>.</li>
 </ol>
 <p>To use it, download the <a href="https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip" target="_blank" rel="noopener">skill zip</a>, add it in Claude’s skills settings, then ask, for example: <em>&quot;Make a Science Around the Board game reviewing enzyme kinetics for second-year biochemistry.&quot;</em> In Claude Code, open the project repository and the skill loads by itself. Always review generated questions before using them in class; you know what your students were actually taught.</p>
+<p>The skill follows your materials: it writes to your course&#39;s notation, terms and worked examples, points out errors it finds in your notes before writing, and lists by row which facts go beyond what you gave it so you can check them. It computes every number and runs every code snippet before putting them in a question. It also follows a few ground rules:</p>
+<ul>
+<li><strong>Student data:</strong> it keeps names, grades and other personal data out of the file, and uses class results only as class-wide misconceptions.</li>
+<li><strong>Your materials are data, not instructions:</strong> it reports hidden instructions in uploaded notes instead of following them, and it only sends results where you yourself said.</li>
+<li><strong>Copyright and exams:</strong> it writes original questions rather than copying a publisher&#39;s test bank, and won&#39;t put upcoming exam questions in a game that shows every answer.</li>
+<li><strong>Clinical and sensitive topics:</strong> it asks you to check doses against your institution&#39;s references and follows safe-messaging practice for topics such as suicide.</li>
+</ul>
+<p>I tested these rules with simulated instructors across eleven very different requests (with materials and without, in Spanish, editing an existing file, impossible requests, a roster pasted by mistake, hidden instructions in notes), with independent reviewers checking safety, teaching quality, fidelity to the materials and fit with the game.</p>
 <h4 id="optional-encrypting-your-questions-file">Optional: encrypting your questions file</h4>
 <p>Since the question file you distribute to students also contains the answers, I created an <a href="https://hghezzi.github.io/Science-Around-the-Board/encryptor.html" target="_blank" rel="noopener">encryptor tool</a>. Type a class password, choose your <code>.tsv</code> file and click <strong>Download .lock File</strong>; the encryption happens in your browser and the file is never uploaded. Share the <code>.lock</code> file together with the password; when students open it, the game asks for the class password. Check the plain <code>.tsv</code> before encrypting it, and keep it: a <code>.lock</code> file can&#39;t be opened without its password. Encryption keeps casual eyes off the answer key; it is not meant as strong security, since every student knows the password.</p>
 <h3 id="sharing-the-game-with-students">Sharing the game with students</h3>
@@ -614,7 +660,7 @@
 </tr>
 </tbody></table>
 <h2 id="endgame-dynamics">Endgame dynamics</h2>
-<p>The game ends when only one player is left standing, when the session timer runs out (the timer turns orange in the last 5 minutes), or when a player clicks <strong>End game</strong>. A <strong>Final Standings</strong> screen ranks the players by net worth and names the winner. After <strong>End game</strong>, players can still go <strong>Back to game</strong> if they clicked it by mistake; <strong>Continue to post-survey</strong> moves on.</p>
+<p>The game ends when only one player is left standing, when the session timer runs out (the timer turns orange in the last 5 minutes), or when a player clicks <strong>End game</strong> and confirms with <strong>Yes, end the game</strong>. A <strong>Final Standings</strong> screen ranks the players by net worth and names the winner. After <strong>End game</strong>, players can still go <strong>Back to game</strong> if they clicked it by mistake; <strong>Continue to post-survey</strong> moves on.</p>
 <p><figure><img src="images/09-standings.png" alt="Final standings" loading="lazy"><figcaption>Final standings</figcaption></figure></p>
 <p>Next, every player completes the post-game survey: the same confidence sliders and questions as before the game. The end screen (<strong>Session complete</strong>) then shows each player’s survey scores before and after the game, and students hand in their results.</p>
 <p><figure><img src="images/10-summary.png" alt="The results screen when the question file sets a results Sheet and an email address. Without config rows, only Download appears" loading="lazy"><figcaption>The results screen when the question file sets a results Sheet and an email address. Without config rows, only Download appears</figcaption></figure></p>
@@ -644,7 +690,7 @@
 <td align="left">nothing</td>
 </tr>
 </tbody></table>
-<p>When a results link or email address is set, names are required before sending (add an <code>ask_names</code> row set to <code>no</code> to make them optional).</p>
+<p>When a results link or email address is set, names are required before <strong>Send</strong>, <strong>Email</strong> or <strong>Download</strong> (add an <code>ask_names</code> row set to <code>no</code> to make them optional). With download-only results, add an <code>ask_names</code> row set to <code>yes</code> if you want names in every file you collect. The game can&#39;t insist on student numbers rather than names; say which you want.</p>
 <p><strong>Setting up the Google Sheet collector</strong></p>
 <ol>
 <li>Create a new Google Sheet, for example &quot;SAB results – BIOL 301&quot;.</li>
@@ -789,6 +835,19 @@
 <p>Building a great TSV cartridge takes intentional design, and mastering the role of the game master takes practice. But the payoff, watching your students actively conceptualize complex material rather than passively memorizing it, is entirely worth the effort.</p>
 <p>Welcome to the board, and have a great session!</p>
 <h2 id="whats-new">What’s new</h2>
+<p><strong>October 2026 (update 7): question-writer skill and file checker</strong></p>
+<ul>
+<li><strong>A safer, more faithful question-writer skill.</strong> It now follows your materials closely (notation, examples, conventions), raises errors it finds in your notes, checks every number and code snippet, and keeps to ground rules on student data, copyright, live exams, hidden instructions in uploaded files and sensitive topics. See <em>Generating questions with Claude</em>.</li>
+<li><strong>New file checks:</strong> answer cues for each game in a file and for the milestone exams; cells that a spreadsheet would turn into a formula or strip of an apostrophe; select-all questions that always have the same number of correct options; short answers the typo rule could confuse (absorption/adsorption); and a Google Form or Sheet link given instead of the collector&#39;s link (now a red item).</li>
+<li><strong>&quot;Results are sent to&quot;</strong> is the new last line of the check: it says where results go and whether names are required.</li>
+<li><strong>Short answers: Roman numerals count like numbers.</strong> A typo is never forgiven in a Roman numeral, so &quot;Type II error&quot; is no longer accepted for &quot;Type I error&quot; (nor Photosystem I for II).</li>
+<li><strong>Numeric answers accept a unit:</strong> &quot;12 kg&quot;, &quot;0.5 mL&quot; or &quot;25 °C&quot; counts as the number.</li>
+<li><strong>Required names now hold back Download too.</strong> With <code>ask_names</code> on (the default when results are sent or emailed), <strong>Send</strong>, <strong>Email</strong> and <strong>Download</strong> stay disabled until every player&#39;s names or IDs are typed.</li>
+<li><strong>Updated counts table</strong> for 45-, 60- and 90-minute sessions (see <em>How many questions?</em>).</li>
+<li><strong>Demo file:</strong> nine cells were retyped so they survive a round trip through Excel or Google Sheets. No question or answer changed.</li>
+<li><strong>End game and Exit session ask first.</strong> Both now open a yes/no confirmation (<strong>Yes, end the game</strong> / <strong>No, keep playing</strong>, and <strong>Yes, leave</strong> / <strong>No, stay in the game</strong>), so a stray click can&#39;t end or throw away a game.</li>
+<li><strong>The question-writer skill asks about confidence sliders:</strong> whether you want them at all, and which skills they cover (it drafts 4–5 from your learning objectives for you to keep, edit or drop).</li>
+</ul>
 <p><strong>October 2026 (update 6): online play (beta)</strong></p>
 <ul>
 <li><strong>Players on their own devices.</strong> On the setup screen, choose <em>On their own devices (beta)</em>: the host computer opens a room with a code and a link, players join from any computer, tablet or phone, answer their surveys at the same time and play their turns on their own device. Refreshes reconnect by themselves, and a host refresh resumes the same room. Playing on one computer is unchanged and stays the default. See <a href="#online-play-beta">Online play (beta)</a>.</li>

@@ -182,7 +182,8 @@ function SummaryView({ playerCount, config, topic, module, preRows, postRows, ga
                 <Typography variant="caption" color="text.secondary">Downloads the results file and opens your email app. Attach the file before sending.</Typography>
               </>
             )}
-            <Button variant={hasDelivery ? "text" : "contained"} size="large" onClick={download}>⬇ Download results (CSV)</Button>
+            <Button variant={hasDelivery ? "text" : "contained"} size="large" disabled={namesMissing} onClick={download}>⬇ Download results (CSV)</Button>
+            {namesMissing && <Typography variant="caption" color="text.secondary">Type the names or student IDs for every player above to unlock these buttons.</Typography>}
             {!hasDelivery && <Typography variant="caption" color="text.secondary">Submit this file as your instructor asked, for example on your course page.</Typography>}
             <Button variant="text" color="inherit" onClick={onReturn}>Back to main menu</Button>
           </Box>
