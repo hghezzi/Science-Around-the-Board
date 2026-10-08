@@ -179,9 +179,27 @@ async function teamScenario(teams, colorScheme = "light") {
   await setupGame(page, teams);
   await doSurvey(page, teams, `${label} pre`);
   await gameStarted(page);
-  await playTurns(page, label);
+  await playTurns(page, label, teams === 1 ? Math.max(ROLLS, 20) : ROLLS);
+  if (teams === 1) {
+    // Solo: a net-worth goal instead of rivals, and no chaos tokens.
+    if (!(await page.getByText(/goal/).first().isVisible())) fail(`${label}: the solo goal isn't shown`);
+    if (await page.getByRole("button", { name: /Chaos tokens/ }).count()) fail(`${label}: chaos tokens are shown in solo play`);
+    if (!(await page.getByText(/Final Standings/i).count())) {
+      await page.getByRole("button", { name: /^End game$/ }).click();
+      await page.getByRole("button", { name: /^Yes, end the game$/ }).click();
+    }
+    if (!(await page.getByText(/Goal( reached)?.*net worth/).first().isVisible())) fail(`${label}: the end screen doesn't report the goal`);
+  }
   await finishGame(page, teams, label);
-  checkCsv(await downloadCsv(page), teams, label);
+  const rows = await downloadCsv(page);
+  checkCsv(rows, teams, label);
+  if (teams === 1) {
+    // Every right answer on an own tile is paid by the bank; a wrong one costs the fine.
+    const own = rows.filter((r) => r.eventType === "OWN_TILE_Q");
+    const paid = rows.filter((r) => r.action === "SOLO_RENT").length;
+    if (paid !== own.filter((r) => r.correct === "true").length) fail(`${label}: ${paid} SOLO_RENT rows for ${own.filter((r) => r.correct === "true").length} right own-tile answers`);
+    console.log(`  solo: ${own.length} own-tile questions, ${paid} paid`);
+  }
   await context.close();
 }
 

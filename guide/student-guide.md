@@ -53,6 +53,12 @@ The game ends in one of two ways:
 1. **Last player standing:** every other player has been eliminated by bankruptcy.
 2. **Highest net worth:** when the timer runs out, or when your instructor asks you to click **End game**, the player with the highest net worth wins. Net worth is your cash plus what you paid for the tiles and upgrades you still own.
 
+**Playing solo?** There are no rivals, so the rules change a little:
+
+- Landing on a tile you own asks one of its questions. If you answer right, the bank pays you its rent; if you answer wrong, you pay $20.
+- Your goal is to reach the net-worth goal shown on the board before time runs out (for example $5,000 in a 60-minute session). Capturing all four milestones is a bonus.
+- There are no chaos tokens.
+
 Starting cash depends on how many players there are: **$2,500** solo, **$2,000** each with 2 players, **$1,500** with 3 and **$1,250** with 4 (fewer players get more turns each, so they need more cash). Players take turns, and the **Players** panel on the right shows each player's cash and net worth.
 
 ## Your turn

@@ -8,7 +8,7 @@
 // carry their question lists.
 
 /** Bump when the messages change: devices on different versions are told to reload. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /** Largest message accepted (characters of JSON). A view with an image-free question is ~10 kB. */
 export const MAX_MESSAGE_CHARS = 200_000;
@@ -154,7 +154,7 @@ export function guestView(view) {
  * belong to the host.
  */
 export const GUEST_ACTIONS = new Set([
-  "roll", "answerProperty", "answerRent", "answerQuiz", "answerChaos", "nextQuestion", "buy", "passTurn",
+  "roll", "answerProperty", "answerRent", "answerOwnTile", "answerQuiz", "answerChaos", "nextQuestion", "buy", "passTurn",
   "startQuiz", "declineMilestone", "payMilestoneFee", "startRescue", "sellAsset", "continueAfterElimination",
   "openChaosSelect", "selectChaosTarget", "buyChaosToken", "openUpgradeOffer", "upgrade", "closeDialog",
 ]);

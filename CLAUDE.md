@@ -55,6 +55,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `checkLanding` reads `playersRef` and must not run side effects inside a state updater (StrictMode runs updaters twice in dev).
   - Autosave: `onSnapshot` fires only between turns (`turnInProgressRef` is set by the roll and cleared by `passTurn`). `resume` restores players, turn, logs, `asked` and tile `[owner, level, paid]` onto a freshly built board; tiles share question arrays, so the board itself is never serialized.
   - Property question: right gives the option to buy; wrong is −$20.
+  - **Solo (1 player):** landing on your own tile asks one of its questions (`OWN_TILE` card, action `answerOwnTile`); right = the bank pays its rent (`soloOwnTileIncome`, CSV `SOLO_RENT`), wrong = −$20. A net-worth goal by session length (`SOLO.goals`/`soloGoal` in `gameRules.js`, sized by simulation) shows in `TeamPanel`; a `SOLO_GOAL` row marks when it is reached. No chaos tokens. The standings show goal, accuracy, milestones and a personal best (`personalBest.js`, localStorage `sab-best-v1`). Quick rules come from `rulesFor(playerCount)` in `labels.js`.
   - Rent defense: right pays 50%.
   - Milestone exam: 6 questions, 5 to pass, failing on the 2nd mistake; a pass earns a chaos token.
   - Chaos steal at 50% of price, using the target tile's own questions. Complete sets (owner holds the whole subgroup) can't be targeted; the token is spent either way and the turn ends.
