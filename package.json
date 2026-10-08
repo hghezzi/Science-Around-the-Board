@@ -12,7 +12,17 @@
   "bugs": {
     "url": "https://github.com/hghezzi/Science-Around-the-Board/issues"
   },
-  "keywords": ["education", "game-based-learning", "review-game", "active-recall", "classroom", "quiz", "board-game", "pwa", "react"],
+  "keywords": [
+    "education",
+    "game-based-learning",
+    "review-game",
+    "active-recall",
+    "classroom",
+    "quiz",
+    "board-game",
+    "pwa",
+    "react"
+  ],
   "private": true,
   "type": "module",
   "engines": {
@@ -26,6 +36,7 @@
     "test": "vitest run",
     "validate-tsv": "node scripts/validate-tsv.mjs",
     "package-skill": "node scripts/package-skill.mjs",
+    "sync-plugin": "node scripts/sync-plugin.mjs",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",

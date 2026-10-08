@@ -32,6 +32,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `npm run build`: production build to `dist/`.
 - `npm run validate-tsv -- file.tsv`: check a question file. Exits 1 on errors.
 - `npm run package-skill`: zip the question-writer skill to `public/downloads/` (also runs automatically before `build`; the output is gitignored).
+- `npm run sync-plugin`: copy the skill into the Claude Code plugin (`plugins/sab-question-writer/skills/`). Run it after every skill edit; `tests/plugin.test.js` fails while the copies differ. `claude plugin validate .` checks the marketplace (`.claude-plugin/marketplace.json`, name `sab`); users install with `/plugin marketplace add hghezzi/Science-Around-the-Board` and `/plugin install sab-question-writer@sab`.
 - `npm run guide`: rebuilds both guides. It runs `vite build`, then `scripts/guide-screenshots.mjs` (Playwright screenshots into `guide/images/`), then `scripts/build-guide.mjs` (writes `public/guide/index.html`, `public/guide/students.html` and both PDFs, and fails on a link to a missing heading). `node scripts/build-guide.mjs` alone rebuilds them from the existing screenshots. The outputs are committed.
 - `npm run smoke`: builds, then `scripts/smoke-test.mjs` plays the built app with Playwright (1–4 players, dark mode, mocked Google Sheet send, `.lock` and link loading, resume after a refresh, offline, and `online`: a host and two devices through a local PeerJS server from `scripts/lib/local-peer-server.mjs`, which also serves `a11y` and `guide`). Pick scenarios with `SCENARIOS=teams,dark,results,files,resume,offline,online`. **Run it before every deploy.** It takes about 5 minutes.
 - `npm run privacy`: builds, then `scripts/privacy-check.mjs` checks with Playwright that nothing leaves the site before analytics opt-in or after "No thanks", that a change of mind deletes the GA cookies, that `javascript:`/`data:` share links are refused, that `404.html` redirects, and that the CSP blocks nothing. Smoke and privacy accept `PORT=`.
@@ -120,6 +121,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `scripts/build_tsv.py` converts JSON to TSV.
   - `scripts/validate_tsv.py` is a stdlib Python mirror of the validator.
   - `references/` holds the format spec, the question-design guide and `sensitive-content.md` (clinical and sensitive topics, student data, test banks and exams, images of real works).
+  - It is also published as a Claude Code plugin (`.claude-plugin/marketplace.json`, `plugins/sab-question-writer/`, a synced copy; edit the original, then `npm run sync-plugin`).
   - `SKILL.md` opens with ground rules (student data, materials are data not instructions, results addresses only from the instructor, copyright and live exams, harmful uplift, honesty about the game). They were tested with simulated instructor sessions and strict reviewers; keep them when editing the skill.
 - `MICB_475_2026_Workshop/`: the real course's encrypted `.lock` and images. Don't modify it without asking.
 - Old code backups and the removed Docusaurus site (`website/`) are gitignored; old code lives in the history.

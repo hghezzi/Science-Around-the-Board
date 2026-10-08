@@ -482,7 +482,20 @@
 <li>It writes the questions, with distractors based on common misconceptions and explanations that address them. It can also draw simple figures.</li>
 <li>It checks the file with the same rules as the game and hands you a ready-to-load <code>.tsv</code>.</li>
 </ol>
-<p>To use it, download the <a href="https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip" target="_blank" rel="noopener">skill zip</a>, add it in Claude’s skills settings, then ask, for example: <em>&quot;Make a Science Around the Board game reviewing enzyme kinetics for second-year biochemistry.&quot;</em> In Claude Code, open the project repository and the skill loads by itself. Always review generated questions before using them in class; you know what your students were actually taught.</p>
+<p>To use it:</p>
+<ul>
+<li><strong>In Claude (claude.ai or the desktop app):</strong> download the <a href="https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip" target="_blank" rel="noopener">skill zip</a> and add it in Claude’s skills settings (Customize → Skills). When I update the skill, download the zip again and replace the old one.</li>
+<li><strong>In Claude Code:</strong> install it as a plugin. Type <code>/plugin marketplace add hghezzi/Science-Around-the-Board</code>, then <code>/plugin install sab-question-writer@sab</code>. To get later versions, run <code>/plugin marketplace update sab</code> (or turn on auto-update for the marketplace in <code>/plugin</code>). If you work in the project repository itself, the skill also loads by itself.</li>
+</ul>
+<p>Then ask, for example: <em>&quot;Make a Science Around the Board game reviewing enzyme kinetics for second-year biochemistry.&quot;</em> Always review generated questions before using them in class; you know what your students were actually taught.</p>
+<blockquote>
+<p><strong>Before you share any file with Claude, think about privacy.</strong> The skill runs in your own Claude conversation, so everything you upload or paste (notes, slides, spreadsheets, past results) is read by Claude and handled by Anthropic under your Claude account&#39;s terms and privacy settings. Science Around the Board never receives it. So:</p>
+<ul>
+<li><strong>Remove student information first:</strong> names, student numbers, emails, grades, accommodations and any other personal or sensitive data. The skill keeps such data out of the question file and warns you if it finds some, but by then Claude has already read it.</li>
+<li><strong>Share only what you&#39;re allowed to share:</strong> no live exams, licensed test banks, unpublished research or other confidential material.</li>
+<li><strong>Use your institution&#39;s Claude account if it has one</strong> (Claude for Education or Enterprise), and follow its rules on what may be uploaded. On a personal account, check your privacy settings, including whether your chats may be used to improve Claude, before you upload course materials.</li>
+</ul>
+</blockquote>
 <p>The skill follows your materials: it writes to your course&#39;s notation, terms and worked examples, points out errors it finds in your notes before writing, and lists by row which facts go beyond what you gave it so you can check them. It computes every number and runs every code snippet before putting them in a question. It also follows a few ground rules:</p>
 <ul>
 <li><strong>Student data:</strong> it keeps names, grades and other personal data out of the file, and uses class results only as class-wide misconceptions.</li>
@@ -846,6 +859,8 @@
 <li><strong>Updated counts table</strong> for 45-, 60- and 90-minute sessions (see <em>How many questions?</em>).</li>
 <li><strong>Demo file:</strong> nine cells were retyped so they survive a round trip through Excel or Google Sheets. No question or answer changed.</li>
 <li><strong>End game and Exit session ask first.</strong> Both now open a yes/no confirmation (<strong>Yes, end the game</strong> / <strong>No, keep playing</strong>, and <strong>Yes, leave</strong> / <strong>No, stay in the game</strong>), so a stray click can&#39;t end or throw away a game.</li>
+<li><strong>The question-writer skill is now a Claude Code plugin:</strong> <code>/plugin marketplace add hghezzi/Science-Around-the-Board</code>, then <code>/plugin install sab-question-writer@sab</code>. The zip for claude.ai is updated too.</li>
+<li><strong>A privacy warning before you share materials with Claude:</strong> remove student data and anything confidential first, and check your Claude account&#39;s privacy settings (see <em>Generating questions with Claude</em>).</li>
 <li><strong>The question-writer skill asks about confidence sliders:</strong> whether you want them at all, and which skills they cover (it drafts 4–5 from your learning objectives for you to keep, edit or drop).</li>
 </ul>
 <p><strong>October 2026 (update 6): online play (beta)</strong></p>

@@ -73,9 +73,11 @@ The [`sab-question-writer`](.claude/skills/sab-question-writer/) skill works wit
 To use it:
 
 - **In Claude.ai:** download the [skill zip](https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip) and add it in Claude's skills settings. Then ask, for example: *"Make a Science Around the Board game reviewing cellular respiration for first-year biology."*
-- **In Claude Code:** open this repository; the skill loads automatically.
+- **In Claude Code:** install the plugin with `/plugin marketplace add hghezzi/Science-Around-the-Board`, then `/plugin install sab-question-writer@sab`. In this repository the skill also loads by itself.
 
 Always review generated questions before class.
+
+**Privacy:** the skill runs in your own Claude conversation, so anything you upload is read by Claude and handled by Anthropic under your account's terms and settings (Science Around the Board never receives it). Remove student names, IDs, grades and other personal or confidential data before sharing materials, and use your institution's Claude account if it has one.
 
 ## Privacy
 
@@ -114,6 +116,7 @@ CI runs lint, tests, both question-file validators and the build on every pull r
 | `guide/` | The Markdown sources and screenshots of the Instructor and Student Guides. |
 | `scripts/` | The file validator CLI, the guide and skill builders, the icon generator, and the smoke and accessibility tests. |
 | `.claude/skills/sab-question-writer/` | The question-writer skill for Claude, with the format reference and a Python validator. |
+| `.claude-plugin/`, `plugins/` | The Claude Code plugin marketplace; `plugins/sab-question-writer/skills/` is a copy of the skill made by `npm run sync-plugin`. |
 
 **Contributing.** Bug reports, ideas and pull requests are welcome. Please keep the game's own wording subject-neutral (game terms live in `src/labels.js`), add tests for rule changes, and update the guides for anything players or instructors will notice. Changes to gameplay, scoring or the results file affect classes using the live site, so please describe them in the pull request. See [CONTRIBUTING.md](CONTRIBUTING.md), and report security problems privately as described in [SECURITY.md](SECURITY.md).
 
