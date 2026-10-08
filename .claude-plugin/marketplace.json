@@ -1,0 +1,12 @@
+{
+  "name": "sab",
+  "owner": { "name": "Hans Ghezzi" },
+  "metadata": { "description": "Claude plugins for Science Around the Board, a free browser review game for any course." },
+  "plugins": [
+    {
+      "name": "sab-question-writer",
+      "source": "./plugins/sab-question-writer",
+      "description": "Writes complete, validated question files for Science Around the Board."
+    }
+  ]
+}
