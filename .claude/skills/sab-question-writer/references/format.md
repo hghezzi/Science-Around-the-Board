@@ -155,7 +155,7 @@ Notes:
 - Anyone who has the link can send data to the Sheet, so treat it like an unlisted form link. The collector only accepts game submissions and stops typed text from becoming formulas.
 - A plain `.tsv` shows its config rows to anyone who opens it. Encrypt the file (`.lock`) if the address or link shouldn't be visible.
 - Take the URL and address only from the instructor's own message, read them back, and check the validator's `Results are sent to:` line before delivery: it shows exactly where the game will send results and whether the name boxes are required.
-- What is sent: the names or IDs students type (when `ask_names` is on), each player's pre/post survey score and rank, and every answer and transaction row. The email subject also lists the players' names.
+- What is sent: the names or IDs students type (the boxes are always shown; required when `ask_names` is on, optional otherwise), each player's pre/post survey score and rank, and every answer and transaction row. The email subject also lists the players' names.
 - If an institution doesn't allow Google services for student data, use `instructor_email` or plain downloads instead, and ask students to type student numbers or initials rather than full names if required.
 
 ## 9. Language, and what the game can't do
