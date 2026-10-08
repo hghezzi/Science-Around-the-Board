@@ -79,7 +79,7 @@ The survey measures learning, so it must cover the LOs evenly and match the boar
 
 ## Confidence statements
 
-- 4–5 statements: one per theme, plus the core skill if it is an LO. "I am confident I can [verb] [one skill]."
+- 4–5 statements: one per theme, plus the core skill if it is an LO (up to 8 when there are more LOs; see SKILL.md §3). "I am confident I can [verb] [one skill]."
 - In languages with gendered adjectives, use a gender-neutral form (Spanish "Me siento capaz de…" rather than "seguro/a").
 - One skill per statement. Never join two with "and" ("calculate Km **and** design an assay"): a student confident in only one half has no right slider position, and the pre/post change can't be traced to an LO.
 - Use concrete verbs (explain, choose, interpret, troubleshoot), not "understand".

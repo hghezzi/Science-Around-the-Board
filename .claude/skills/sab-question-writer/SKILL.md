@@ -132,7 +132,7 @@ Give the instructor `questions.tsv`, the `images/` folder (zipped if possible), 
 
 - the blueprint table (themes, subthemes, LOs) and counts per type and format, per game;
 - where the file differs from the approved blueprint, and why;
-- **sources**: what the content rests on (their materials, a named text, or general knowledge plus the checks you ran), corrections made to their materials, and, by row id, facts beyond their materials and anything to verify (version-specific, contested; for high-stakes content, every value);
+- **sources**: what the content rests on (their materials, or the frame of reference described in the blueprint plus the checks you ran), corrections made to their materials, and, by row id, facts beyond their materials and anything to verify (version-specific, contested; for high-stakes content, every value);
 - the validator's `Results are sent to:` line, and the figure-only questions;
 - **next steps**:
   - review in Google Sheets or Excel, then export as TSV (fix any cell the validator says a spreadsheet would turn into a formula first);
