@@ -182,6 +182,11 @@ describe("other answer cues", () => {
     expect(w.split("\n").find((l) => l.startsWith("Cell starts with an apostrophe")).match(/"q\d+"/g)).toHaveLength(1);
   });
 
+  it("ignores a leading apostrophe in a text answer, where punctuation doesn't count", () => {
+    const row = { id: "t1", type: "property", format: "text", question: "Which word?", answer: "'tis|tis", explanation: "x", theme: "T", subtheme: "S" };
+    expect(checkItemQuality([row]).warnings.join("\n")).not.toMatch(/apostrophe/);
+  });
+
   it("checks the milestone pool's length cue on its own", () => {
     const mile = Array.from({ length: 12 }, (_, k) => q(`M${k}?`, ["Right", "A long wrong answer", "A longer wrong answer here", "Mid wrong"], 1, { type: "milestone" }));
     const balancedProps = Array.from({ length: 60 }, (_, k) => q(`P${k}?`, ["Alpha", "Bravo", "Charl", "Delta"], (k % 4) + 1));

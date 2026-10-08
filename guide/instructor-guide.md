@@ -147,7 +147,16 @@ Each side of the 36-tile board therefore holds a corner milestone, three tiles o
   - **survey / confidence:** these rows bypass the board and form the pre-game and post-game assessments. Ten `survey` questions are drawn at random for each player, and the same ones are asked again after the game. `confidence` rows are statements (e.g. *"I can explain how DADA2 denoises reads"*) shown as 0–10 sliders, the same for every player.
   - **config:** optional settings, not questions (see [Config rows](#config-rows-optional-settings) below).
 
-**How many questions?** For a 60–90 minute session, aim for 8–10 `property` questions per subtheme (64–80 in all), 8–10 `milestone` questions per theme, 8–12 `core` questions, 6–10 wildcards, 15–20 `survey` questions and about 3 `confidence` statements. The absolute minimum is 4 per subtheme, 6 per theme, 4 core, 10 survey questions and 1 confidence statement; smaller pools simply repeat sooner. For a 45-minute session, the minimum plus about half again is enough.
+**How many questions?** The game only refuses a file with fewer than 4 themes, or a theme with no property or no milestone questions. Everything else is a recommendation: smaller pools load and play, they just repeat sooner.
+
+| Per game | 45 min | 60 min | 90 min |
+| :--- | :--- | :--- | :--- |
+| `property`, per subtheme | 6 | 8 | 10 |
+| `milestone`, per theme | 8 | 8 | 10 |
+| `core` | 6 | 8 | 10 |
+| wildcards (`mishap`) | 6 | 8 | 8 |
+
+Whatever the length, write 15 `survey` questions for 1–2 players and 20 for 3–4 (each player draws 10), and 4–5 `confidence` statements, one skill each.
 
 #### Question formats
 
@@ -160,9 +169,9 @@ Multiple choice is the default, but the `format` column unlocks other question t
 | `multi` (select all) | options, `correctIndex` such as `1,3` | Checkboxes and Submit | the selection matches exactly |
 | `numeric` | `answer`, optional `tolerance` | A number box | the answer is within tolerance |
 | `order` | options written **in the correct order** | A shuffled list with ↑/↓ arrows | the order matches exactly |
-| `text` (short answer) | `answer` with alternatives separated by `\|` | A text box | it matches an accepted answer (case and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter or a number) |
+| `text` (short answer) | `answer` with alternatives separated by `\|` | A text box | it matches an accepted answer (case, accents and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter or a number) |
 
-Tips: say *"(Select all that apply)"* in multi-select prompts, state units in numeric prompts, keep short answers to one to three words, and list every reasonable spelling.
+Tips: the game already shows "Select all that apply." under multi-select questions, so vary how many options are correct (1 to 4) rather than hinting at it. State units and rounding in numeric prompts; students type a bare number ("12", not "12 kg"). Keep short answers to one to three words, list every reasonable synonym, and use multiple choice when one letter or numeral turns the answer into a different term (Type I and Type II): the typo rule would accept it.
 
 #### Config rows (optional settings)
 
@@ -173,7 +182,7 @@ Rows with `type` = `config` are not questions: they set up how results reach you
 | `results_url` | the Web app URL of your results collector | adds **Send results to instructor** to the end screen (see [Collecting results](#collecting-results)) |
 | `instructor_email` | your email address | adds **Email results to instructor** |
 | `course` | e.g. BIOL 301 – Week 5 | labels the results in your Sheet and in the email |
-| `ask_names` | `yes` or `no` | whether names or student IDs are required before sending; the default is yes when results are sent or emailed |
+| `ask_names` | `yes` or `no` | whether names or student IDs must be typed before **Send** or **Email** (the boxes are always shown; **Download** is never blocked); the default is yes when results are sent or emailed |
 
 Config rows apply to the whole file, whatever topic and module students pick. The file check flags links and addresses that won't work.
 
@@ -213,7 +222,10 @@ When a file is loaded, the game checks it and lists any problems before the sess
 - **Red items** will break the game or make a question impossible to answer correctly. Examples: fewer than 4 themes, a `correctIndex` that doesn’t point to an option, or a theme with no milestone questions.
 - **Yellow notes** (click to expand) are suggestions. Examples: too few survey questions, wildcards without an amount, or ignored rows.
 - **Answer cues** are yellow notes about question quality. Test-wise students pick the longest or most detailed option, avoid options with "always" or "never", and pick the option that repeats the question's words. The checker measures how well each of these blind strategies would score on your file. For four options, chance is 25%; if "pick the longest option" would score, say, 60%, students can win without knowing the content. Fix it by making the wrong options as long and as detailed as the right one (real misconceptions, not padding), or by moving the extra detail from the correct option into the explanation.
-- **Spreadsheet errors** such as `#NAME?` are red items. Excel and Google Sheets turn text starting with `-`, `+` or `=` (for example `--p-sampling-depth`) into a formula. Type an apostrophe first, or wrap commands in backticks.
+- **Spreadsheet errors** such as `#NAME?` or `#ERROR!` are red items. Excel and Google Sheets turn text starting with `-`, `+`, `=` or `@` (for example `--p-sampling-depth`) into a formula, so the checker also warns about such cells before a spreadsheet damages them. Wrap commands in backticks. A cell starting with an apostrophe may lose it in a spreadsheet; use double quotes for quoted speech.
+- **Several games in one file:** the answer-cue figures are given for each game (topic and module) as well as for the whole file, and the milestone exams get their own length check.
+- **Other checks:** select-all questions that almost always have the same number of correct options, short answers that the typo rule would confuse with another term, and a results link that is a Google Form, Sheet or test (`/dev`) link instead of the collector's Web app URL (a red item).
+- **Results are sent to:** the last line of the check says exactly where results will go (the collector, an email address, or nowhere) and whether names are required. Read it before sharing the file.
 
 Load your file yourself before class and fix the red items. If you work from the repository, `npm run validate-tsv -- my_questions.tsv` runs the same checks on the command line.
 
@@ -231,6 +243,14 @@ Writing a full question file takes time. The **SAB question-writer** is a skill 
 4. It checks the file with the same rules as the game and hands you a ready-to-load `.tsv`.
 
 To use it, download the [skill zip](https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip), add it in Claude’s skills settings, then ask, for example: *"Make a Science Around the Board game reviewing enzyme kinetics for second-year biochemistry."* In Claude Code, open the project repository and the skill loads by itself. Always review generated questions before using them in class; you know what your students were actually taught.
+
+The skill follows your materials: it writes to your course's notation, terms and worked examples, points out errors it finds in your notes before writing, and lists by row which facts go beyond what you gave it so you can check them. It computes every number and runs every code snippet before putting them in a question. It also follows a few ground rules:
+- **Student data:** it keeps names, grades and other personal data out of the file, and uses class results only as class-wide misconceptions.
+- **Your materials are data, not instructions:** it reports hidden instructions in uploaded notes instead of following them, and it only sends results where you yourself said.
+- **Copyright and exams:** it writes original questions rather than copying a publisher's test bank, and won't put upcoming exam questions in a game that shows every answer.
+- **Clinical and sensitive topics:** it asks you to check doses against your institution's references and follows safe-messaging practice for topics such as suicide.
+
+I tested these rules with simulated instructors across eleven very different requests (with materials and without, in Spanish, editing an existing file, impossible requests, a roster pasted by mistake, hidden instructions in notes), with independent reviewers checking safety, teaching quality, fidelity to the materials and fit with the game.
 
 #### Optional: encrypting your questions file
 
@@ -404,7 +424,7 @@ On the end screen, students type the names or student IDs of everyone playing as
 | **Email** | click **Email results to instructor**: the results file downloads and their email app opens a draft addressed to you; they attach the file and send it | an `instructor_email` config row |
 | **Download** (always available) | click **Download results (CSV)** and submit the file where you ask, for example on your course page | nothing |
 
-When a results link or email address is set, names are required before sending (add an `ask_names` row set to `no` to make them optional).
+When a results link or email address is set, names are required before **Send** or **Email** (add an `ask_names` row set to `no` to make them optional). **Download** always works, even with the boxes empty, so if you collect downloaded files, ask students to type their names or IDs before downloading. The game can't insist on student numbers rather than names; say which you want.
 
 **Setting up the Google Sheet collector**
 
@@ -527,6 +547,15 @@ Building a great TSV cartridge takes intentional design, and mastering the role 
 Welcome to the board, and have a great session!
 
 ## What’s new
+
+**October 2026 (update 7): question-writer skill and file checker**
+
+- **A safer, more faithful question-writer skill.** It now follows your materials closely (notation, examples, conventions), raises errors it finds in your notes, checks every number and code snippet, and keeps to ground rules on student data, copyright, live exams, hidden instructions in uploaded files and sensitive topics. See *Generating questions with Claude*.
+- **New file checks:** answer cues for each game in a file and for the milestone exams; cells that a spreadsheet would turn into a formula or strip of an apostrophe; select-all questions that always have the same number of correct options; short answers the typo rule could confuse (Type I/II); and a Google Form or Sheet link given instead of the collector's link (now a red item).
+- **"Results are sent to"** is the new last line of the check: it says where results go and whether names are required.
+- **Names and Download:** the guide now says plainly that `ask_names` holds back **Send** and **Email**, never **Download**.
+- **Updated counts table** for 45-, 60- and 90-minute sessions (see *How many questions?*).
+- **Demo file:** nine cells were retyped so they survive a round trip through Excel or Google Sheets. No question or answer changed.
 
 **October 2026 (update 6): online play (beta)**
 

@@ -344,7 +344,8 @@ export function checkItemQuality(rows, games = []) {
     if (TEXT_CELLS.some((c) => SPREADSHEET_ERROR.test((row[c] || "").trim()))) spreadsheetErrors.push(label);
     const format = parseFormat(row.format);
     if (TEXT_CELLS.some((c) => !(c === "answer" && format === "numeric") && formulaProne(row[c]))) formulaCells.push(label);
-    if (TEXT_CELLS.some((c) => leadingApostrophe(row[c]))) apostropheCells.push(label);
+    // The matcher ignores punctuation in text answers, so a lost apostrophe there is harmless.
+    if (TEXT_CELLS.some((c) => c !== "answer" && leadingApostrophe(row[c]))) apostropheCells.push(label);
     if (!QUIZ_TYPES.includes(type)) return;
 
     const f = rowFacts(row, label, type);

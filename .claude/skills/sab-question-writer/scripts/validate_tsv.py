@@ -157,7 +157,7 @@ def explicit_amount(text):
 
 
 # Links instructors often paste instead of the collector's Web app URL; they can never work.
-NOT_A_COLLECTOR = re.compile(r"^https://(?:docs\.google\.com/(?:forms|spreadsheets)/|script\.google\.com/.*/dev(?:[?#/]|$))", re.I)
+NOT_A_COLLECTOR = re.compile(r"^https://(?:docs\.google\.com/(?:forms|spreadsheets)/|forms\.gle/|script\.google\.com/.*/dev(?:[?#/]|$))", re.I)
 COLLECTOR = re.compile(r"^https://script\.google\.com/(?:a/macros/[^/]+|macros)/s/[^/]+/exec(?:[?#]|$)", re.I)
 
 
@@ -176,7 +176,7 @@ def check_config(r, label, errors, warnings):
             errors.append('Config "results_url" must be an https:// link (the Web app URL from Google Apps Script).')
         elif NOT_A_COLLECTOR.match(value):
             errors.append('Config "results_url" is a Google Form, Google Sheet or test (/dev) link, not the collector\'s Web app URL (https://script.google.com/macros/s/…/exec), so "Send results to instructor" would fail. Follow the collector setup and copy the Web app URL that ends in /exec.')
-        elif not re.match(r"^https://script\.google\.com/macros/s/.+/exec", value, re.I):
+        elif not COLLECTOR.match(value):
             warnings.append('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.')
     if key == "instructor_email" and not EMAIL_RE.match(value):
         errors.append('Config "instructor_email" is not a valid email address.')
@@ -526,7 +526,8 @@ def check_item_quality(rows, games=None):
         fmt = FORMAT_ALIASES.get((r.get("format") or "").strip().lower())
         if any(not (c == "answer" and fmt == "numeric") and formula_prone(r.get(c)) for c in TEXT_CELLS):
             formula_cells.append(label)
-        if any(leading_apostrophe(r.get(c)) for c in TEXT_CELLS):
+        # The matcher ignores punctuation in text answers, so a lost apostrophe there is harmless.
+        if any(c != "answer" and leading_apostrophe(r.get(c)) for c in TEXT_CELLS):
             apostrophe_cells.append(label)
         if t not in QUIZ_TYPES:
             continue

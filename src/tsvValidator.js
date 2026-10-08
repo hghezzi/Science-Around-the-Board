@@ -34,7 +34,7 @@ const SURVEY_QUIZ_SIZE = 10;
 const rowLabel = (row, i) => (row.id ? `"${row.id}"` : `row ${i + 2}`);
 
 // Links instructors often paste instead of the collector's Web app URL; they can never work.
-const NOT_A_COLLECTOR = /^https:\/\/(?:docs\.google\.com\/(?:forms|spreadsheets)\/|script\.google\.com\/.*\/dev(?:[?#/]|$))/i;
+const NOT_A_COLLECTOR = /^https:\/\/(?:docs\.google\.com\/(?:forms|spreadsheets)\/|forms\.gle\/|script\.google\.com\/.*\/dev(?:[?#/]|$))/i;
 const COLLECTOR = /^https:\/\/script\.google\.com\/(?:a\/macros\/[^/]+|macros)\/s\/[^/]+\/exec(?:[?#]|$)/i;
 
 // Instructor settings (type = config): the setting name goes in `id`, its value in `question`.
@@ -52,7 +52,7 @@ function checkConfigRow(row, label, errors, warnings) {
   if (key === "results_url") {
     if (!/^https:\/\//i.test(value)) errors.push('Config "results_url" must be an https:// link (the Web app URL from Google Apps Script).');
     else if (NOT_A_COLLECTOR.test(value)) errors.push('Config "results_url" is a Google Form, Google Sheet or test (/dev) link, not the collector\'s Web app URL (https://script.google.com/macros/s/…/exec), so "Send results to instructor" would fail. Follow the collector setup and copy the Web app URL that ends in /exec.');
-    else if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/i.test(value)) warnings.push('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.');
+    else if (!COLLECTOR.test(value)) warnings.push('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.');
   }
   if (key === "instructor_email" && !EMAIL_PATTERN.test(value)) errors.push('Config "instructor_email" is not a valid email address.');
   if (key === "ask_names" && !["yes", "no", "y", "n", "true", "false", "1", "0"].includes(value.toLowerCase())) warnings.push('Config "ask_names" should be yes or no.');

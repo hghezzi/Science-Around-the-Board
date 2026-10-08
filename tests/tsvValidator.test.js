@@ -185,14 +185,18 @@ describe("results delivery line", () => {
     "https://docs.google.com/forms/d/e/1FAIpQLSf-Test/viewform",
     "https://docs.google.com/spreadsheets/d/1abc/edit#gid=0",
     "https://script.google.com/macros/s/AKfyTest/dev",
+    "https://forms.gle/AbCdEf123",
   ])("errors on a Form, Sheet or test link instead of the collector: %s", (url) => {
     const r = validate(makeTsv({ extra: cfg(["results_url", url]) }));
     expect(r.errors.join("\n")).toMatch(/is a Google Form, Google Sheet or test \(\/dev\) link, not the collector's Web app URL/);
     expect(r.delivery).toMatch(/not a recognised Apps Script collector/);
   });
 
-  it("accepts the collector's Web app URL without errors or warnings", () => {
-    const r = validate(makeTsv({ extra: cfg(["results_url", "https://script.google.com/macros/s/AKfyTest/exec"]) }));
+  it.each([
+    "https://script.google.com/macros/s/AKfyTest/exec",
+    "https://script.google.com/a/macros/uni.edu/s/AKfyTest/exec",
+  ])("accepts the collector's Web app URL without errors or warnings: %s", (url) => {
+    const r = validate(makeTsv({ extra: cfg(["results_url", url]) }));
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
   });
