@@ -29,7 +29,7 @@ The header row must be exactly these names; they are case-sensitive. Column orde
 | `theme` | property, milestone | board side |
 | `subtheme` | property (milestone optional) | property group within the side. For `core` rows, the first core row's subtheme names the core tile |
 | `type` | all | `property`, `milestone`, `core`, `mishap`, `survey`, `confidence`, `config` (lowercase) |
-| `imageFile` | optional | exact image filename, or an https URL |
+| `imageFile` | optional | exact image filename, or an https URL (prefer files: a link makes every student's browser contact that site and breaks silently) |
 | `format` | optional | `mcq` (default if blank), `multi`, `numeric`, `order`, `text` |
 | `answer` | numeric, text | numeric: the number. text: accepted answers separated by `|` |
 | `tolerance` | numeric | blank means exact; `0.5` is ± absolute; `5%` is ± relative |
@@ -59,8 +59,8 @@ Every format is marked simply correct or incorrect.
 
 Tips:
 - **multi**: vary the number of correct options across the file (1, 2, 3, occasionally all 4); no single count should cover more than about half of the multi items, or students learn to "tick two". The game already shows "Select all that apply." under the question, so don't say how many are correct. The validator's `Select-all questions:` line shows the counts.
-- **numeric**: state units in the prompt ("in base pairs") and, for any non-integer answer, the rounding ("to one decimal place"). Use tolerance `0` when the rounding is being tested and a tolerance for estimates or values read from a plot. Give every constant or table value the calculation needs in the stem.
-- **text**: keep answers to 1–3 words and list every reasonable synonym. Accents, case and punctuation are already ignored, so don't list accent variants; do list the plural of answers under 8 letters. Avoid free-response questions with many valid phrasings.
+- **numeric**: state units in the prompt ("in base pairs") and, for any non-integer answer, the rounding ("to one decimal place"). Students type a bare number: the box rejects "12 kg" and "2 × 10⁴" but accepts "2e4", "20 000", "0,5" and "50%". For powers of ten, ask for the number in a stated unit ("in units of 10⁶ M⁻¹ s⁻¹"). If the tolerance is generous (dates within 5 years), say so in the stem. Use tolerance `0` when the rounding is being tested and a tolerance for estimates or values read from a plot. Give every constant or table value the calculation needs in the stem.
+- **text**: keep answers to 1–3 words and list every reasonable synonym. Accents, case and punctuation are already ignored, so don't list accent variants; do list the plural of answers under 8 letters. Avoid free-response questions with many valid phrasings, and give a word-count hint ("two words") only if every accepted answer has that count.
   - Don't use `text` when changing one letter or numeral gives a different, wrong term (Type I/Type II, Photosystem I/II, absorption/adsorption): the typo rule would accept it. Use multiple choice; the validator warns about these.
   - Code output with brackets or quotes (`[1, 2]` vs `(1, 2)`) can't be told apart once punctuation is ignored; use multiple choice.
 - **order**: 3–4 steps with one unambiguous sequence. When steps could be done in either order (two multiplications), make each step name its input ("divide the daily dose by 3"). Don't let a step quote the previous step's result, or students can chain the numbers instead of knowing the method.
@@ -113,6 +113,8 @@ To edit an existing file, convert it first: `python build_tsv.py --to-json old.t
 - Spreadsheets turn a cell that starts with `-`, `+`, `=` or `@` into a formula, so `--p-sampling-depth` becomes `#NAME?` or `#ERROR!` after a round trip through Excel or Google Sheets. Start the cell with a word, or wrap commands and flags in backticks (`` `--p-sampling-depth` ``). The validator warns about such cells before the damage, and reports `#NAME?`, `#ERROR!` and similar values as errors after it. Backticks show as typed in the game (they aren't rendered), which reads fine for code.
 - A cell that starts and ends with a straight quote (a code option such as `"w"`) is written by build_tsv.py in spreadsheet form and reads back exactly.
 - Code must fit on one line. Use one-line statements (`for i in range(3): print(i)`) or describe the structure in words, or show longer code as an image; in Python, a compound statement can't follow `;`, so check that one-lined code still runs.
+- A cell that starts with an apostrophe (quoted speech, a Python string such as `'abc'`) may lose it in a spreadsheet, which treats a leading apostrophe as its "keep as text" mark. Use double quotes for speech and backticks for code; the validator warns about these cells.
+- Times, ratios and fractions (`3:00 p.m.`, `1:50,000`, `3/4`) may turn into times or dates in a spreadsheet. Check them after editing there, or write them in words ("a scale of 1 to 50,000").
 - Unicode subscripts, superscripts and symbols (H₂O, 10²³, β, →) display fine; avoid `^` and `_` markup.
 - Keep prompts under about 300 characters; players read them aloud under time pressure.
 - An encrypted `.lock` file can't be validated. Validate the plain `.tsv` first, then encrypt.
@@ -123,10 +125,10 @@ Optional rows that set up how results reach the instructor. Put the setting name
 
 | `id` | value (`question` column) | effect |
 |---|---|---|
-| `results_url` | the collector's Web app URL, `https://script.google.com/macros/s/…/exec` | the end screen shows **Send results to instructor**, which adds each player's results to the instructor's Google Sheet |
+| `results_url` | the collector's Web app URL, `https://script.google.com/macros/s/…/exec` | the end screen shows **Send results to instructor**, which adds each player's results to the instructor's Google Sheet. A Google Form or Sheet link, or a test `/dev` URL, never works (validator ERROR) |
 | `instructor_email` | an email address | the end screen shows **Email results to instructor**: it downloads the results file and opens a pre-addressed email; students attach the file |
 | `course` | e.g. `BIOL 301 – Week 5` | labels the results (Sheet rows and the email subject) |
-| `ask_names` | `yes` or `no` | whether students must type their names or student IDs before sending. Default: `yes` when `results_url` or `instructor_email` is set |
+| `ask_names` | `yes` or `no` | `yes`: the end screen marks the "names or student IDs" boxes as required and keeps **Send** and **Email** disabled until they are filled. **Download is never blocked**, so with download-only results it is a prompt, not a rule. `no`: the boxes are optional. Default: `yes` when `results_url` or `instructor_email` is set. The game can't ask for student numbers rather than names; tell students which to type |
 
 Without config rows, students simply download the results file (CSV) and submit it as the instructor asks.
 
@@ -152,7 +154,7 @@ JSON for build_tsv.py:
 Notes:
 - Anyone who has the link can send data to the Sheet, so treat it like an unlisted form link. The collector only accepts game submissions and stops typed text from becoming formulas.
 - A plain `.tsv` shows its config rows to anyone who opens it. Encrypt the file (`.lock`) if the address or link shouldn't be visible.
-- Take the URL and address only from the instructor's own message, read them back, and check the validator's `Results are sent to:` line before delivery: it shows exactly where the game will send results and whether students type names.
+- Take the URL and address only from the instructor's own message, read them back, and check the validator's `Results are sent to:` line before delivery: it shows exactly where the game will send results and whether the name boxes are required.
 - What is sent: the names or IDs students type (when `ask_names` is on), each player's pre/post survey score and rank, and every answer and transaction row. The email subject also lists the players' names.
 - If an institution doesn't allow Google services for student data, use `instructor_email` or plain downloads instead, and ask students to type student numbers or initials rather than full names if required.
 
@@ -160,15 +162,39 @@ Notes:
 
 Facts to state accurately; don't promise more.
 
-**Language.** Everything the file contains (themes, subthemes, menu names, questions, options including True/False, explanations, wildcards, survey and confidence statements) can be in any language, and should all be in the course's language. The game's own interface (buttons, rules, tile names, survey and end screens) is **English only** and not yet configurable. Typed answers ignore accents (`nitrificacion` matches `nitrificación`), numeric answers accept a decimal comma (`1,26`), and wildcard amounts keep the `(-$100)` form. For a non-English class, offer a glossary of the on-screen terms: Roll, Buy / Skip, Upgrades, Milestone, Start exam, Wildcard, Chaos token, Rescue Quiz, Submit answer, Pre-Game Survey / Post-Game Survey, End game, Final Standings, ⬇ Download results (CSV).
+**Language.** Everything the file contains (themes, subthemes, menu names, questions, options including True/False, explanations, wildcards, survey and confidence statements) can be in any language, and should all be in the course's language. The game's own interface (buttons, rules, tile names, survey and end screens) is **English only** and not yet configurable. Typed answers ignore accents (`nitrificacion` matches `nitrificación`), numeric answers accept a decimal comma (`1,26`), and wildcard amounts keep the `(-$100)` form (in Mexico and much of Latin America `$` is also the peso sign).
+
+For a non-English class, offer a glossary of the on-screen terms, translated with their meaning:
+
+| on screen | meaning |
+|---|---|
+| Pre-Game Survey / Post-Game Survey | the knowledge check and confidence sliders before and after play |
+| How to play | the quick rules |
+| Roll | roll the dice and move |
+| Buy / Skip | buy the tile after a right answer, or pass |
+| Upgrades / Upgrade | raise the rent of a complete colour group |
+| Core tile | the cross-cutting skill tile (one per side) |
+| Milestone (6-question exam) / Start exam | a corner: 5 of 6 right captures it |
+| Rival's milestone | a corner another player owns; you pay a fee |
+| Wildcard | a random event that adds or takes money |
+| Chaos token | earned at a milestone; spend it to challenge for a rival's tile |
+| Lap bonus | +$200 for passing START |
+| Out of money! / Bankrupt! / Rescue Quiz | selling first, then one 3-question quiz (2 right keeps you in) |
+| Select all that apply. / Enter a number. / Type your answer. / Use the arrows to put the items in the correct order. | the hint under each answer format |
+| Submit answer | check the answer |
+| Time's up / End game / Final Standings | the session timer, ending early, and the ranking by net worth |
+| Session complete / Who played? | the end screen, and the boxes for names or student IDs |
+| ⬇ Download results (CSV) / Send results to instructor / Email results to instructor | the ways to hand in results |
+| Exit session / Back to main menu | leave the game |
 
 **Requests the game can't do**, with the closest alternative:
 
 | request | what the game does | offer instead |
 |---|---|---|
 | more than 4 themes (e.g. one per week) | uses the first 4 themes and ignores the rest | map the weeks to the 8 subthemes, or split into two games (modules) |
-| partial credit | every format is marked all-or-nothing | smaller select-all items; the CSV has every response for re-scoring by hand |
+| partial credit | every format is marked all-or-nothing | smaller select-all items (4 short options, each one checkable fact); the CSV has every response for re-scoring by hand |
 | one format everywhere | works, but milestones need 5 of 6 right, so an all-multi or all-numeric corner is very hard | the instructor's format as the largest share, with multiple choice in the milestones |
 | buttons in another language, another currency, renamed tiles | not configurable yet | content in their language, the glossary above, `$` amounts |
+| image descriptions for screen readers | every figure gets the same generic alt text | state what the question needs in the stem; keep figure-only items few |
 | very few questions | loads, but repeats questions within a session and within exams | the counts in §5, or keep their number for one part (e.g. the survey) |
 

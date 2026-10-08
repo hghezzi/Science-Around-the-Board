@@ -50,7 +50,7 @@ Writers, human or AI, naturally make the correct answer the longest, most carefu
 | **convergence** | pick the option that shares the most parts with the others | Vary distractors along more than one dimension. |
 | **option references** | "all of the above", "both A and B", "option 2" | Never: options are shuffled. Use the `multi` format instead. |
 | **true/false** | statements with "always"/"never" are false; hedged ones ("can", "may") are true | Use absolute and hedged wording in true and false statements alike, and keep True and False about 50/50. |
-| **select-all count** | "it's always two" | Vary the number of correct options (1 to 4); the validator warns when one count dominates. |
+| **select-all count** | "it's always two" | Vary the number of correct options (1 to 4); the validator warns when one count dominates. Don't make the correct options systematically longer or more careful than the wrong ones either. |
 
 Example (from the 16S demo, before and after):
 
@@ -80,6 +80,7 @@ The survey measures learning, so it must cover the LOs evenly and match the boar
 ## Confidence statements
 
 - 4–5 statements: one per theme, plus the core skill if it is an LO. "I am confident I can [verb] [one skill]."
+- In languages with gendered adjectives, use a gender-neutral form (Spanish "Me siento capaz de…" rather than "seguro/a").
 - One skill per statement. Never join two with "and" ("calculate Km **and** design an assay"): a student confident in only one half has no right slider position, and the pre/post change can't be traced to an LO.
 - Use concrete verbs (explain, choose, interpret, troubleshoot), not "understand".
 
@@ -100,7 +101,7 @@ For each batch, run the **blind-student test** (mandatory): cover the stem and r
 - [ ] Does the explanation address the tempting distractor?
 - [ ] Is it tied to an LO, and at the right difficulty for its tile?
 - [ ] Are correct positions balanced, with no duplicate or near-duplicate items across board and survey?
-- [ ] Does any item's options or explanation answer another item in the same pool, or contradict another item in the file?
+- [ ] Within the game, does any stem or option give away another item's key, or do two items contradict each other? (Explanations may reinforce concepts that other items test.)
 - [ ] Is the correct option within about ±20% of the distractors' length, and is it the longest in no more than about a quarter of the batch?
 - [ ] Do absolute words appear in correct answers as often as in distractors (or nowhere)?
 - [ ] Does the explanation refer to options by their content, never by letter or position ("option C")? Options are shuffled.

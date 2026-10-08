@@ -167,14 +167,34 @@ describe("results delivery line", () => {
   const cfg = (...pairs) => pairs.map(([k, v]) => [k, v, "", "", "", "", "", "", "", "", "", "", "config", ""].join("\t"));
   const delivery = (...pairs) => validate(makeTsv({ extra: cfg(...pairs) })).delivery;
 
-  it("says when results are only downloaded", () => {
-    expect(delivery()).toBe("Results are sent to: nowhere; students only download the results file (CSV). Students type names or IDs: no.");
+  it("says when results are only downloaded, and that Download never waits for names", () => {
+    expect(delivery()).toBe("Results are sent to: nowhere; students only download the results file (CSV). Name/ID field: optional.");
+    // The end screen marks the field required but never disables Download (App.jsx SummaryView).
+    expect(delivery(["ask_names", "yes"])).toBe("Results are sent to: nowhere; students only download the results file (CSV). Name/ID field: marked required, but Download isn't blocked, so students can skip it.");
   });
 
-  it("names the Sheet and email the game will use, and whether names are asked", () => {
-    expect(delivery(["instructor_email", "prof@uni.edu"])).toBe("Results are sent to: an email to prof@uni.edu (students attach the file). Students type names or IDs: yes.");
+  it("names the collector and email the game will use, and when names are required", () => {
+    expect(delivery(["instructor_email", "prof@uni.edu"])).toBe("Results are sent to: an email to prof@uni.edu (students attach the file). Name/ID field: required before Send or Email (Download is never blocked).");
     expect(delivery(["results_url", "https://script.google.com/macros/s/X/exec"], ["ask_names", "no"], ["course", "BIOL 1"]))
-      .toBe("Results are sent to: the Google Sheet at https://script.google.com/macros/s/X/exec. Students type names or IDs: no. Course label: BIOL 1.");
+      .toBe("Results are sent to: the results collector at https://script.google.com/macros/s/X/exec. Name/ID field: optional. Course label: BIOL 1.");
+    expect(delivery(["results_url", "https://script.google.com/a/macros/uni.edu/s/X/exec"])).toMatch(/^Results are sent to: the results collector at /);
+    expect(delivery(["results_url", "https://example.com/collect"])).toMatch(/^Results are sent to: the web address https:\/\/example\.com\/collect \(not a recognised Apps Script collector\)/);
+  });
+
+  it.each([
+    "https://docs.google.com/forms/d/e/1FAIpQLSf-Test/viewform",
+    "https://docs.google.com/spreadsheets/d/1abc/edit#gid=0",
+    "https://script.google.com/macros/s/AKfyTest/dev",
+  ])("errors on a Form, Sheet or test link instead of the collector: %s", (url) => {
+    const r = validate(makeTsv({ extra: cfg(["results_url", url]) }));
+    expect(r.errors.join("\n")).toMatch(/is a Google Form, Google Sheet or test \(\/dev\) link, not the collector's Web app URL/);
+    expect(r.delivery).toMatch(/not a recognised Apps Script collector/);
+  });
+
+  it("accepts the collector's Web app URL without errors or warnings", () => {
+    const r = validate(makeTsv({ extra: cfg(["results_url", "https://script.google.com/macros/s/AKfyTest/exec"]) }));
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
   });
 
   it("leaves out a destination the game would ignore", () => {

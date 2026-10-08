@@ -45,7 +45,8 @@ const MULTI_COUNT_SHARE = 0.7;
 export const ABSOLUTE_WORDS = [
   "always", "never", "all", "none", "only", "every", "must", "cannot", "impossible",
   "completely", "entirely", "totally", "absolutely", "guaranteed", "guarantees",
-  "siempre", "nunca", "jamas", "solo", "solamente", "todo", "todos", "todas", "ninguno", "ninguna", "imposible",
+  "siempre", "nunca", "jamas", "solo", "solamente", "unicamente", "exclusivamente", "totalmente", "todos", "todas",
+  "ninguno", "ninguna", "ningun", "nada", "nadie", "imposible",
   "toujours", "jamais", "seulement", "uniquement", "tous", "toutes", "aucun", "aucune",
   "sempre", "apenas", "somente", "nenhum", "nenhuma", "impossivel",
 ];
@@ -65,6 +66,7 @@ const OPTION_REFERENCE = [
   /\b(?:all|none|both|neither)\s+of\s+(?:the\s+)?(?:above|below|these|those|the\s+(?:other\s+)?(?:options|answers|choices))\b/i,
   /\b(?:[Oo]ptions?|[Aa]nswers?|[Cc]hoices?)\s+[A-D1-4]\b/,
   /\b(?:[Bb]oth|[Ee]ither|[Nn]either|[Oo]nly)\s+[A-D]\s+(?:and|or|nor)\s+[A-D]\b/,
+  /\b(?:todas|ninguna|nenhuma)\s+(?:(?:de|das|dos)\s+)?(?:(?:las|as|os)\s+)?(?:anteriores|opciones|alternativas)\b/i,
 ];
 const TEXT_CELLS = ["question", "option1", "option2", "option3", "option4", "explanation", "answer"];
 const ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"];
@@ -90,6 +92,9 @@ function summarize(labels, max = 5) {
   if (labels.length <= max) return labels.join(", ");
   return `${labels.slice(0, max).join(", ")} and ${labels.length - max} more`;
 }
+
+/** Text whose leading apostrophe a spreadsheet may take as its "keep as text" mark and drop. */
+const leadingApostrophe = (value) => (value || "").trim().startsWith("'");
 
 /** Text a spreadsheet would turn into a formula: starts with - + = @, and isn't just a number. */
 function formulaProne(value) {
@@ -209,6 +214,8 @@ function rowFacts(row, label, type) {
 function tallyCues(facts) {
   const longest = newTally();
   const shortest = newTally();
+  const mileLongest = newTally();
+  const mileShortest = newTally();
   const overlap = newTally();
   const absolute = { options: 0, correct: 0, chance: 0, variance: 0 };
   const multiCounts = {};
@@ -222,6 +229,10 @@ function tallyCues(facts) {
     const { n, correct } = f.mcq;
     addToTally(longest, f.mcq.longest, n);
     addToTally(shortest, f.mcq.shortest, n);
+    if (f.type === "milestone") {
+      addToTally(mileLongest, f.mcq.longest, n);
+      addToTally(mileShortest, f.mcq.shortest, n);
+    }
     if (f.mcq.overlap !== null) addToTally(overlap, f.mcq.overlap, n);
     f.mcq.absolute.forEach((k) => {
       absolute.options += 1;
@@ -238,7 +249,7 @@ function tallyCues(facts) {
     const match = boards.find((b) => jaccard(s.stemWords, b.stemWords) >= SURVEY_DUP_JACCARD);
     if (match) surveyDups.push(`${s.label} ≈ ${match.label}`);
   });
-  return { longest, shortest, overlap, absolute, multiCounts, multiItems, surveyDups };
+  return { longest, shortest, mileLongest, mileShortest, overlap, absolute, multiCounts, multiItems, surveyDups };
 }
 
 function cueWarnings(t, prefix) {
@@ -252,6 +263,12 @@ function cueWarnings(t, prefix) {
     } else if (belowChance(tally)) {
       warnings.push(`${prefix}Length cue: always picking the ${which} option would answer only ${rate}% of the ${tally.items} multiple-choice questions correctly (chance is ${chance}%), so students can rule the ${which} option out. Vary which option is ${which}, so that length gives nothing away.`);
     }
+  });
+  // The milestone exam (5 of 6) is where a shape cue pays most, so its pool is checked on its own.
+  [["longest", t.mileLongest], ["shortest", t.mileShortest]].forEach(([which, tally]) => {
+    if (!beatsChance(tally) && !belowChance(tally)) return;
+    const rate = pct(tally.score / tally.items);
+    warnings.push(`${prefix}Length cue in the milestone questions: always picking the ${which} option would answer ${belowChance(tally) ? "only " : ""}${rate}% of the ${tally.items} milestone multiple-choice questions correctly (chance is ${pct(tally.chance / tally.items)}%). Vary which option is ${which} within the milestone pools too.`);
   });
   if (beatsChance(overlap)) {
     warnings.push(`${prefix}Wording cue: picking the option that repeats the most words from the question would answer ${pct(overlap.score / overlap.items)}% of the ${overlap.items} multiple-choice questions where an option repeats a question word (chance is ${pct(overlap.chance / overlap.items)}%). Echo the question's key words in the distractors too, or in none of the options.`);
@@ -304,6 +321,7 @@ export function checkItemQuality(rows, games = []) {
   const warnings = [];
   const spreadsheetErrors = [];
   const formulaCells = [];
+  const apostropheCells = [];
   const optionRefs = [];
   const duplicateOptions = [];
   const articleCue = [];
@@ -326,6 +344,7 @@ export function checkItemQuality(rows, games = []) {
     if (TEXT_CELLS.some((c) => SPREADSHEET_ERROR.test((row[c] || "").trim()))) spreadsheetErrors.push(label);
     const format = parseFormat(row.format);
     if (TEXT_CELLS.some((c) => !(c === "answer" && format === "numeric") && formulaProne(row[c]))) formulaCells.push(label);
+    if (TEXT_CELLS.some((c) => leadingApostrophe(row[c]))) apostropheCells.push(label);
     if (!QUIZ_TYPES.includes(type)) return;
 
     const f = rowFacts(row, label, type);
@@ -363,6 +382,9 @@ export function checkItemQuality(rows, games = []) {
   }
   if (formulaCells.length) {
     warnings.push(`Cell starts with "-", "+", "=" or "@": ${summarize(formulaCells)}. Excel and Google Sheets turn such text into a formula (#NAME? or #ERROR!) when the file is opened there. Start the cell with a word, or wrap a command or flag in backticks (for example \`--p-trim-left\`).`);
+  }
+  if (apostropheCells.length) {
+    warnings.push(`Cell starts with an apostrophe ('): ${summarize(apostropheCells)}. Excel and Google Sheets may take a leading apostrophe as their "keep as text" mark and drop it when the file is edited there. Use double quotes for quoted speech, or backticks for code.`);
   }
   if (optionRefs.length) {
     warnings.push(`Option refers to other options ("all of the above", "both A and B", "option 2"): ${summarize(optionRefs)}. Options are shuffled in the game, so use the multi (select all that apply) format instead.`);

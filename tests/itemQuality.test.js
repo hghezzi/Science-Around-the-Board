@@ -161,6 +161,35 @@ describe("other answer cues", () => {
     expect(r.warnings.join("\n")).toMatch(/Absolute-word cue: 24 options/);
   });
 
+  it("reads Spanish absolutes such as ningún and nadie, but not 'todo el año'", () => {
+    const absolutes = Array.from({ length: 8 }, (_, k) =>
+      q(`¿Pregunta ${k}?`, ["Depende de los datos", "Ningún cambio ocurre", "Nadie lo observa", "Únicamente en verano"]));
+    expect(checkItemQuality(absolutes).cues.absoluteOptions).toBe(24);
+    const plain = Array.from({ length: 8 }, (_, k) =>
+      q(`¿Pregunta ${k}?`, ["Llueve todo el año", "Sobre todo en verano", "En primavera", "En otoño"]));
+    expect(checkItemQuality(plain).cues.absoluteOptions).toBe(0);
+  });
+
+  it("flags Spanish and Portuguese 'all of the above' options", () => {
+    const r = checkItemQuality([q("¿Cuál?", ["Rojo", "Azul", "Todas las anteriores", "Verde"], 3), q("Qual?", ["A", "B", "Nenhuma das alternativas", "C"])]);
+    expect(r.warnings.join("\n")).toMatch(/Option refers to other options .*"q\d+", "q\d+"/);
+  });
+
+  it("warns about a leading apostrophe, which a spreadsheet may drop", () => {
+    const r = checkItemQuality([q("Which statement is a warning sign?", ["'Everyone would be better off'", "b", "c", "d"]), q("Fine?", ["\"Quoted\" speech", "b", "c", "d"])]);
+    const w = r.warnings.join("\n");
+    expect(w).toMatch(/Cell starts with an apostrophe \('\): "q\d+"\. Excel and Google Sheets may take/);
+    expect(w.split("\n").find((l) => l.startsWith("Cell starts with an apostrophe")).match(/"q\d+"/g)).toHaveLength(1);
+  });
+
+  it("checks the milestone pool's length cue on its own", () => {
+    const mile = Array.from({ length: 12 }, (_, k) => q(`M${k}?`, ["Right", "A long wrong answer", "A longer wrong answer here", "Mid wrong"], 1, { type: "milestone" }));
+    const balancedProps = Array.from({ length: 60 }, (_, k) => q(`P${k}?`, ["Alpha", "Bravo", "Charl", "Delta"], (k % 4) + 1));
+    const w = checkItemQuality([...mile, ...balancedProps]).warnings.join("\n");
+    expect(w).toMatch(/^Length cue in the milestone questions: always picking the longest option would answer only 0% of the 12 milestone multiple-choice questions correctly \(chance is 25%\)/m);
+    expect(w).not.toMatch(/^Length cue: always picking the longest/m);
+  });
+
   it("warns about cells a spreadsheet would turn into a formula", () => {
     const r = checkItemQuality([
       q("Which flag sets the depth?", ["`--p-depth`", "x", "y", "z"], 1, { explanation: "--p-depth sets it." }),
@@ -344,6 +373,9 @@ describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_ts
     prop("adso", "One", "T2", "T2a", ["adsorption", "diffusion", "osmosis", "filtration"]),
     prop("flag", "One", "T3", "T3a", ["`--p-depth`", "x", "y", "z"], "1", []).replace("\tWhy.\t", "\t--p-depth sets it.\t"),
     prop("err", "One", "T3", "T3a", ["#ERROR!", "x", "y", "z"]),
+    prop("apos", "One", "T3", "T3a", ["'Everyone would be better off'", "x", "y", "z"]),
+    prop("todas", "One", "T3", "T3a", ["Todas las anteriores", "x", "y", "z"]),
+    ...Array.from({ length: 12 }, (_, k) => row([`ml${k}`, `Milestone ${k}?`, "Right", "A long wrong answer", "A longer wrong answer here", "Mid wrong", "1", "Why.", "Topic", "One", "T1", "", "milestone"])),
     prop("badidx", "One", "T3", "T3a", ["A", "B", "", ""], "3"),
     prop("badmulti", "One", "T3", "T3a", ["A", "B", "C", ""], "1,4", ["multi"]),
     prop("badnum", "One", "T3", "T3a", ["", "", "", ""], "", ["numeric", "abc", "x%"]),
@@ -357,6 +389,7 @@ describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_ts
       ...Array.from({ length: 6 }, (_, k) => row([`${t}m${k}`, `Milestone ${k}?`, "A", "B", "C", "D", "2", "Why.", "Topic", "Two", t, "", "milestone"]))]),
     row(["s1", "Survey?", "A", "B", "C", "D", "1", "", "Topic", "Two", "", "", "survey"]),
     // Config rows (whole file).
+    row(["results_url", "https://docs.google.com/forms/d/e/1FAIpQLSf-Test/viewform", "", "", "", "", "", "", "", "", "", "", "config"]),
     row(["results_url", "https://script.google.com/macros/s/AKfyTest/exec", "", "", "", "", "", "", "", "", "", "", "config"]),
     row(["instructor_email", "prof@uni.edu", "", "", "", "", "", "", "", "", "", "", "config"]),
     row(["course", "BIOL 101", "", "", "", "", "", "", "", "", "", "", "config"]),
@@ -384,11 +417,13 @@ describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_ts
     const js = validateQuestionRows(parseTsv(broken), parseTsvHeaders(broken));
     const all = [...js.errors, ...js.warnings].join("\n");
     [/Spreadsheet error value/, /Cell starts with/, /would also accept a different term.*"roman" \("photosystem ii"\), "swap" \("adsorption"\)/,
-      /\[Topic \/ One\] Select-all cue/, /\[Topic \/ One\] Absolute-word cue/,
+      /\[Topic \/ One\] Select-all cue/, /\[Topic \/ One\] Absolute-word cue/, /Cell starts with an apostrophe \('\): "apos"/,
+      /Option refers to other options .*"todas"/, /\[Topic \/ One\] Length cue in the milestone questions: always picking the longest option would answer only \d+% of the 15/,
       /\[Topic \/ One\] The board needs 4 themes/, /Invalid tolerance/, /Unknown format/, /Duplicate id/, /ask_names" should be yes or no/]
       .forEach((re) => expect(all).toMatch(re));
     // The line reports what the game will do: it reads an unrecognised ask_names value ("maybe") as no.
-    expect(js.delivery).toBe("Results are sent to: the Google Sheet at https://script.google.com/macros/s/AKfyTest/exec and an email to prof@uni.edu (students attach the file). Students type names or IDs: no. Course label: BIOL 101.");
+    expect(js.delivery).toBe("Results are sent to: the results collector at https://script.google.com/macros/s/AKfyTest/exec and an email to prof@uni.edu (students attach the file). Name/ID field: optional. Course label: BIOL 101.");
+    expect(all).toMatch(/is a Google Form, Google Sheet or test/);
   });
 });
 

@@ -156,6 +156,11 @@ def explicit_amount(text):
     return bool(re.search(r"[+\-−]\s*\$\s*\d", s) or re.search(r"\(\s*[+\-−]\s*\d[\d,]*\s*\)", s))
 
 
+# Links instructors often paste instead of the collector's Web app URL; they can never work.
+NOT_A_COLLECTOR = re.compile(r"^https://(?:docs\.google\.com/(?:forms|spreadsheets)/|script\.google\.com/.*/dev(?:[?#/]|$))", re.I)
+COLLECTOR = re.compile(r"^https://script\.google\.com/(?:a/macros/[^/]+|macros)/s/[^/]+/exec(?:[?#]|$)", re.I)
+
+
 def check_config(r, label, errors, warnings):
     """Instructor settings (type = config): setting name in `id`, value in `question`."""
     key = (r.get("id") or "").strip().lower()
@@ -169,6 +174,8 @@ def check_config(r, label, errors, warnings):
     if key == "results_url":
         if not re.match(r"^https://", value, re.I):
             errors.append('Config "results_url" must be an https:// link (the Web app URL from Google Apps Script).')
+        elif NOT_A_COLLECTOR.match(value):
+            errors.append('Config "results_url" is a Google Form, Google Sheet or test (/dev) link, not the collector\'s Web app URL (https://script.google.com/macros/s/…/exec), so "Send results to instructor" would fail. Follow the collector setup and copy the Web app URL that ends in /exec.')
         elif not re.match(r"^https://script\.google\.com/macros/s/.+/exec", value, re.I):
             warnings.append('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.')
     if key == "instructor_email" and not EMAIL_RE.match(value):
@@ -195,7 +202,8 @@ TYPO_MIN_LENGTH = 8  # mirrors TYPO_MIN_LENGTH in src/questionFormats.js
 ABSOLUTE_WORDS = [
     "always", "never", "all", "none", "only", "every", "must", "cannot", "impossible",
     "completely", "entirely", "totally", "absolutely", "guaranteed", "guarantees",
-    "siempre", "nunca", "jamas", "solo", "solamente", "todo", "todos", "todas", "ninguno", "ninguna", "imposible",
+    "siempre", "nunca", "jamas", "solo", "solamente", "unicamente", "exclusivamente", "totalmente", "todos", "todas",
+    "ninguno", "ninguna", "ningun", "nada", "nadie", "imposible",
     "toujours", "jamais", "seulement", "uniquement", "tous", "toutes", "aucun", "aucune",
     "sempre", "apenas", "somente", "nenhum", "nenhuma", "impossivel",
 ]
@@ -210,6 +218,7 @@ OPTION_REFERENCE = [
     re.compile(r"\b(?:all|none|both|neither)\s+of\s+(?:the\s+)?(?:above|below|these|those|the\s+(?:other\s+)?(?:options|answers|choices))\b", re.I),
     re.compile(r"\b(?:[Oo]ptions?|[Aa]nswers?|[Cc]hoices?)\s+[A-D1-4]\b"),
     re.compile(r"\b(?:[Bb]oth|[Ee]ither|[Nn]either|[Oo]nly)\s+[A-D]\s+(?:and|or|nor)\s+[A-D]\b"),
+    re.compile(r"\b(?:todas|ninguna|nenhuma)\s+(?:(?:de|das|dos)\s+)?(?:(?:las|as|os)\s+)?(?:anteriores|opciones|alternativas)\b", re.I),
 ]
 TEXT_CELLS = ["question", "option1", "option2", "option3", "option4", "explanation", "answer"]
 ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"]
@@ -241,6 +250,11 @@ def content_words(text):
 
 def has_absolute(text):
     return any(w in ABSOLUTE_WORDS for w in words(text))
+
+
+def leading_apostrophe(value):
+    """Text whose leading apostrophe a spreadsheet may take as its "keep as text" mark and drop."""
+    return (value or "").strip().startswith("'")
 
 
 def formula_prone(value):
@@ -393,6 +407,7 @@ def row_facts(r, label, t):
 def tally_cues(facts):
     """Statistical cues over one set of rows (the file, or one game)."""
     longest, shortest, overlap = new_tally(), new_tally(), new_tally()
+    mile_longest, mile_shortest = new_tally(), new_tally()
     absolute = {"options": 0, "correct": 0, "chance": 0.0, "variance": 0.0}
     multi_counts, multi_items = {}, 0
     for f in facts:
@@ -405,6 +420,9 @@ def tally_cues(facts):
         n = q["n"]
         add_to_tally(longest, q["longest"], n)
         add_to_tally(shortest, q["shortest"], n)
+        if f["type"] == "milestone":
+            add_to_tally(mile_longest, q["longest"], n)
+            add_to_tally(mile_shortest, q["shortest"], n)
         if q["overlap"] is not None:
             add_to_tally(overlap, q["overlap"], n)
         for k in q["absolute"]:
@@ -420,7 +438,7 @@ def tally_cues(facts):
         match = next((b for b in boards if jaccard(s["stem_words"], b["stem_words"]) >= SURVEY_DUP_JACCARD), None)
         if match:
             survey_dups.append(f"{s['label']} ≈ {match['label']}")
-    return {"longest": longest, "shortest": shortest, "overlap": overlap, "absolute": absolute,
+    return {"longest": longest, "shortest": shortest, "mile_longest": mile_longest, "mile_shortest": mile_shortest, "overlap": overlap, "absolute": absolute,
             "multi_counts": multi_counts, "multi_items": multi_items, "survey_dups": survey_dups}
 
 
@@ -434,6 +452,13 @@ def cue_warnings(t, prefix):
             warnings.append(f"{prefix}Length cue: always picking the {which} option would answer {rate}% of the {tally['items']} multiple-choice questions correctly (chance is {chance}%). Vary which option is {which}, so that length gives nothing away.")
         elif below_chance(tally):
             warnings.append(f"{prefix}Length cue: always picking the {which} option would answer only {rate}% of the {tally['items']} multiple-choice questions correctly (chance is {chance}%), so students can rule the {which} option out. Vary which option is {which}, so that length gives nothing away.")
+    # The milestone exam (5 of 6) is where a shape cue pays most, so its pool is checked on its own.
+    for which in ("longest", "shortest"):
+        tally = t[f"mile_{which}"]
+        if not beats_chance(tally) and not below_chance(tally):
+            continue
+        only = "only " if below_chance(tally) else ""
+        warnings.append(f"{prefix}Length cue in the milestone questions: always picking the {which} option would answer {only}{pct(tally['score'] / tally['items'])}% of the {tally['items']} milestone multiple-choice questions correctly (chance is {pct(tally['chance'] / tally['items'])}%). Vary which option is {which} within the milestone pools too.")
     overlap, absolute = t["overlap"], t["absolute"]
     if beats_chance(overlap):
         warnings.append(f"{prefix}Wording cue: picking the option that repeats the most words from the question would answer {pct(overlap['score'] / overlap['items'])}% of the {overlap['items']} multiple-choice questions where an option repeats a question word (chance is {pct(overlap['chance'] / overlap['items'])}%). Echo the question's key words in the distractors too, or in none of the options.")
@@ -479,6 +504,7 @@ def check_item_quality(rows, games=None):
     """
     games = games or []
     errors, warnings = [], []
+    apostrophe_cells = []
     sheet_errors, formula_cells, option_refs, dup_options, article_cue, long_items, near_misses = [], [], [], [], [], [], []
     facts = []
     # Terms a short answer could be confused with: every option and every accepted answer.
@@ -500,6 +526,8 @@ def check_item_quality(rows, games=None):
         fmt = FORMAT_ALIASES.get((r.get("format") or "").strip().lower())
         if any(not (c == "answer" and fmt == "numeric") and formula_prone(r.get(c)) for c in TEXT_CELLS):
             formula_cells.append(label)
+        if any(leading_apostrophe(r.get(c)) for c in TEXT_CELLS):
+            apostrophe_cells.append(label)
         if t not in QUIZ_TYPES:
             continue
         f = row_facts(r, label, t)
@@ -538,6 +566,8 @@ def check_item_quality(rows, games=None):
         errors.append(f'Spreadsheet error value (such as #NAME?) instead of text: {summarize(sheet_errors)}. A spreadsheet treated text starting with "-", "+", "=" or "@" as a formula. Retype it with an apostrophe in front (for example \'--input-path), then export the file again.')
     if formula_cells:
         warnings.append(f'Cell starts with "-", "+", "=" or "@": {summarize(formula_cells)}. Excel and Google Sheets turn such text into a formula (#NAME? or #ERROR!) when the file is opened there. Start the cell with a word, or wrap a command or flag in backticks (for example `--p-trim-left`).')
+    if apostrophe_cells:
+        warnings.append(f"Cell starts with an apostrophe ('): {summarize(apostrophe_cells)}. Excel and Google Sheets may take a leading apostrophe as their \"keep as text\" mark and drop it when the file is edited there. Use double quotes for quoted speech, or backticks for code.")
     if option_refs:
         warnings.append(f'Option refers to other options ("all of the above", "both A and B", "option 2"): {summarize(option_refs)}. Options are shuffled in the game, so use the multi (select all that apply) format instead.')
     if dup_options:
@@ -604,12 +634,20 @@ def describe_delivery(rows):
     cfg = read_config(rows)
     to = []
     if cfg["resultsUrl"]:
-        to.append(f"the Google Sheet at {cfg['resultsUrl']}")
+        url = cfg["resultsUrl"]
+        to.append(f"the results collector at {url}" if COLLECTOR.match(url) else f"the web address {url} (not a recognised Apps Script collector)")
     if cfg["instructorEmail"]:
         to.append(f"an email to {cfg['instructorEmail']} (students attach the file)")
     where = " and ".join(to) if to else "nowhere; students only download the results file (CSV)"
+    # The end screen blocks only Send and Email while names are missing; Download always works.
+    if not cfg["askNames"]:
+        names = "optional"
+    elif to:
+        names = "required before Send or Email (Download is never blocked)"
+    else:
+        names = "marked required, but Download isn't blocked, so students can skip it"
     course = f" Course label: {cfg['course']}." if cfg["course"] else ""
-    return f"Results are sent to: {where}. Students type names or IDs: {'yes' if cfg['askNames'] else 'no'}.{course}"
+    return f"Results are sent to: {where}. Name/ID field: {names}.{course}"
 
 
 def count_formats(rows):

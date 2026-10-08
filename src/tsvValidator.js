@@ -33,6 +33,10 @@ const SURVEY_QUIZ_SIZE = 10;
 
 const rowLabel = (row, i) => (row.id ? `"${row.id}"` : `row ${i + 2}`);
 
+// Links instructors often paste instead of the collector's Web app URL; they can never work.
+const NOT_A_COLLECTOR = /^https:\/\/(?:docs\.google\.com\/(?:forms|spreadsheets)\/|script\.google\.com\/.*\/dev(?:[?#/]|$))/i;
+const COLLECTOR = /^https:\/\/script\.google\.com\/(?:a\/macros\/[^/]+|macros)\/s\/[^/]+\/exec(?:[?#]|$)/i;
+
 // Instructor settings (type = config): the setting name goes in `id`, its value in `question`.
 function checkConfigRow(row, label, errors, warnings) {
   const key = (row.id || "").trim().toLowerCase();
@@ -47,6 +51,7 @@ function checkConfigRow(row, label, errors, warnings) {
   }
   if (key === "results_url") {
     if (!/^https:\/\//i.test(value)) errors.push('Config "results_url" must be an https:// link (the Web app URL from Google Apps Script).');
+    else if (NOT_A_COLLECTOR.test(value)) errors.push('Config "results_url" is a Google Form, Google Sheet or test (/dev) link, not the collector\'s Web app URL (https://script.google.com/macros/s/…/exec), so "Send results to instructor" would fail. Follow the collector setup and copy the Web app URL that ends in /exec.');
     else if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/i.test(value)) warnings.push('Config "results_url" doesn\'t look like a Google Apps Script Web app link (https://script.google.com/macros/s/…/exec). It will still be used.');
   }
   if (key === "instructor_email" && !EMAIL_PATTERN.test(value)) errors.push('Config "instructor_email" is not a valid email address.');
@@ -61,11 +66,15 @@ function checkConfigRow(row, label, errors, warnings) {
 export function describeDelivery(rows) {
   const cfg = readConfig(rows);
   const to = [];
-  if (cfg.resultsUrl) to.push(`the Google Sheet at ${cfg.resultsUrl}`);
+  if (cfg.resultsUrl) to.push(COLLECTOR.test(cfg.resultsUrl) ? `the results collector at ${cfg.resultsUrl}` : `the web address ${cfg.resultsUrl} (not a recognised Apps Script collector)`);
   if (cfg.instructorEmail) to.push(`an email to ${cfg.instructorEmail} (students attach the file)`);
   const where = to.length ? to.join(" and ") : "nowhere; students only download the results file (CSV)";
+  // The end screen blocks only Send and Email while names are missing; Download always works.
+  const names = !cfg.askNames ? "optional"
+    : to.length ? "required before Send or Email (Download is never blocked)"
+      : "marked required, but Download isn't blocked, so students can skip it";
   const course = cfg.course ? ` Course label: ${cfg.course}.` : "";
-  return `Results are sent to: ${where}. Students type names or IDs: ${cfg.askNames ? "yes" : "no"}.${course}`;
+  return `Results are sent to: ${where}. Name/ID field: ${names}.${course}`;
 }
 
 function countFormats(rows) {
