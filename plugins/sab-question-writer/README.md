@@ -25,4 +25,4 @@ Before you share materials:
 
 The skill's files are a copy of `.claude/skills/sab-question-writer/`. Edit them there, then run `npm run sync-plugin`. The test `tests/plugin.test.js` fails while the two copies differ.
 
-License: CC BY-NC-SA 4.0.
+License: free for noncommercial use. The skill's instructions (`SKILL.md`, `references/`) are under CC BY-NC-SA 4.0 and its scripts under the PolyForm Noncommercial License 1.0.0; see [LICENSE](https://github.com/hghezzi/Science-Around-the-Board/blob/main/LICENSE). Question files you make with it are yours.

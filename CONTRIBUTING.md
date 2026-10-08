@@ -40,4 +40,4 @@ Keep each pull request focused, describe the classroom effect, and fill in the c
 
 ## License
 
-By contributing, you agree that your contribution is licensed under the project's [CC BY-NC-SA 4.0 license](LICENSE).
+By contributing, you agree that your contribution is licensed under the same terms as the files it changes (see [LICENSE](LICENSE): PolyForm Noncommercial 1.0.0 for code, CC BY-NC-SA 4.0 for content). You also grant Hans Ghezzi a perpetual, worldwide, royalty-free right to use, change and relicense your contribution under other terms, including commercial ones, and you confirm that you have the right to grant this.

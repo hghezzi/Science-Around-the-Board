@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A browser-only, property-trading board game for classroom review. Instructors write the questions in one spreadsheet file; student teams play in the browser.",
   "author": "Hans Ghezzi",
-  "license": "CC-BY-NC-SA-4.0",
+  "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://hghezzi.github.io/Science-Around-the-Board/",
   "repository": {
     "type": "git",

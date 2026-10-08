@@ -558,6 +558,16 @@ While this is only an example, you can certainly explore other lesson-design str
 
 The game runs entirely in the students’ browsers. There is no account and no game server. In an online game, devices find each other through the free PeerJS connection service, which sees the devices' internet addresses and the room code but not the game; the game itself then goes directly from device to device, encrypted. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
 
+## License and reuse
+
+Science Around the Board is free for teaching, learning and research, and that won't change. Universities, colleges, schools and other public or charitable institutions can use it, adapt it and even host their own copy, whatever their funding. The code is under the [PolyForm Noncommercial License 1.0.0](https://github.com/hghezzi/Science-Around-the-Board/blob/main/LICENSES/PolyForm-Noncommercial-1.0.0.md), and this guide, the example question files and the images are under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/): please credit me and share adapted guides or question files under the same terms.
+
+- **Your question files are yours.** A file you write, by hand or with the question-writer skill, belongs to you, and you choose how to share it.
+- **Commercial use needs my permission:** selling the game, hosting it for paying customers or building it into a paid product. Get in touch through [GitHub](https://github.com/hghezzi).
+- If you publish a modified version, give it a different name.
+
+The full terms are in the [LICENSE](https://github.com/hghezzi/Science-Around-the-Board/blob/main/LICENSE) file.
+
 ## Conclusion
 
 Stepping away from the podium and handing control of the review session over to a board game can feel like a leap of faith. As instructors, we are often trained to deliver content efficiently, and the noisy, debate-filled environment of a gamified workshop is a stark contrast to a quiet lecture hall. However, as you will quickly discover during your first session with Science Around the Board, that noise is the sound of active, collaborative learning.
@@ -571,6 +581,11 @@ Building a great TSV cartridge takes intentional design, and mastering the role 
 Welcome to the board, and have a great session!
 
 ## What’s new
+
+**October 2026 (update 9): license**
+
+- **The code is now under the PolyForm Noncommercial License 1.0.0**, a license written for software. The guides, question files and images stay under CC BY-NC-SA 4.0. Nothing changes for classes: teaching, learning and research use stays free, including for institutions that host their own copy. See *License and reuse*.
+- **Your question files are yours**, whether you write them by hand or with the skill.
 
 **October 2026 (update 8): solo play**
 

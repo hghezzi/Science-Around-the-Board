@@ -2,7 +2,7 @@
 
 A browser-only, property-trading review game for higher education by Hans Ghezzi. It was built for UBC MICB 475 (16S rRNA / QIIME2), and the engine is meant to work for any subject. Instructors write a question file (TSV), and students (1–4 players per computer; a player can be a small group) load it at https://hghezzi.github.io/Science-Around-the-Board/. The project goal is to keep improving the platform and make it easy for **other teaching teams** to adopt. Favour changes that keep it subject-agnostic, zero-install and privacy-preserving.
 
-License: CC BY-NC-SA 4.0 (non-commercial).
+License (see `LICENSE`): code under PolyForm Noncommercial 1.0.0, content (guides, question files, images, the skill's instructions) under CC BY-NC-SA 4.0; commercial rights reserved by Hans. Earlier copies stay CC BY-NC-SA 4.0. Question files instructors make are theirs. Contributions must allow Hans to relicense them (`CONTRIBUTING.md`).
 
 ## Pedagogy (why features exist)
 - **Purpose:** it replaces review sessions. It rests on playful pedagogy, active recall, and frequent low-stakes assessment with an immediate explanation after every answer. It targets Bloom's "understand/apply", uses backward design from learning outcomes, and suits the BOPPPS lesson plan (80 min).

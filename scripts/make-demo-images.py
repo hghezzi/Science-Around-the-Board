@@ -2,7 +2,7 @@
 """Draw the demo's question images (public/questionImages/sab_*.png) from synthetic data.
 
 Every figure is made here from made-up numbers, so the project can publish it
-under its own licence (CC BY-NC-SA 4.0). Run: python3 scripts/make-demo-images.py
+under its content licence (CC BY-NC-SA 4.0; see LICENSE). Run: python3 scripts/make-demo-images.py
 """
 from pathlib import Path
 
