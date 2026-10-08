@@ -163,6 +163,21 @@ export const ECONOMY = {
   chaosStealShare: 0.5, // a successful Chaos Challenge buys the tile at half its price
 };
 
+// Solo play has no rivals, so the bank pays rent instead: landing on your own tile
+// asks one of its questions, and a right answer collects the rent a rival would pay.
+// The goal is a net worth to reach before time runs out, sized by simulation
+// (about 0.75 turns a minute) so that most players answering about 80% correctly
+// reach it, about a third at 65%, and few at 50%.
+export const SOLO = {
+  goals: { 0: 5000, 30: 3300, 45: 4000, 60: 5000, 90: 9000 }, // by session minutes (0 = no timer)
+};
+
+/** Net worth a solo player aims for in a session of `minutes` (0 = no timer). */
+export const soloGoal = (minutes) => SOLO.goals[minutes] ?? SOLO.goals[0];
+
+/** What the bank pays a solo player for a right answer on their own tile (the rent a rival would pay). */
+export const soloOwnTileIncome = (board, tile) => computeRent(board, tile);
+
 /** Starting cash for each player in a game with `playerCount` players. */
 export const startingMoney = (playerCount) => ECONOMY.startMoney[playerCount] ?? ECONOMY.startMoney[4];
 

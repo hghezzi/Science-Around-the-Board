@@ -399,6 +399,16 @@ If a player’s balance goes negative:
 2. **Rescue Quiz (once per game):** if selling everything still can’t cover the debt, the player takes a 3-question Rescue Quiz drawn from the whole board. With 2 or more correct answers, the debt is cleared and the player receives $500 to keep playing.
 3. **Elimination:** a player who fails the Rescue Quiz, or goes bankrupt a second time, is eliminated, and their properties return to the bank. Those students still take the post-game survey.
 
+### Playing solo
+
+A single player (one student, or a small group sharing one player) has no rivals to pay rent or to challenge, so solo play changes three things:
+
+- **Your own tiles pay.** Landing on a tile you own asks one of its questions. A right answer collects its rent from the bank, the same amount a rival would pay (more with a full set, upgrades and more core tiles; $250 on your own milestone). A wrong answer costs $20. Buying and upgrading become investments that pay off only if you know the material, and every roll keeps asking questions.
+- **A goal to beat the clock.** The board shows a net-worth goal: $3,300 in a 30-minute session, $4,000 in 45, $5,000 in 60 (or with no timer) and $9,000 in 90. I sized them with a simulation so that most students answering about 80% correctly reach the goal, about a third at 65%, and few at 50%. Capturing all four milestones is a bonus.
+- **No chaos tokens,** since there is nobody to challenge.
+
+The end screen shows whether the goal was reached, the share of questions answered correctly, the milestones captured and the best result so far on that computer (kept only in that browser). In a future version, solo players will also be able to choose a computer rival instead of the goal.
+
 ### Numbers at a glance
 
 | | Amount |
@@ -414,6 +424,7 @@ If a player’s balance goes negative:
 | Chaos steal · failed challenge · buying a token | half the tile’s price · half its base rent · $500 (complete sets can’t be challenged; the token is spent either way and the turn ends) |
 | Liquidation | tiles and upgrades sell for half of what was paid for them |
 | Rescue Quiz | 2 of 3 correct: debt cleared and +$500 (once per player) |
+| Solo play | right answer on your own tile: the bank pays its rent · wrong: −$20 · goal: $3,300 / $4,000 / $5,000 / $9,000 net worth in 30 / 45 / 60 (or no timer) / 90 minutes |
 | Net worth | cash + what the player paid for the tiles and upgrades it still owns (an upgrade counts once, as it was charged; a tile taken with chaos counts at the half price paid) |
 
 ## Endgame dynamics
@@ -462,9 +473,10 @@ Each row has an `eventType` (game events) or a `phase` (surveys):
 | `TEAM_INFO` | One row per player: the names or IDs typed on the end screen, survey scores before and after (`preScore`, `postScore`), `rank` and `netWorth` |
 | `phase` = `pre` / `post`, `section` = `confidence` | Each player’s slider value (`response`) for each confidence statement |
 | `phase` = `pre` / `post`, `section` = `quiz` | Each survey question: `questionId`, `selectedOption`, `selectedIndex` (for multiple choice, the option number in your file, 1–4, like `correctIndex`), `correctAnswer`, `correct` |
-| `PROPERTY_Q`, `RENT_Q`, `MILESTONE_Q`, `CHAOS_Q`, `GRANT_Q` | Every in-game question: player (`playerName`), `questionId`, `format`, `response`, `correctAnswer`, `correct`, tile |
+| `PROPERTY_Q`, `RENT_Q`, `OWN_TILE_Q`, `MILESTONE_Q`, `CHAOS_Q`, `GRANT_Q` | Every in-game question (`OWN_TILE_Q`: a solo player's own tile): player (`playerName`), `questionId`, `format`, `response`, `correctAnswer`, `correct`, tile |
 | `TRANSACTION` | Every money change, with the reason (`action`), `amount`, `moneyBefore`, `moneyAfter` and `timestamp` |
 | `ELIMINATED` | A player leaving the game, and why |
+| `SOLO_GOAL` | Solo only: the `turn` the net-worth goal was reached, and the `netWorth` at that moment (bank rent appears as `TRANSACTION` rows with `action` = `SOLO_RENT`) |
 | `GAME_RESULT` | Final `rank`, `cash`, property value (`assets`) and `netWorth` for each player, and how the game ended (`endReason`) |
 
 (`GRANT_Q` rows are Rescue Quiz questions. Some codes, such as `GRANT_Q`, `EMERGENCY_GRANT` and `LAB_MISHAP` for wildcards, keep their original names so that older results files stay comparable.)
@@ -559,6 +571,15 @@ Building a great TSV cartridge takes intentional design, and mastering the role 
 Welcome to the board, and have a great session!
 
 ## What’s new
+
+**October 2026 (update 8): solo play**
+
+These change how solo games play and score. Games with 2–4 players are unchanged.
+
+- **Your own tiles pay in solo.** Landing on a tile you own asks one of its questions; a right answer collects its rent from the bank, a wrong one costs $20. Until now, a solo player who bought well got fewer and fewer questions, and cash could only go down.
+- **A solo goal:** reach a net-worth goal before time runs out ($5,000 in 60 minutes; see *Playing solo*). The board shows progress towards it, and the end screen shows the goal, the share of correct answers, the milestones and a personal best kept on that computer.
+- **No chaos tokens in solo.**
+- **Results file:** new `OWN_TILE_Q` and `SOLO_GOAL` rows and a `SOLO_RENT` transaction code (the columns are unchanged).
 
 **October 2026 (update 7): question-writer skill and file checker**
 

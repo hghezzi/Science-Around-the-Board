@@ -3,10 +3,10 @@
 // and from the "How to play" buttons in the game and on the start page.
 import React from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
-import { LABELS, RULES } from "../labels";
+import { LABELS, rulesFor } from "../labels";
 import { SR_ONLY } from "../theme";
 
-export default function RulesDialog({ open, onClose, intro = "" }) {
+export default function RulesDialog({ open, onClose, intro = "", playerCount }) {
   return (
     <Dialog open={open} onClose={onClose} aria-labelledby="rules-title" maxWidth="sm" fullWidth>
       <DialogTitle id="rules-title"><span aria-hidden>📖 </span>{LABELS.howToPlay}</DialogTitle>
@@ -14,7 +14,7 @@ export default function RulesDialog({ open, onClose, intro = "" }) {
       <DialogContent dividers tabIndex={0} role="region" aria-label="Quick rules">
         {intro && <Typography sx={{ mb: 2 }}>{intro}</Typography>}
         <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0, display: "flex", flexDirection: "column", gap: 1.75 }}>
-          {RULES.map((r) => (
+          {rulesFor(playerCount).map((r) => (
             <Box component="li" key={r.title} sx={{ display: "flex", gap: 1.5 }}>
               <Box aria-hidden sx={{ fontSize: 24, lineHeight: 1.2, width: 32, textAlign: "center", flexShrink: 0 }}>{r.icon}</Box>
               <Box>

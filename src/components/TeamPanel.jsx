@@ -6,8 +6,9 @@ import { TEAM_SYMBOLS, TEAM_INK, SR_ONLY } from "../theme";
 import { netWorth } from "../gameRules";
 import { LABELS, money, signedMoney } from "../labels";
 
-export default function TeamPanel({ players, board, turn, moneyFloats }) {
-  const best = Math.max(1, ...players.map((p) => netWorth(p, board)));
+// Solo (goal > 0): the bar shows progress towards the net-worth goal instead of the leader.
+export default function TeamPanel({ players, board, turn, moneyFloats, goal = 0, goalReached = false, milestones = 0 }) {
+  const best = goal > 0 ? goal : Math.max(1, ...players.map((p) => netWorth(p, board)));
   return (
     <Card sx={{ p: 2 }}>
       <Typography variant="overline" component="h2" color="text.secondary" sx={{ fontWeight: 800 }}>Players</Typography>
@@ -55,16 +56,23 @@ export default function TeamPanel({ players, board, turn, moneyFloats }) {
                 <>
                   <LinearProgress
                     variant="determinate"
-                    value={Math.max(0, (worth / best) * 100)}
-                    aria-label={`${p.name} net worth compared with the leader`}
+                    value={Math.min(100, Math.max(0, (worth / best) * 100))}
+                    aria-label={goal > 0 ? `Net worth towards the ${money(goal)} goal` : `${p.name} net worth compared with the leader`}
                     sx={{ mt: 1, height: 6, borderRadius: 3, bgcolor: "action.hover", "& .MuiLinearProgress-bar": { bgcolor: p.color } }}
                   />
                   <Typography variant="caption" color="text.secondary" sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
-                    <span>Net worth {money(worth)}</span>
-                    <span>
-                      {tiles} tile{tiles === 1 ? "" : "s"} · <span aria-hidden>⚡</span> {p.chaosTokens}
-                      <Box component="span" sx={SR_ONLY}> chaos token{p.chaosTokens === 1 ? "" : "s"}</Box>
-                    </span>
+                    <span>Net worth {money(worth)}{goal > 0 && <> of <strong>{money(goal)}</strong> goal{goalReached && <> <span aria-hidden>🎯</span> reached</>}</>}</span>
+                    {goal > 0 ? (
+                      <span>
+                        {tiles} tile{tiles === 1 ? "" : "s"} · <span aria-hidden>🏆</span> {milestones}/4
+                        <Box component="span" sx={SR_ONLY}> milestones</Box>
+                      </span>
+                    ) : (
+                      <span>
+                        {tiles} tile{tiles === 1 ? "" : "s"} · <span aria-hidden>⚡</span> {p.chaosTokens}
+                        <Box component="span" sx={SR_ONLY}> chaos token{p.chaosTokens === 1 ? "" : "s"}</Box>
+                      </span>
+                    )}
                   </Typography>
                 </>
               )}

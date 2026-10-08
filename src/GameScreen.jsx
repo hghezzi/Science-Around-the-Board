@@ -22,7 +22,9 @@ import {
   getSubgroupTiles, getRentMultiplier, computeRent, rankPlayers, nextActivePlayer, activePlayers,
   ECONOMY, QUIZ_RULES, startingMoney, pickRandom, canUpgradeSubgroup, nextUpgradeLevel, upgradeCost, applyUpgrade,
   bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, acquireTile, chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale,
+  netWorth, soloGoal, soloOwnTileIncome,
 } from './gameRules';
+import { getPersonalBest, recordPersonalBest } from './personalBest';
 import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
 import { resolveImage } from './images';
 import { pickQuestion, pickQuestions, recordAnswer } from './questionPicker';
@@ -236,6 +238,12 @@ export default function GameScreen({
   const currentPlayer = players[turn];
   // The team whose turn it is, as of the latest update (for handlers and timers).
   const activePlayer = () => playersRef.current[turnRef.current];
+  // Solo play: no rivals, so own tiles ask a question and the bank pays rent, and a
+  // net-worth goal replaces the ranking (see gameRules.js SOLO). Chaos tokens are hidden.
+  const isSolo = players.length === 1;
+  const goal = isSolo ? soloGoal(sessionMinutes) : 0;
+  const soloWorth = isSolo ? netWorth(players[0], board) : 0;
+  const soloMilestones = isSolo ? board.filter((t) => t.type === 'milestone' && t.owner === 0).length : 0;
 
   // Every button a player presses is a named action. Locally it runs at once; on a
   // guest device it is sent to the host, which runs the same function (online play).
@@ -515,7 +523,7 @@ export default function GameScreen({
       if (passed) {
         handleTransaction(playerId, -tile.price, { action: 'MILESTONE_ACQUIRE', tileId: tile.id, tileName: tile.name });
         setBoard((prev) => acquireTile(prev, tile, playerId, tile.price));
-        setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, chaosTokens: p.chaosTokens + 1 } : p)));
+        if (!isSolo) setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, chaosTokens: p.chaosTokens + 1 } : p)));
         addLog(`${activePlayer().name} captured the ${tile.name} milestone!`);
         setModalStage('MILESTONE_SUCCESS');
       } else {
@@ -566,6 +574,12 @@ export default function GameScreen({
     setLastAnswer(null);
 
     if (tile.owner === p.id) {
+      const pool = tile.type === 'milestone' ? tile.quiz : tile.questions;
+      if (isSolo && pool?.length) {
+        const q = prepareQuestion(pickQuestion(pool, askedRef.current, totalTurnsRef.current));
+        openCard({ type: 'OWN_TILE', data: tile, q, income: soloOwnTileIncome(boardRef.current, tile) }, 'QUESTION');
+        return;
+      }
       openCard({ type: 'MSG', data: tile, msg: LABELS.ownTile }, 'MSG');
       return;
     }
@@ -679,6 +693,32 @@ export default function GameScreen({
     if (ownerId != null) handleTransaction(ownerId, rentToPay, { action: 'RENT_RECEIVED', tileId: tile.id, tileName: tile.name });
     setModalStage('FEEDBACK_INCORRECT');
   });
+
+  // Solo: your own tile. A right answer collects its rent from the bank; a wrong one costs the usual fine.
+  const handleOwnTileAnswer = act('answerOwnTile', (response) => {
+    const { q, data: tile, income } = activeCard;
+    const result = checkAnswer(q, response);
+    logAnswer('OWN_TILE_Q', q, result, { tileId: tile.id, tileName: tile.name });
+    setLastAnswer({ q, response, result });
+    if (result.correct) {
+      setFeedback({ tone: 'good', title: 'Correct: rent collected!', detail: `The bank pays you ${money(income)} for ${tileLabel(tile)}.`, explanation: q.explanation || '' });
+      handleTransaction(turnRef.current, income, { action: 'SOLO_RENT', tileId: tile.id, tileName: tile.name });
+      addLog(`${activePlayer().name} collected ${money(income)} rent from the bank.`);
+    } else {
+      setFeedback({ tone: 'bad', title: 'Not quite: no rent this time', detail: `That costs you ${money(ECONOMY.wrongAnswerPenalty)}.`, explanation: q.explanation || '' });
+      handleTransaction(turnRef.current, -ECONOMY.wrongAnswerPenalty, { action: 'QUESTION_PENALTY', tileId: tile.id, tileName: tile.name, notes: 'Incorrect on own tile' });
+    }
+    setModalStage('FEEDBACK_INCORRECT');
+  });
+
+  // Solo: note the turn the goal is first reached (once per game; the row is saved with the game).
+  const goalReachedTurn = isSolo ? (logRows.find((r) => r.eventType === 'SOLO_GOAL')?.turn ?? null) : null;
+  useEffect(() => {
+    if (!isSolo || isGuest || goalReachedTurn != null || soloWorth < goal) return;
+    addCSVEvent({ eventType: 'SOLO_GOAL', turn: totalTurnsRef.current, playerIndex: 0, playerName: players[0]?.name || '', netWorth: soloWorth, notes: `Reached the ${money(goal)} goal`, timestamp: new Date().toISOString() });
+    addLog(`GOAL: ${players[0]?.name} reached ${money(goal)} net worth!`);
+    celebrate(players[0]?.color);
+  }, [isSolo, isGuest, goalReachedTurn, soloWorth, goal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Autosave between turns only: a refresh in the middle of a turn returns to its start.
   useEffect(() => {
@@ -803,6 +843,14 @@ export default function GameScreen({
     if (modalStage === 'MILESTONE_SUCCESS') celebrate(playersRef.current[turnRef.current]?.color);
   }, [modalOpen, modalStage, players.length, playersRef, turnRef]);
 
+  // Solo end screen: answers right this game, and the best result on this computer.
+  const bestKey = { topic: bigTopic, module, minutes: sessionMinutes };
+  const soloAccuracy = () => {
+    const answered = logRows.filter((r) => typeof r.correct === 'boolean' && r.questionId !== undefined);
+    const right = answered.filter((r) => r.correct).length;
+    return { right, total: answered.length, pct: answered.length ? Math.round((100 * right) / answered.length) : null };
+  };
+
   const handleEndGame = (reason = 'ended') => {
     const standings = rankPlayers(playersRef.current, boardRef.current);
     const resultRows = standings.map((r) => ({
@@ -818,6 +866,7 @@ export default function GameScreen({
       endReason: reason,
       timestamp: new Date().toISOString(),
     }));
+    if (isSolo && !isGuest && standings[0]) recordPersonalBest(bestKey, { netWorth: standings[0].netWorth, accuracy: soloAccuracy().pct });
     if (typeof onEndGame === 'function') onEndGame([...logRows, ...resultRows]);
   };
 
@@ -892,6 +941,7 @@ export default function GameScreen({
 
   const resultHeading = () => {
     if (activeCard?.type === 'RENT_DEFENSE') return `Rent due · ${tileLabel(activeCard.data)}`;
+    if (activeCard?.type === 'OWN_TILE') return `Your tile · ${tileLabel(activeCard.data)}`;
     if (activeCard?.type === 'CHAOS_CHALLENGE') return `Chaos challenge · ${tileLabel(activeCard.data)}`;
     return `${LABELS.questionTitle} · ${tileLabel(activeCard?.data)}`;
   };
@@ -951,9 +1001,11 @@ export default function GameScreen({
             </Button>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
               <Button variant="outlined" disabled={isMoving || !canAct} onClick={openLabManager} startIcon={<span aria-hidden>⭐</span>}>{LABELS.upgrades}</Button>
-              <Button variant="outlined" color="secondary" disabled={isMoving || !canAct} onClick={openChaosSelect} startIcon={<span aria-hidden>⚡</span>}>
-                Chaos tokens: {currentPlayer.chaosTokens}
-              </Button>
+              {!isSolo && (
+                <Button variant="outlined" color="secondary" disabled={isMoving || !canAct} onClick={openChaosSelect} startIcon={<span aria-hidden>⚡</span>}>
+                  Chaos tokens: {currentPlayer.chaosTokens}
+                </Button>
+              )}
             </Box>
 
             <Box sx={{ minHeight: '7cqw', width: '80%', maxWidth: 420 }}>
@@ -984,7 +1036,7 @@ export default function GameScreen({
         </Box>
 
         <Box component="aside" aria-label="Players and game log" sx={{ flex: '1 1 260px', maxWidth: { lg: 380 }, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 2, alignItems: 'start' }}>
-          <TeamPanel players={players} board={board} turn={turn} moneyFloats={moneyFloats} />
+          <TeamPanel players={players} board={board} turn={turn} moneyFloats={moneyFloats} goal={goal} goalReached={isSolo && (goalReachedTurn != null || soloWorth >= goal)} milestones={soloMilestones} />
           <Card sx={{ p: 2 }}>
             <Typography variant="overline" component="h2" color="text.secondary" sx={{ fontWeight: 800 }}>Game log</Typography>
             <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, maxHeight: 260, overflowY: 'auto', fontSize: '0.85rem', color: 'text.secondary' }}>
@@ -1128,11 +1180,33 @@ export default function GameScreen({
               eliminated: 'No players remain.',
               ended: 'Ending the game now ranks players by net worth (cash + tile value).',
             }[activeCard.reason];
+            const soloReason = { time: "Time's up!", ended: 'Game over.', eliminated: 'Out of money.' }[activeCard.reason];
             const medal = ['🥇', '🥈', '🥉'];
             return (
               <>
                 <Typography id={TITLE_ID} variant="h4" component="h2" gutterBottom>Final Standings</Typography>
-                <Typography sx={{ mb: 2 }}>{reasonText}</Typography>
+                <Typography sx={{ mb: 2 }}>{isSolo ? soloReason || reasonText : reasonText}</Typography>
+                {isSolo && leader && (() => {
+                  const acc = soloAccuracy();
+                  const best = getPersonalBest(bestKey);
+                  const reached = goalReachedTurn != null;
+                  return (
+                    <Box sx={{ mb: 2 }}>
+                      <Alert severity={reached ? 'success' : 'info'} icon={<span aria-hidden>🎯</span>} sx={{ mb: 1.5, fontWeight: 700 }}>
+                        {reached
+                          ? `Goal reached on turn ${goalReachedTurn}: ${money(goal)} net worth. You finished with ${money(leader.netWorth)}.`
+                          : `Goal: ${money(goal)} net worth. You reached ${money(leader.netWorth)} (${Math.round((100 * Math.max(0, leader.netWorth)) / goal)}% of the goal).`}
+                      </Alert>
+                      <Box component="ul" sx={{ m: 0, pl: 2.5, '& li': { mb: 0.5 } }}>
+                        {acc.total > 0 && <li>Questions answered correctly: <strong>{acc.right} of {acc.total}</strong> ({acc.pct}%).</li>}
+                        <li>Milestones captured: <strong>{soloMilestones} of 4</strong>{soloMilestones === 4 ? ' (bonus achieved!)' : ''}.</li>
+                        <li>{!best ? 'This is your first finished game with these questions and this session length on this computer.'
+                          : leader.netWorth > best.netWorth ? `New personal best! Your previous best was ${money(best.netWorth)}.`
+                            : `Your personal best on this computer: ${money(best.netWorth)}.`}</li>
+                      </Box>
+                    </Box>
+                  );
+                })()}
                 {players.length > 1 && leader && !leader.eliminated && (
                   <Alert severity="success" icon={<span aria-hidden>🏆</span>} sx={{ mb: 2, fontWeight: 700 }}>
                     {tied.length > 1 ? `It's a tie: ${tied.map((t) => t.name).join(' & ')}` : `${leader.name} wins`} with a net worth of {money(leader.netWorth)}.
@@ -1238,7 +1312,7 @@ export default function GameScreen({
               </motion.div>
               <Typography id={TITLE_ID} variant="h4" component="h2" color="success.main" sx={{ mt: 1 }}>Milestone captured!</Typography>
               <Typography sx={{ mt: 1 }}>
-                {quizState.score} of {quizState.questions.length} correct. <strong>{currentPlayer.name}</strong> now owns {quizTile?.name} ({signedMoney(-(quizTile?.price || 0))}) and earns a ⚡ {LABELS.chaosToken.toLowerCase()}.
+                {quizState.score} of {quizState.questions.length} correct. <strong>{currentPlayer.name}</strong> now owns {quizTile?.name} ({signedMoney(-(quizTile?.price || 0))}){isSolo ? `. Land here again to answer for ${money(ECONOMY.milestoneFee)} from the bank.` : ` and earns a ⚡ ${LABELS.chaosToken.toLowerCase()}.`}
               </Typography>
               <Button fullWidth size="large" variant="contained" autoFocus sx={{ mt: 3 }} onClick={passTurn}>Continue</Button>
             </Box>
@@ -1369,6 +1443,15 @@ export default function GameScreen({
             );
           })()}
 
+          {activeCard?.type === 'OWN_TILE' && modalStage === 'QUESTION' && (
+            <>
+              <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 0.5 }}>Your tile pays rent: <Box component="span" sx={{ color: 'success.main' }}>{money(activeCard.income)}</Box></Typography>
+              <Typography sx={{ mb: 1.5 }}>You own {tileLabel(activeCard.data)}. Answer its question to collect the rent from the bank.</Typography>
+              <Stakes good={`the bank pays you ${money(activeCard.income)}.`} bad={`you pay ${money(ECONOMY.wrongAnswerPenalty)}.`} />
+              {renderQuestion(activeCard.q, handleOwnTileAnswer, { imageMaxHeight: 200 })}
+            </>
+          )}
+
           {activeCard?.type === 'RENT_DEFENSE' && modalStage === 'QUESTION' && (
             <>
               <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 0.5 }}>Rent due: <Box component="span" sx={{ color: 'error.main' }}>{money(activeCard.rent)}</Box></Typography>
@@ -1472,6 +1555,7 @@ export default function GameScreen({
       </Modal>
 
       <RulesDialog
+        playerCount={players.length}
         open={rulesOpen}
         onClose={() => setRulesOpen(false)}
         intro={totalTurns === 0 ? 'Quick rules before your first roll. Open them again any time with How to play at the top.' : ''}

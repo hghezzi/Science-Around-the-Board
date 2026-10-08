@@ -615,6 +615,14 @@
 <li><strong>Rescue Quiz (once per game):</strong> if selling everything still can’t cover the debt, the player takes a 3-question Rescue Quiz drawn from the whole board. With 2 or more correct answers, the debt is cleared and the player receives $500 to keep playing.</li>
 <li><strong>Elimination:</strong> a player who fails the Rescue Quiz, or goes bankrupt a second time, is eliminated, and their properties return to the bank. Those students still take the post-game survey.</li>
 </ol>
+<h3 id="playing-solo">Playing solo</h3>
+<p>A single player (one student, or a small group sharing one player) has no rivals to pay rent or to challenge, so solo play changes three things:</p>
+<ul>
+<li><strong>Your own tiles pay.</strong> Landing on a tile you own asks one of its questions. A right answer collects its rent from the bank, the same amount a rival would pay (more with a full set, upgrades and more core tiles; $250 on your own milestone). A wrong answer costs $20. Buying and upgrading become investments that pay off only if you know the material, and every roll keeps asking questions.</li>
+<li><strong>A goal to beat the clock.</strong> The board shows a net-worth goal: $3,300 in a 30-minute session, $4,000 in 45, $5,000 in 60 (or with no timer) and $9,000 in 90. I sized them with a simulation so that most students answering about 80% correctly reach the goal, about a third at 65%, and few at 50%. Capturing all four milestones is a bonus.</li>
+<li><strong>No chaos tokens,</strong> since there is nobody to challenge.</li>
+</ul>
+<p>The end screen shows whether the goal was reached, the share of questions answered correctly, the milestones captured and the best result so far on that computer (kept only in that browser). In a future version, solo players will also be able to choose a computer rival instead of the goal.</p>
 <h3 id="numbers-at-a-glance">Numbers at a glance</h3>
 <table>
 <thead>
@@ -666,6 +674,10 @@
 <tr>
 <td align="left">Rescue Quiz</td>
 <td align="left">2 of 3 correct: debt cleared and +$500 (once per player)</td>
+</tr>
+<tr>
+<td align="left">Solo play</td>
+<td align="left">right answer on your own tile: the bank pays its rent · wrong: −$20 · goal: $3,300 / $4,000 / $5,000 / $9,000 net worth in 30 / 45 / 60 (or no timer) / 90 minutes</td>
 </tr>
 <tr>
 <td align="left">Net worth</td>
@@ -738,8 +750,8 @@
 <td align="left">Each survey question: <code>questionId</code>, <code>selectedOption</code>, <code>selectedIndex</code> (for multiple choice, the option number in your file, 1–4, like <code>correctIndex</code>), <code>correctAnswer</code>, <code>correct</code></td>
 </tr>
 <tr>
-<td align="left"><code>PROPERTY_Q</code>, <code>RENT_Q</code>, <code>MILESTONE_Q</code>, <code>CHAOS_Q</code>, <code>GRANT_Q</code></td>
-<td align="left">Every in-game question: player (<code>playerName</code>), <code>questionId</code>, <code>format</code>, <code>response</code>, <code>correctAnswer</code>, <code>correct</code>, tile</td>
+<td align="left"><code>PROPERTY_Q</code>, <code>RENT_Q</code>, <code>OWN_TILE_Q</code>, <code>MILESTONE_Q</code>, <code>CHAOS_Q</code>, <code>GRANT_Q</code></td>
+<td align="left">Every in-game question (<code>OWN_TILE_Q</code>: a solo player&#39;s own tile): player (<code>playerName</code>), <code>questionId</code>, <code>format</code>, <code>response</code>, <code>correctAnswer</code>, <code>correct</code>, tile</td>
 </tr>
 <tr>
 <td align="left"><code>TRANSACTION</code></td>
@@ -748,6 +760,10 @@
 <tr>
 <td align="left"><code>ELIMINATED</code></td>
 <td align="left">A player leaving the game, and why</td>
+</tr>
+<tr>
+<td align="left"><code>SOLO_GOAL</code></td>
+<td align="left">Solo only: the <code>turn</code> the net-worth goal was reached, and the <code>netWorth</code> at that moment (bank rent appears as <code>TRANSACTION</code> rows with <code>action</code> = <code>SOLO_RENT</code>)</td>
 </tr>
 <tr>
 <td align="left"><code>GAME_RESULT</code></td>
@@ -848,6 +864,14 @@
 <p>Building a great TSV cartridge takes intentional design, and mastering the role of the game master takes practice. But the payoff, watching your students actively conceptualize complex material rather than passively memorizing it, is entirely worth the effort.</p>
 <p>Welcome to the board, and have a great session!</p>
 <h2 id="whats-new">What’s new</h2>
+<p><strong>October 2026 (update 8): solo play</strong></p>
+<p>These change how solo games play and score. Games with 2–4 players are unchanged.</p>
+<ul>
+<li><strong>Your own tiles pay in solo.</strong> Landing on a tile you own asks one of its questions; a right answer collects its rent from the bank, a wrong one costs $20. Until now, a solo player who bought well got fewer and fewer questions, and cash could only go down.</li>
+<li><strong>A solo goal:</strong> reach a net-worth goal before time runs out ($5,000 in 60 minutes; see <em>Playing solo</em>). The board shows progress towards it, and the end screen shows the goal, the share of correct answers, the milestones and a personal best kept on that computer.</li>
+<li><strong>No chaos tokens in solo.</strong></li>
+<li><strong>Results file:</strong> new <code>OWN_TILE_Q</code> and <code>SOLO_GOAL</code> rows and a <code>SOLO_RENT</code> transaction code (the columns are unchanged).</li>
+</ul>
 <p><strong>October 2026 (update 7): question-writer skill and file checker</strong></p>
 <ul>
 <li><strong>A safer, more faithful question-writer skill.</strong> It now follows your materials closely (notation, examples, conventions), raises errors it finds in your notes, checks every number and code snippet, and keeps to ground rules on student data, copyright, live exams, hidden instructions in uploaded files and sensitive topics. See <em>Generating questions with Claude</em>.</li>
