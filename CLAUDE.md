@@ -47,7 +47,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
   - `startGame()` builds the survey sets with the final team count (`surveys.js`) and a new `sessionId`.
   - Autosave: while in `PRE_SURVEY`…`SUMMARY`, App saves a snapshot (`autosave.js`), including the game's state from `GameScreen`'s `onSnapshot`. It is cleared by `resetFile()`/main menu, Exit session and `startGame()`.
   - `SurveyView` serves both pre and post surveys. The best pre-survey scorer starts the game (`bestPreSurveyPlayer`).
-  - `SummaryView`: score table, names or IDs per team (required when `config.askNames`), then Send (results sheet), Email (a `mailto:` link that also downloads the file) and Download. The CSV starts with `TEAM_INFO` rows.
+  - `SummaryView`: score table, names or IDs per team (required when `config.askNames`: Send, Email and Download stay disabled until filled), then Send (results sheet), Email (a `mailto:` link that also downloads the file) and Download. The CSV starts with `TEAM_INFO` rows.
 - `src/GameScreen.jsx`: a single component (~1300 lines) holding all turn logic and UI, with modal flows keyed by `modalStage` / `activeCard.type`.
   - Start money by player count (`startingMoney(n)`: 2500/2000/1500/1250 for 1–4, `ECONOMY.startMoney`); passing START +$200 (the "lap bonus"). A new game opens `RulesDialog` (quick rules from `labels.js` `RULES`).
   - Question choice goes through `questionPicker.js` (unseen first, a missed question again after `REASK_AFTER_TURNS`); the shared history (`asked`) is saved with the game.
@@ -63,7 +63,7 @@ License: CC BY-NC-SA 4.0 (non-commercial).
 - `src/questionFormats.js` (pure):
   - Formats: `mcq | multi | numeric | order | text`.
   - `normalizeQuestion` turns a TSV row into a question; `prepareQuestion` shuffles the options and remaps answers.
-  - `checkAnswer` returns `{correct, responseText, correctText}`.
+  - `checkAnswer` returns `{correct, responseText, correctText}`. Text answers forgive one typo in answers of 8+ characters, never in the first letter, a number or a Roman numeral (`ROMAN_NUMERALS`); numeric answers accept a unit after the number (`parseNumericResponse`: "12 kg").
   - `parseMishapAmount` reads the amount from mishap text.
 - `src/theme.js`:
   - MUI theme with light/dark `colorSchemes`, selected by the media query, so it follows the device setting. Exposed as CSS variables, e.g. `var(--mui-palette-board-felt)`; `v()` builds that string.

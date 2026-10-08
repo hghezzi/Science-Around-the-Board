@@ -209,6 +209,7 @@ async function resultsScenario() {
   await finishGame(page, 1, "results");
   const send = page.getByRole("button", { name: /Send results to instructor/ });
   if (await send.isEnabled()) fail("results: Send should be disabled until names are typed");
+  if (await page.getByRole("button", { name: /Download results/ }).isEnabled()) fail("results: Download should be disabled until names are typed");
   await page.getByLabel(/names or student IDs/).first().fill("Test Student");
   await send.click();
   await page.getByText(/^Sent!/).waitFor({ timeout: 10000 });

@@ -145,6 +145,21 @@ describe("checkAnswer", () => {
     expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "metabolism" })), "metabolsim").correct).toBe(false); // a swap is two edits
     expect(checkAnswer(normalizeQuestion(row({ format: "text", answer: "metabolism" })), "metabolsm").correct).toBe(true);
   });
+  it("text never forgives a typo in a Roman numeral", () => {
+    const t1 = normalizeQuestion(row({ format: "text", answer: "Type I error" }));
+    expect(checkAnswer(t1, "type I error").correct).toBe(true);
+    expect(checkAnswer(t1, "Type I eror").correct).toBe(true); // a typo elsewhere is still forgiven
+    expect(checkAnswer(t1, "type II error").correct).toBe(false);
+    const ps = normalizeQuestion(row({ format: "text", answer: "Photosystem II" }));
+    expect(checkAnswer(ps, "photosystem i").correct).toBe(false);
+    expect(checkAnswer(ps, "photosystem iii").correct).toBe(false);
+    expect(checkAnswer(ps, "photosytem II").correct).toBe(true);
+  });
+  it("numeric accepts a unit typed after the number", () => {
+    const q = normalizeQuestion(row({ format: "numeric", answer: "12" }));
+    for (const r of ["12 kg", "12kg", "12 mL", "12 °C", "12,0 kg", "12 mg/kg/day", "12 M⁻¹ s⁻¹"]) expect(checkAnswer(q, r).correct).toBe(true);
+    for (const r of ["12 kg 5", "kg 12", "2 × 10⁴", "13 kg"]) expect(checkAnswer(q, r).correct).toBe(false);
+  });
   it("hasResponse", () => {
     const multi = normalizeQuestion(row({ format: "multi", correctIndex: "1" }));
     expect(hasResponse(multi, [])).toBe(false);

@@ -69,7 +69,6 @@ const OPTION_REFERENCE = [
   /\b(?:todas|ninguna|nenhuma)\s+(?:(?:de|das|dos)\s+)?(?:(?:las|as|os)\s+)?(?:anteriores|opciones|alternativas)\b/i,
 ];
 const TEXT_CELLS = ["question", "option1", "option2", "option3", "option4", "explanation", "answer"];
-const ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"];
 
 // Words in any script: accents and punctuation removed, as the game does for typed answers.
 const words = (text) => normalizeText(text).split(" ").filter(Boolean);
@@ -130,24 +129,12 @@ function jaccard(a, b) {
   return shared / (a.size + b.size - shared);
 }
 
-/** The row's accepted answers with each Roman numeral swapped for another ("type ii" for "type i"). */
-function romanVariants(answers) {
-  const out = [];
-  answers.forEach((a) => {
-    const tokens = normalizeText(a).split(" ");
-    tokens.forEach((tok, k) => {
-      if (!ROMAN.includes(tok)) return;
-      ROMAN.forEach((r) => { if (r !== tok) out.push([...tokens.slice(0, k), r, ...tokens.slice(k + 1)].join(" ")); });
-    });
-  });
-  return out;
-}
-
 /**
  * A short-answer row's first near miss that the game's matcher would also accept,
  * because one typo is forgiven in long answers: another term from the file (an
  * option or accepted answer) one letter different from an accepted answer
- * ("adsorption" for "absorption"), or a Roman-numeral neighbour ("type ii" for "type i").
+ * ("adsorption" for "absorption"). Numbers and Roman numerals must match exactly in
+ * the game, so "type ii" is never accepted for "type i".
  * Terms that only add or drop a letter ("safer" for "safe") are left alone.
  */
 function textNearMiss(row, terms) {
@@ -156,10 +143,7 @@ function textNearMiss(row, terms) {
   if (!own.length) return null;
   const q = { format: "text", acceptedAnswers: answers };
   const sameTerm = (c) => own.some((a) => c === a || c.replace(/ /g, "") === a.replace(/ /g, ""));
-  const candidates = [
-    ...terms.map((t) => normalizeText(t)).filter((c) => own.some((a) => a.length === c.length)),
-    ...romanVariants(answers),
-  ];
+  const candidates = terms.map((t) => normalizeText(t)).filter((c) => own.some((a) => a.length === c.length));
   const seen = new Set();
   for (const c of candidates) {
     if (!c || seen.has(c)) continue;
@@ -398,7 +382,7 @@ export function checkItemQuality(rows, games = []) {
     warnings.push(`Correct answer much longer than the other options (${LONG_RATIO}× their average length or more): ${summarize(longItems)}. Students can pick it without knowing the content; make the distractors just as detailed, or trim the correct answer.`);
   }
   if (nearMisses.length) {
-    warnings.push(`Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: ${summarize(nearMisses)}. Use multiple choice when two terms differ by one letter or numeral (Type I and Type II, absorption and adsorption), or add the other spelling to the accepted answers if it is also correct.`);
+    warnings.push(`Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: ${summarize(nearMisses)}. Use multiple choice when two terms differ by one letter (absorption and adsorption), or add the other spelling to the accepted answers if it is also correct.`);
   }
 
   // Statistical cues: per game when the file has several, otherwise for the whole file.

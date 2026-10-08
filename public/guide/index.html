@@ -398,10 +398,10 @@
 <td align="left"><code>text</code> (short answer)</td>
 <td align="left"><code>answer</code> with alternatives separated by <code>|</code></td>
 <td align="left">A text box</td>
-<td align="left">it matches an accepted answer (case, accents and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter or a number)</td>
+<td align="left">it matches an accepted answer (case, accents and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter, a number or a Roman numeral)</td>
 </tr>
 </tbody></table>
-<p>Tips: the game already shows &quot;Select all that apply.&quot; under multi-select questions, so vary how many options are correct (1 to 4) rather than hinting at it. State units and rounding in numeric prompts; students type a bare number (&quot;12&quot;, not &quot;12 kg&quot;). Keep short answers to one to three words, list every reasonable synonym, and use multiple choice when one letter or numeral turns the answer into a different term (Type I and Type II): the typo rule would accept it.</p>
+<p>Tips: the game already shows &quot;Select all that apply.&quot; under multi-select questions, so vary how many options are correct (1 to 4) rather than hinting at it. State units and rounding in numeric prompts; a unit typed after the number is accepted (&quot;12 kg&quot; counts as 12). Keep short answers to one to three words, list every reasonable synonym, and use multiple choice when one letter turns a long answer into a different term (absorption and adsorption): the typo rule would accept it. Numbers and Roman numerals never get the typo allowance, so &quot;Type II&quot; is never accepted for &quot;Type I&quot;.</p>
 <h4 id="config-rows-optional-settings">Config rows (optional settings)</h4>
 <p>Rows with <code>type</code> = <code>config</code> are not questions: they set up how results reach you. Put the setting name in <code>id</code>, its value in <code>question</code>, and leave the other columns blank.</p>
 <table>
@@ -430,7 +430,7 @@
 <tr>
 <td align="left"><code>ask_names</code></td>
 <td align="left"><code>yes</code> or <code>no</code></td>
-<td align="left">whether names or student IDs must be typed before <strong>Send</strong> or <strong>Email</strong> (the boxes are always shown; <strong>Download</strong> is never blocked); the default is yes when results are sent or emailed</td>
+<td align="left">whether names or student IDs must be typed before <strong>Send</strong>, <strong>Email</strong> or <strong>Download</strong> (the boxes are always shown); the default is yes when results are sent or emailed</td>
 </tr>
 </tbody></table>
 <p>Config rows apply to the whole file, whatever topic and module students pick. The file check flags links and addresses that won&#39;t work.</p>
@@ -690,7 +690,7 @@
 <td align="left">nothing</td>
 </tr>
 </tbody></table>
-<p>When a results link or email address is set, names are required before <strong>Send</strong> or <strong>Email</strong> (add an <code>ask_names</code> row set to <code>no</code> to make them optional). <strong>Download</strong> always works, even with the boxes empty, so if you collect downloaded files, ask students to type their names or IDs before downloading. The game can&#39;t insist on student numbers rather than names; say which you want.</p>
+<p>When a results link or email address is set, names are required before <strong>Send</strong>, <strong>Email</strong> or <strong>Download</strong> (add an <code>ask_names</code> row set to <code>no</code> to make them optional). With download-only results, add an <code>ask_names</code> row set to <code>yes</code> if you want names in every file you collect. The game can&#39;t insist on student numbers rather than names; say which you want.</p>
 <p><strong>Setting up the Google Sheet collector</strong></p>
 <ol>
 <li>Create a new Google Sheet, for example &quot;SAB results – BIOL 301&quot;.</li>
@@ -838,9 +838,11 @@
 <p><strong>October 2026 (update 7): question-writer skill and file checker</strong></p>
 <ul>
 <li><strong>A safer, more faithful question-writer skill.</strong> It now follows your materials closely (notation, examples, conventions), raises errors it finds in your notes, checks every number and code snippet, and keeps to ground rules on student data, copyright, live exams, hidden instructions in uploaded files and sensitive topics. See <em>Generating questions with Claude</em>.</li>
-<li><strong>New file checks:</strong> answer cues for each game in a file and for the milestone exams; cells that a spreadsheet would turn into a formula or strip of an apostrophe; select-all questions that always have the same number of correct options; short answers the typo rule could confuse (Type I/II); and a Google Form or Sheet link given instead of the collector&#39;s link (now a red item).</li>
+<li><strong>New file checks:</strong> answer cues for each game in a file and for the milestone exams; cells that a spreadsheet would turn into a formula or strip of an apostrophe; select-all questions that always have the same number of correct options; short answers the typo rule could confuse (absorption/adsorption); and a Google Form or Sheet link given instead of the collector&#39;s link (now a red item).</li>
 <li><strong>&quot;Results are sent to&quot;</strong> is the new last line of the check: it says where results go and whether names are required.</li>
-<li><strong>Names and Download:</strong> the guide now says plainly that <code>ask_names</code> holds back <strong>Send</strong> and <strong>Email</strong>, never <strong>Download</strong>.</li>
+<li><strong>Short answers: Roman numerals count like numbers.</strong> A typo is never forgiven in a Roman numeral, so &quot;Type II error&quot; is no longer accepted for &quot;Type I error&quot; (nor Photosystem I for II).</li>
+<li><strong>Numeric answers accept a unit:</strong> &quot;12 kg&quot;, &quot;0.5 mL&quot; or &quot;25 °C&quot; counts as the number.</li>
+<li><strong>Required names now hold back Download too.</strong> With <code>ask_names</code> on (the default when results are sent or emailed), <strong>Send</strong>, <strong>Email</strong> and <strong>Download</strong> stay disabled until every player&#39;s names or IDs are typed.</li>
 <li><strong>Updated counts table</strong> for 45-, 60- and 90-minute sessions (see <em>How many questions?</em>).</li>
 <li><strong>Demo file:</strong> nine cells were retyped so they survive a round trip through Excel or Google Sheets. No question or answer changed.</li>
 <li><strong>End game and Exit session ask first.</strong> Both now open a yes/no confirmation (<strong>Yes, end the game</strong> / <strong>No, keep playing</strong>, and <strong>Yes, leave</strong> / <strong>No, stay in the game</strong>), so a stray click can&#39;t end or throw away a game.</li>

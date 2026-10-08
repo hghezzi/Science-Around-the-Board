@@ -69,10 +69,8 @@ export function describeDelivery(rows) {
   if (cfg.resultsUrl) to.push(COLLECTOR.test(cfg.resultsUrl) ? `the results collector at ${cfg.resultsUrl}` : `the web address ${cfg.resultsUrl} (not a recognised Apps Script collector)`);
   if (cfg.instructorEmail) to.push(`an email to ${cfg.instructorEmail} (students attach the file)`);
   const where = to.length ? to.join(" and ") : "nowhere; students only download the results file (CSV)";
-  // The end screen blocks only Send and Email while names are missing; Download always works.
-  const names = !cfg.askNames ? "optional"
-    : to.length ? "required before Send or Email (Download is never blocked)"
-      : "marked required, but Download isn't blocked, so students can skip it";
+  // The end screen keeps Send, Email and Download disabled while required names are missing.
+  const names = cfg.askNames ? "required before Send, Email or Download" : "optional";
   const course = cfg.course ? ` Course label: ${cfg.course}.` : "";
   return `Results are sent to: ${where}. Name/ID field: ${names}.${course}`;
 }

@@ -221,7 +221,7 @@ OPTION_REFERENCE = [
     re.compile(r"\b(?:todas|ninguna|nenhuma)\s+(?:(?:de|das|dos)\s+)?(?:(?:las|as|os)\s+)?(?:anteriores|opciones|alternativas)\b", re.I),
 ]
 TEXT_CELLS = ["question", "option1", "option2", "option3", "option4", "explanation", "answer"]
-ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"]
+ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"]  # mirrors ROMAN_NUMERALS in src/questionFormats.js
 
 
 def js_round(x):
@@ -284,29 +284,19 @@ def text_accepts(response, answers):
         if got == want or got.replace(" ", "") == want.replace(" ", ""):
             return True
         digits = lambda t: re.sub(r"[^0-9]", "", t)  # noqa: E731
+        romans = lambda t: " ".join(w for w in t.split(" ") if w in ROMAN)  # noqa: E731
         if (len(want) >= TYPO_MIN_LENGTH and got[0] == want[0] and digits(got) == digits(want)
+                and romans(got) == romans(want)
                 and abs(len(got) - len(want)) <= 1 and edit_distance(got, want) <= 1):
             return True
     return False
-
-
-def roman_variants(answers):
-    """The row's accepted answers with each Roman numeral swapped for another ("type ii" for "type i")."""
-    out = []
-    for a in answers:
-        tokens = normalize_text(a).split(" ")
-        for k, tok in enumerate(tokens):
-            if tok not in ROMAN:
-                continue
-            out.extend(" ".join(tokens[:k] + [r] + tokens[k + 1:]) for r in ROMAN if r != tok)
-    return out
 
 
 def text_near_miss(r, terms):
     """First near miss the game would also accept (mirror of textNearMiss in src/itemQuality.js).
 
     Another term from the file one letter different from an accepted answer ("adsorption"
-    for "absorption"), or a Roman-numeral neighbour ("type ii" for "type i"). Terms that
+    for "absorption"). Numbers and Roman numerals must match exactly in the game. Terms that
     only add or drop a letter ("safer" for "safe") are left alone.
     """
     answers = [a.strip() for a in str(r.get("answer") or "").split("|") if a.strip()]
@@ -318,7 +308,6 @@ def text_near_miss(r, terms):
         return any(c == a or c.replace(" ", "") == a.replace(" ", "") for a in own)
 
     candidates = [c for c in (normalize_text(t) for t in terms) if any(len(a) == len(c) for a in own)]
-    candidates += roman_variants(answers)
     seen = set()
     for c in candidates:
         if not c or c in seen:
@@ -578,7 +567,7 @@ def check_item_quality(rows, games=None):
     if long_items:
         warnings.append(f"Correct answer much longer than the other options ({fmt_num(LONG_RATIO)}× their average length or more): {summarize(long_items)}. Students can pick it without knowing the content; make the distractors just as detailed, or trim the correct answer.")
     if near_misses:
-        warnings.append(f"Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: {summarize(near_misses)}. Use multiple choice when two terms differ by one letter or numeral (Type I and Type II, absorption and adsorption), or add the other spelling to the accepted answers if it is also correct.")
+        warnings.append(f"Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: {summarize(near_misses)}. Use multiple choice when two terms differ by one letter (absorption and adsorption), or add the other spelling to the accepted answers if it is also correct.")
 
     # Statistical cues: per game when the file has several, otherwise for the whole file.
     total = tally_cues(facts)
@@ -640,13 +629,8 @@ def describe_delivery(rows):
     if cfg["instructorEmail"]:
         to.append(f"an email to {cfg['instructorEmail']} (students attach the file)")
     where = " and ".join(to) if to else "nowhere; students only download the results file (CSV)"
-    # The end screen blocks only Send and Email while names are missing; Download always works.
-    if not cfg["askNames"]:
-        names = "optional"
-    elif to:
-        names = "required before Send or Email (Download is never blocked)"
-    else:
-        names = "marked required, but Download isn't blocked, so students can skip it"
+    # The end screen keeps Send, Email and Download disabled while required names are missing.
+    names = "required before Send, Email or Download" if cfg["askNames"] else "optional"
     course = f" Course label: {cfg['course']}." if cfg["course"] else ""
     return f"Results are sent to: {where}. Name/ID field: {names}.{course}"
 

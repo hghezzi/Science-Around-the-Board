@@ -169,9 +169,9 @@ Multiple choice is the default, but the `format` column unlocks other question t
 | `multi` (select all) | options, `correctIndex` such as `1,3` | Checkboxes and Submit | the selection matches exactly |
 | `numeric` | `answer`, optional `tolerance` | A number box | the answer is within tolerance |
 | `order` | options written **in the correct order** | A shuffled list with ↑/↓ arrows | the order matches exactly |
-| `text` (short answer) | `answer` with alternatives separated by `\|` | A text box | it matches an accepted answer (case, accents and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter or a number) |
+| `text` (short answer) | `answer` with alternatives separated by `\|` | A text box | it matches an accepted answer (case, accents and punctuation are ignored, and one small typo is forgiven in answers of 8+ characters, but never in the first letter, a number or a Roman numeral) |
 
-Tips: the game already shows "Select all that apply." under multi-select questions, so vary how many options are correct (1 to 4) rather than hinting at it. State units and rounding in numeric prompts; students type a bare number ("12", not "12 kg"). Keep short answers to one to three words, list every reasonable synonym, and use multiple choice when one letter or numeral turns the answer into a different term (Type I and Type II): the typo rule would accept it.
+Tips: the game already shows "Select all that apply." under multi-select questions, so vary how many options are correct (1 to 4) rather than hinting at it. State units and rounding in numeric prompts; a unit typed after the number is accepted ("12 kg" counts as 12). Keep short answers to one to three words, list every reasonable synonym, and use multiple choice when one letter turns a long answer into a different term (absorption and adsorption): the typo rule would accept it. Numbers and Roman numerals never get the typo allowance, so "Type II" is never accepted for "Type I".
 
 #### Config rows (optional settings)
 
@@ -182,7 +182,7 @@ Rows with `type` = `config` are not questions: they set up how results reach you
 | `results_url` | the Web app URL of your results collector | adds **Send results to instructor** to the end screen (see [Collecting results](#collecting-results)) |
 | `instructor_email` | your email address | adds **Email results to instructor** |
 | `course` | e.g. BIOL 301 – Week 5 | labels the results in your Sheet and in the email |
-| `ask_names` | `yes` or `no` | whether names or student IDs must be typed before **Send** or **Email** (the boxes are always shown; **Download** is never blocked); the default is yes when results are sent or emailed |
+| `ask_names` | `yes` or `no` | whether names or student IDs must be typed before **Send**, **Email** or **Download** (the boxes are always shown); the default is yes when results are sent or emailed |
 
 Config rows apply to the whole file, whatever topic and module students pick. The file check flags links and addresses that won't work.
 
@@ -424,7 +424,7 @@ On the end screen, students type the names or student IDs of everyone playing as
 | **Email** | click **Email results to instructor**: the results file downloads and their email app opens a draft addressed to you; they attach the file and send it | an `instructor_email` config row |
 | **Download** (always available) | click **Download results (CSV)** and submit the file where you ask, for example on your course page | nothing |
 
-When a results link or email address is set, names are required before **Send** or **Email** (add an `ask_names` row set to `no` to make them optional). **Download** always works, even with the boxes empty, so if you collect downloaded files, ask students to type their names or IDs before downloading. The game can't insist on student numbers rather than names; say which you want.
+When a results link or email address is set, names are required before **Send**, **Email** or **Download** (add an `ask_names` row set to `no` to make them optional). With download-only results, add an `ask_names` row set to `yes` if you want names in every file you collect. The game can't insist on student numbers rather than names; say which you want.
 
 **Setting up the Google Sheet collector**
 
@@ -551,9 +551,11 @@ Welcome to the board, and have a great session!
 **October 2026 (update 7): question-writer skill and file checker**
 
 - **A safer, more faithful question-writer skill.** It now follows your materials closely (notation, examples, conventions), raises errors it finds in your notes, checks every number and code snippet, and keeps to ground rules on student data, copyright, live exams, hidden instructions in uploaded files and sensitive topics. See *Generating questions with Claude*.
-- **New file checks:** answer cues for each game in a file and for the milestone exams; cells that a spreadsheet would turn into a formula or strip of an apostrophe; select-all questions that always have the same number of correct options; short answers the typo rule could confuse (Type I/II); and a Google Form or Sheet link given instead of the collector's link (now a red item).
+- **New file checks:** answer cues for each game in a file and for the milestone exams; cells that a spreadsheet would turn into a formula or strip of an apostrophe; select-all questions that always have the same number of correct options; short answers the typo rule could confuse (absorption/adsorption); and a Google Form or Sheet link given instead of the collector's link (now a red item).
 - **"Results are sent to"** is the new last line of the check: it says where results go and whether names are required.
-- **Names and Download:** the guide now says plainly that `ask_names` holds back **Send** and **Email**, never **Download**.
+- **Short answers: Roman numerals count like numbers.** A typo is never forgiven in a Roman numeral, so "Type II error" is no longer accepted for "Type I error" (nor Photosystem I for II).
+- **Numeric answers accept a unit:** "12 kg", "0.5 mL" or "25 °C" counts as the number.
+- **Required names now hold back Download too.** With `ask_names` on (the default when results are sent or emailed), **Send**, **Email** and **Download** stay disabled until every player's names or IDs are typed.
 - **Updated counts table** for 45-, 60- and 90-minute sessions (see *How many questions?*).
 - **Demo file:** nine cells were retyped so they survive a round trip through Excel or Google Sheets. No question or answer changed.
 - **End game and Exit session ask first.** Both now open a yes/no confirmation (**Yes, end the game** / **No, keep playing**, and **Yes, leave** / **No, stay in the game**), so a stray click can't end or throw away a game.

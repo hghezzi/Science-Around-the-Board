@@ -242,8 +242,9 @@ describe("other answer cues", () => {
       text("digits", "type 1 diabetes"),
     ]);
     const w = r.warnings.join("\n");
-    expect(w).toMatch(/Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: "roman" \("type ii error"\), "swap" \("adsorption"\)\. Use multiple choice/);
-    expect(w).not.toMatch(/"plural"|"fine"|"digits"/);
+    expect(w).toMatch(/Short-answer question would also accept a different term, because the game forgives one typo in answers of 8 or more letters: "swap" \("adsorption"\)\. Use multiple choice/);
+    // The game never forgives a typo in a number or a Roman numeral, so these are safe.
+    expect(w).not.toMatch(/"roman"|"plural"|"fine"|"digits"/);
   });
 });
 
@@ -421,7 +422,7 @@ describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_ts
   it("exercises every new check on the broken file", () => {
     const js = validateQuestionRows(parseTsv(broken), parseTsvHeaders(broken));
     const all = [...js.errors, ...js.warnings].join("\n");
-    [/Spreadsheet error value/, /Cell starts with/, /would also accept a different term.*"roman" \("photosystem ii"\), "swap" \("adsorption"\)/,
+    [/Spreadsheet error value/, /Cell starts with/, /would also accept a different term[^\n]*: "swap" \("adsorption"\)\./,
       /\[Topic \/ One\] Select-all cue/, /\[Topic \/ One\] Absolute-word cue/, /Cell starts with an apostrophe \('\): "apos"/,
       /Option refers to other options .*"todas"/, /\[Topic \/ One\] Length cue in the milestone questions: always picking the longest option would answer only \d+% of the 15/,
       /\[Topic \/ One\] The board needs 4 themes/, /Invalid tolerance/, /Unknown format/, /Duplicate id/, /ask_names" should be yes or no/]

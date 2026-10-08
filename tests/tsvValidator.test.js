@@ -170,11 +170,11 @@ describe("results delivery line", () => {
   it("says when results are only downloaded, and that Download never waits for names", () => {
     expect(delivery()).toBe("Results are sent to: nowhere; students only download the results file (CSV). Name/ID field: optional.");
     // The end screen marks the field required but never disables Download (App.jsx SummaryView).
-    expect(delivery(["ask_names", "yes"])).toBe("Results are sent to: nowhere; students only download the results file (CSV). Name/ID field: marked required, but Download isn't blocked, so students can skip it.");
+    expect(delivery(["ask_names", "yes"])).toBe("Results are sent to: nowhere; students only download the results file (CSV). Name/ID field: required before Send, Email or Download.");
   });
 
   it("names the collector and email the game will use, and when names are required", () => {
-    expect(delivery(["instructor_email", "prof@uni.edu"])).toBe("Results are sent to: an email to prof@uni.edu (students attach the file). Name/ID field: required before Send or Email (Download is never blocked).");
+    expect(delivery(["instructor_email", "prof@uni.edu"])).toBe("Results are sent to: an email to prof@uni.edu (students attach the file). Name/ID field: required before Send, Email or Download.");
     expect(delivery(["results_url", "https://script.google.com/macros/s/X/exec"], ["ask_names", "no"], ["course", "BIOL 1"]))
       .toBe("Results are sent to: the results collector at https://script.google.com/macros/s/X/exec. Name/ID field: optional. Course label: BIOL 1.");
     expect(delivery(["results_url", "https://script.google.com/a/macros/uni.edu/s/X/exec"])).toMatch(/^Results are sent to: the results collector at /);
