@@ -141,8 +141,16 @@ If you use Science Around the Board in teaching or research, please cite it as (
 
 ## License
 
-© Hans Ghezzi. Licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/) (see [LICENSE](LICENSE)).
+© Hans Ghezzi. Science Around the Board is **free for teaching, learning, research and other noncommercial use**. See [LICENSE](LICENSE) for the details.
 
-You are free to use, adapt and share Science Around the Board for **educational and other non-commercial purposes**. You must credit the original author (Hans Ghezzi) and share any adaptations under the same license. **Commercial use requires prior written permission** from the author; contact Hans Ghezzi through [GitHub](https://github.com/hghezzi).
+| Part | License |
+| :--- | :--- |
+| Code (`src/`, `scripts/`, `tests/`, tools and configuration) | [PolyForm Noncommercial 1.0.0](LICENSES/PolyForm-Noncommercial-1.0.0.md) |
+| Content (guides, question files, images, the question-writer skill's instructions) | [CC BY-NC-SA 4.0](LICENSES/CC-BY-NC-SA-4.0.txt) |
+| Question files and results you make yourself | Yours |
 
-[![License: CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+- Schools, universities, charities and public research organizations may use, adapt and host the game, whatever their funding.
+- Credit the original author (Hans Ghezzi) and keep the `LICENSE` file with any copy.
+- **Commercial use** (selling it, hosting it for paying customers, or building it into a paid product or service) **needs a separate license**. Contact Hans Ghezzi through [GitHub](https://github.com/hghezzi).
+- The name "Science Around the Board" identifies the original project; please use another name for a modified version.
+- Copies obtained before October 2026 remain under CC BY-NC-SA 4.0 alone.
