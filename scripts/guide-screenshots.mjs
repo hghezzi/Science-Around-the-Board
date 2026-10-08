@@ -144,6 +144,7 @@ async function captureSummary() {
   await survey("Start Game");
   await p.click('button:has-text("Got it")'); // the quick rules a new game opens with
   await p.click('button:has-text("End game")');
+  await p.click('button:has-text("Yes, end the game")');
   await p.click('button:has-text("CONTINUE TO POST-SURVEY")');
   await survey("Finish Surveys");
   await p.getByText("Session complete").waitFor();
@@ -223,6 +224,7 @@ try {
     }
   }
   await page.click('button:has-text("End game")');
+  await page.click('button:has-text("Yes, end the game")');
   await shot("09-standings");
   await captureSummary();
   await captureOnline();

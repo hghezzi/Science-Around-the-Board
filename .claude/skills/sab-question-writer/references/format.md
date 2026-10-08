@@ -77,7 +77,7 @@ Tips:
 | core | 6 | 8 | 10 | shared by 4 tiles |
 | mishap | 6 | 8 | 8 | variety keeps wildcard tiles fun |
 
-Whatever the length: **survey** 15 rows for 1–2 players and 20 for 3–4 (each player draws 10, and a bigger pool varies the sets between players), and **confidence** 4–5 statements (one per theme, plus the core skill if it is an LO; up to 8 when there are more LOs, see SKILL.md §3).
+Whatever the length: **survey** 15 rows for 1–2 players and 20 for 3–4 (each player draws 10, and a bigger pool varies the sets between players), and **confidence** (optional; ask the instructor) 4–5 statements (one per theme, plus the core skill if it is an LO; up to 8 when there are more LOs, see SKILL.md §3).
 
 Use the nearest column and interpolate for other lengths. The numbers assume roughly one turn per minute for the whole table. Players share one computer and take turns, so the number of questions asked depends on time, not on player count; player count only changes the survey pool. The game prefers unseen questions and asks a missed one again later, so some repetition is deliberate.
 

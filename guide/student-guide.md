@@ -123,8 +123,8 @@ If your cash drops below $0, the game helps you recover:
 
 **This part counts: your instructor needs your results file.**
 
-1. When the timer ends, or when your instructor says so, click **End game** (top right). The **Final Standings** show the winner. Then click **Continue to post-survey**.
-   - Don't click **Exit session** unless you really want to quit, because it throws away this game and its results.
+1. When the timer ends, or when your instructor says so, click **End game** (top right), then **Yes, end the game**. The **Final Standings** show the winner. Then click **Continue to post-survey**.
+   - Don't click **Exit session** unless you really want to quit, because it throws away this game and its results. Both buttons ask first: answer **No** to carry on playing.
 2. **Post-game survey:** each player answers the same sliders and questions as before. The last player clicks **Finish Surveys**.
 3. On the **Session complete** screen, type the **names or student IDs** of everyone who played as your player.
 4. Hand in your results the way your instructor asked:

@@ -406,7 +406,7 @@ If a player’s balance goes negative:
 
 ## Endgame dynamics
 
-The game ends when only one player is left standing, when the session timer runs out (the timer turns orange in the last 5 minutes), or when a player clicks **End game**. A **Final Standings** screen ranks the players by net worth and names the winner. After **End game**, players can still go **Back to game** if they clicked it by mistake; **Continue to post-survey** moves on.
+The game ends when only one player is left standing, when the session timer runs out (the timer turns orange in the last 5 minutes), or when a player clicks **End game** and confirms with **Yes, end the game**. A **Final Standings** screen ranks the players by net worth and names the winner. After **End game**, players can still go **Back to game** if they clicked it by mistake; **Continue to post-survey** moves on.
 
 ![Final standings](images/09-standings.png)
 
@@ -556,6 +556,8 @@ Welcome to the board, and have a great session!
 - **Names and Download:** the guide now says plainly that `ask_names` holds back **Send** and **Email**, never **Download**.
 - **Updated counts table** for 45-, 60- and 90-minute sessions (see *How many questions?*).
 - **Demo file:** nine cells were retyped so they survive a round trip through Excel or Google Sheets. No question or answer changed.
+- **End game and Exit session ask first.** Both now open a yes/no confirmation (**Yes, end the game** / **No, keep playing**, and **Yes, leave** / **No, stay in the game**), so a stray click can't end or throw away a game.
+- **The question-writer skill asks about confidence sliders:** whether you want them at all, and which skills they cover (it drafts 4–5 from your learning objectives for you to keep, edit or drop).
 
 **October 2026 (update 6): online play (beta)**
 
