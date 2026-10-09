@@ -482,6 +482,54 @@ async function bankruptScenario() {
   await context.close();
 }
 
+// Pressing Enter to submit a typed answer must not also press the next button:
+// the explanation stays on screen, and a right answer doesn't buy the tile by itself.
+// Every property question becomes numeric (answer 7) and the dice roll 1 + 1.
+async function enterScenario() {
+  console.log("▶ Enter keeps the explanation on screen");
+  for (const typed of ["1", "7"]) {
+    const { context, page } = await newPage();
+    await page.addInitScript(() => { Math.random = () => 0; });
+    await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+      const response = await route.fetch();
+      const lines = (await response.text()).replace(/\s+$/, "").split(/\r?\n/);
+      const header = lines[0].split("\t");
+      const col = Object.fromEntries(header.map((h, i) => [h, i]));
+      const body = lines.slice(1).map((l) => {
+        const c = l.split("\t");
+        if (c[col.type] !== "property") return l;
+        c[col.format] = "numeric"; c[col.answer] = "7"; c[col.tolerance] = "";
+        return c.join("\t");
+      });
+      await route.fulfill({ response, body: `${[lines[0], ...body].join("\r\n")}\r\n` });
+    });
+    await openDemo(page);
+    await setupGame(page, 2);
+    await doSurvey(page, 2, "enter pre");
+    await gameStarted(page);
+    await page.getByRole("button", { name: /^Roll/ }).click();
+    const dialog = page.locator(".MuiModal-root").last();
+    const input = dialog.locator('input[aria-label="Answer"]');
+    await input.waitFor({ timeout: 10000 });
+    const cash = async () => (await page.getByText(/Red Player's turn/).locator("..").innerText()).match(/\$[\d,]+/)?.[0];
+    const before = await cash();
+    await input.fill(typed);
+    await input.press("Enter");
+    await page.waitForTimeout(800);
+    const label = typed === "7" ? "enter (right answer)" : "enter (wrong answer)";
+    if (!(await dialog.getByText(/^Why$/).count())) fail(`${label}: the explanation is gone after pressing Enter`);
+    if (typed === "7") {
+      if (!(await dialog.getByRole("button", { name: /^Buy\b/ }).count())) fail(`${label}: the buy choice was skipped`);
+      if ((await cash()) !== before) fail(`${label}: money changed (${before} → ${await cash()}) without a choice`);
+    } else if (!(await dialog.getByRole("button", { name: /^Continue$/ }).count())) fail(`${label}: the result screen was skipped`);
+    // A second Enter (focus is on the explanation, not a button) still does nothing.
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(500);
+    if (!(await dialog.getByText(/^Why$/).count())) fail(`${label}: a second Enter skipped the explanation`);
+    await context.close();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // ONLINE PLAY: a host and two guest devices, through a local signalling server
 // (the public one can't be reached from CI). Covers the lobby, surveys on each
@@ -693,6 +741,7 @@ async function onlineScenario() {
 
 const SCENARIOS = {
   debt: debtScenario,
+  enter: enterScenario,
   bankrupt: bankruptScenario,
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),

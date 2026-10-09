@@ -225,7 +225,8 @@ export default function QuestionInput({
         disabled={locked}
         value={locked ? String(reveal.response ?? "") : response}
         onChange={(e) => update(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+        // preventDefault: the same key press must not also press the next screen's button.
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
         placeholder={format === "numeric" ? "e.g. 42" : "Your answer"}
         slotProps={{ htmlInput: { inputMode: format === "numeric" ? "decimal" : "text", "aria-label": "Answer" } }}
         sx={locked ? {

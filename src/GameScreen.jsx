@@ -1121,7 +1121,7 @@ export default function GameScreen({
               })}
               {quizState.waiting && (
                 <OutcomePanel feedback={{ tone: quizState.isCorrect ? 'good' : 'bad', title: quizState.isCorrect ? 'Correct!' : 'Not quite', explanation: quizState.questions[quizState.qIndex].explanation || '' }}>
-                  <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
+                  <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
                     {quizState.qIndex < quizState.questions.length - 1 ? 'Next question' : 'Finish quiz'}
                   </Button>
                 </OutcomePanel>
@@ -1131,7 +1131,7 @@ export default function GameScreen({
 
           {modalStage === 'GRANT_RESULT' && (
             <OutcomePanel feedback={feedback} titleId={TITLE_ID} big>
-              <Button fullWidth size="large" variant="contained" autoFocus onClick={passTurn}>Keep playing</Button>
+              <Button fullWidth size="large" variant="contained" onClick={passTurn}>Keep playing</Button>
             </OutcomePanel>
           )}
 
@@ -1296,7 +1296,7 @@ export default function GameScreen({
                     detail: over ? 'That was your second mistake, so the exam ends here.' : (!quizState.isCorrect ? 'One mistake used. One more ends the exam.' : ''),
                     explanation: quizState.questions[quizState.qIndex].explanation || '',
                   }}>
-                    <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
+                    <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
                       {over || last ? 'Finish exam' : 'Next question'}
                     </Button>
                   </OutcomePanel>
@@ -1353,8 +1353,8 @@ export default function GameScreen({
                     </Typography>
                     {!canAfford && <Alert severity="warning" sx={{ mt: 1.5 }}>Not enough cash to buy this tile.</Alert>}
                     <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
-                      <Button fullWidth size="large" variant="contained" autoFocus={canAfford} aria-describedby={OUTCOME_ID} onClick={handleBuy} disabled={!canAfford}>{LABELS.buy} for {money(tile.price)}</Button>
-                      <Button fullWidth size="large" variant="outlined" autoFocus={!canAfford} onClick={passTurn}>{LABELS.skip}</Button>
+                      <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={handleBuy} disabled={!canAfford}>{LABELS.buy} for {money(tile.price)}</Button>
+                      <Button fullWidth size="large" variant="outlined" onClick={passTurn}>{LABELS.skip}</Button>
                     </Box>
                   </Box>
                 </OutcomePanel>
@@ -1399,12 +1399,12 @@ export default function GameScreen({
                   <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 1.5 }}>{resultHeading()}</Typography>
                   {renderAnswered()}
                   <OutcomePanel feedback={feedback}>
-                    <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={passTurn}>Continue</Button>
+                    <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={passTurn}>Continue</Button>
                   </OutcomePanel>
                 </>
               ) : (
                 <OutcomePanel feedback={feedback} titleId={TITLE_ID} big>
-                  <Button fullWidth size="large" variant="contained" autoFocus onClick={passTurn}>Continue</Button>
+                  <Button fullWidth size="large" variant="contained" onClick={passTurn}>Continue</Button>
                 </OutcomePanel>
               )}
             </>
@@ -1656,13 +1656,31 @@ function Stakes({ good, bad }) {
   );
 }
 
-/** Result of an answer or event, with the explanation (the teaching moment) and the next action. */
+// Buttons under a result ignore input this long after it appears: a held key or a
+// double click can't skip the explanation.
+const OUTCOME_ARM_MS = 400;
+
+/**
+ * Result of an answer or event, with the explanation (the teaching moment) and the next action.
+ * Keyboard focus lands on the result itself, never on its buttons: a key press that
+ * submitted the answer can't also press Continue or Buy, and screen readers read the
+ * explanation first. Tab reaches the buttons.
+ */
 function OutcomePanel({ feedback, titleId, big = false, children }) {
+  const panelRef = useRef(null);
+  const [armed, setArmed] = useState(false);
+  const shown = Boolean(feedback);
+  useEffect(() => {
+    if (!shown) return undefined;
+    panelRef.current?.focus({ preventScroll: true });
+    const id = setTimeout(() => setArmed(true), OUTCOME_ARM_MS);
+    return () => clearTimeout(id);
+  }, [shown]);
   if (!feedback) return children || null;
   const tone = feedback.tone || 'neutral';
   const c = tone === 'good' ? 'success' : tone === 'bad' ? 'error' : 'info';
   return (
-    <Box sx={{ mt: big ? 0 : 2.5, p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: '2px solid', borderColor: `${c}.main`, bgcolor: 'action.hover' }}>
+    <Box ref={panelRef} tabIndex={-1} role="group" aria-labelledby={OUTCOME_ID} sx={{ mt: big ? 0 : 2.5, p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: '2px solid', borderColor: `${c}.main`, bgcolor: 'action.hover', '&:focus': { outline: 'none' }, '&:focus-visible': { outline: '3px solid', outlineColor: `${c}.main`, outlineOffset: 2 } }}>
       <Box id={OUTCOME_ID} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
         <motion.div initial={{ scale: 0.4, rotate: -25 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 14 }}>
           <Box aria-hidden sx={{ width: big ? 48 : 40, height: big ? 48 : 40, borderRadius: '50%', bgcolor: `${c}.main`, color: `${c}.contrastText`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: big ? 26 : 22 }}>
@@ -1681,7 +1699,7 @@ function OutcomePanel({ feedback, titleId, big = false, children }) {
         </Box>
       )}
       {feedback.note && <Alert severity="warning" sx={{ mt: 2 }}>{feedback.note}</Alert>}
-      {children && <Box sx={{ mt: 2.5 }}>{children}</Box>}
+      {children && <Box inert={!armed} sx={{ mt: 2.5 }}>{children}</Box>}
     </Box>
   );
 }
