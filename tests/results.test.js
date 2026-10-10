@@ -29,15 +29,15 @@ describe("toCsv", () => {
 describe("resultsFilename", () => {
   it("names the file after the topic, module, date and time", () => {
     const name = resultsFilename("16S", "QIIME 2 / Week 3", new Date(2026, 9, 5, 9, 7));
-    expect(name).toBe("sab_results_16s_qiime-2-week-3_2026-10-05_0907.csv");
+    expect(name).toBe("lab_results_16s_qiime-2-week-3_2026-10-05_0907.csv");
   });
 
   it("drops accents instead of mangling the topic name", () => {
-    expect(resultsFilename("Biología", "Célula", new Date(2026, 0, 2, 13, 45))).toBe("sab_results_biologia_celula_2026-01-02_1345.csv");
+    expect(resultsFilename("Biología", "Célula", new Date(2026, 0, 2, 13, 45))).toBe("lab_results_biologia_celula_2026-01-02_1345.csv");
   });
 
   it("falls back to 'game' without a topic", () => {
-    expect(resultsFilename("", null, new Date(2026, 0, 2, 13, 45))).toBe("sab_results_game_2026-01-02_1345.csv");
+    expect(resultsFilename("", null, new Date(2026, 0, 2, 13, 45))).toBe("lab_results_game_2026-01-02_1345.csv");
   });
 });
 
@@ -70,9 +70,9 @@ describe("summarizeTeams", () => {
 describe("buildMailto", () => {
   it("addresses the instructor and mentions the file to attach", () => {
     const summary = summarizeTeams({ playerCount: 1, members: ["Ana Lee"] });
-    const link = buildMailto({ to: "a@b.edu", course: "BIOL 101", summary, filename: "sab_results_x.csv" });
+    const link = buildMailto({ to: "a@b.edu", course: "BIOL 101", summary, filename: "lab_results_x.csv" });
     expect(link.startsWith("mailto:a@b.edu?subject=")).toBe(true);
-    expect(link).toContain(encodeURIComponent("sab_results_x.csv"));
+    expect(link).toContain(encodeURIComponent("lab_results_x.csv"));
     expect(decodeURIComponent(link)).toContain("Solo Player (Ana Lee)");
   });
 });

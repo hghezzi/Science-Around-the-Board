@@ -19,8 +19,8 @@ startServiceWorker()
 // Keep the browser's install prompt so the start page can offer "Install as an app".
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault()
-  window.__sabInstallPrompt = e
-  window.dispatchEvent(new Event('sab-install-available'))
+  window.__labInstallPrompt = e
+  window.dispatchEvent(new Event('lab-install-available'))
 })
 
 createRoot(document.getElementById('root')).render(

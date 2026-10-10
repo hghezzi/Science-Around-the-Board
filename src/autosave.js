@@ -1,7 +1,7 @@
 // src/autosave.js
 // Best-effort session autosave in this browser (localStorage), so an accidental
 // refresh doesn't lose the game. Cleared on "Back to main menu"/"Exit session".
-const KEY = "sab-autosave-v1";
+const KEY = "lab-autosave-v1";
 const MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 export function saveSnapshot(snapshot) {

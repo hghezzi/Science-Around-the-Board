@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Build the guides from their Markdown sources in guide/:
-//   guide/instructor-guide.md → public/guide/index.html    + public/SAB_Instructor_Guide.pdf
-//   guide/student-guide.md    → public/guide/students.html + public/SAB_Student_Guide.pdf
+//   guide/instructor-guide.md → public/guide/index.html    + public/LAB_Instructor_Guide.pdf
+//   guide/student-guide.md    → public/guide/students.html + public/LAB_Student_Guide.pdf
 // The images in guide/images/ are copied to public/guide/images/.
 // Run via `npm run guide` (which also refreshes the screenshots).
 //
@@ -21,18 +21,18 @@ const DOCS = [
   {
     src: "guide/instructor-guide.md",
     out: "index.html",
-    pdf: "public/SAB_Instructor_Guide.pdf",
+    pdf: "public/LAB_Instructor_Guide.pdf",
     title: "Instructor Guide",
     printCss: "figure img { max-height: 105mm; }",
-    description: "How to design, run and assess a Science Around the Board review session.",
+    description: "How to design, run and assess a Learn Around the Board review session.",
   },
   {
     src: "guide/student-guide.md",
     out: "students.html",
-    pdf: "public/SAB_Student_Guide.pdf",
+    pdf: "public/LAB_Student_Guide.pdf",
     title: "Student Guide",
     printCss: "body { font-size: 10.5pt; } figure, .toc { display: none; } h2 { margin-top: 1.1em; }", // a short handout
-    description: "How to play Science Around the Board and hand in your results.",
+    description: "How to play Learn Around the Board and hand in your results.",
   },
 ];
 // Markdown file name → published page, for links between the guides.
@@ -90,7 +90,7 @@ function render(doc) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${doc.title} – Science Around the Board</title>
+<title>${doc.title} – Learn Around the Board</title>
 <meta name="description" content="${doc.description}">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <style>
@@ -168,7 +168,7 @@ for (const doc of DOCS) {
     printBackground: true,
     displayHeaderFooter: true,
     headerTemplate: "<span></span>",
-    footerTemplate: `<div style="font-size:8px;width:100%;text-align:center;color:#666;">Science Around the Board · ${doc.title}${updated ? ` · ${updated}` : ""} · <span class="pageNumber"></span>/<span class="totalPages"></span></div>`,
+    footerTemplate: `<div style="font-size:8px;width:100%;text-align:center;color:#666;">Learn Around the Board · ${doc.title}${updated ? ` · ${updated}` : ""} · <span class="pageNumber"></span>/<span class="totalPages"></span></div>`,
   });
   await page.close();
   console.log(`Wrote ${doc.pdf}`);

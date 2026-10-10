@@ -62,7 +62,7 @@ describe("quick rules", () => {
     expect(solo).not.toContain("Chaos tokens");
     expect(solo).not.toContain("Winning");
     expect(rulesFor(3)).toEqual(RULES);
-    expect(rulesFor().length).toBe(RULES.length + 2); // the start page shows both
+    expect(rulesFor().length).toBe(RULES.length + 3); // the start page shows solo and bot rules too
   });
 });
 

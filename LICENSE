@@ -1,7 +1,7 @@
-Science Around the Board
+Learn Around the Board
 Copyright (c) 2025-2026 Hans Ghezzi. All rights not granted below are reserved.
 
-Required Notice: Copyright Hans Ghezzi (https://github.com/hghezzi/Science-Around-the-Board)
+Required Notice: Copyright Hans Ghezzi (https://github.com/hghezzi/Learn-Around-the-Board)
 
 This project is free for teaching, learning, research and other noncommercial
 use. It is offered under two licenses, one for the software and one for the
@@ -31,7 +31,7 @@ written and teaching content.
    - the question files and their images (*.tsv, *.lock, public/examples/,
      public/questionImages/, guide/images/, MICB_475_2026_Workshop/);
    - the question-writer skill's instructions (SKILL.md and references/ in
-     .claude/skills/sab-question-writer/ and in its plugin copy).
+     .claude/skills/lab-question-writer/ and in its plugin copy).
 
 3. YOUR OWN QUESTION FILES
    Question files and results that instructors and students make with the
@@ -48,6 +48,6 @@ written and teaching content.
    2026) remain available under CC BY-NC-SA 4.0 alone, as they were
    published.
 
-The names "Science Around the Board" and "SAB" and the project's logo
+The names "Learn Around the Board" and "LAB" and the project's logo
 identify the original project. Neither license grants permission to use them
 for a modified version or a commercial product.

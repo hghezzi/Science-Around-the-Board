@@ -19,7 +19,7 @@ body:
     id: fit
     attributes:
       label: Fit with the project
-      description: SAB stays free, zero-install and privacy-preserving, and works for any subject.
+      description: LAB stays free, zero-install and privacy-preserving, and works for any subject.
       options:
         - label: It works without accounts or a server.
         - label: It isn't specific to one subject (or it can come from the question file).

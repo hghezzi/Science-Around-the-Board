@@ -6,8 +6,8 @@
 // its cookies; nothing is loaded again on later visits.
 
 export const GA_ID = "G-B2Z5WS4KQR";
-const KEY = "sab-analytics-consent"; // "granted" | "denied"
-export const CONSENT_RESET_EVENT = "sab-consent-reset";
+const KEY = "lab-analytics-consent"; // "granted" | "denied"
+export const CONSENT_RESET_EVENT = "lab-consent-reset";
 
 export function getConsent() {
   try {

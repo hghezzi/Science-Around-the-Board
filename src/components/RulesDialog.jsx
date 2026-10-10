@@ -6,7 +6,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typogra
 import { LABELS, rulesFor } from "../labels";
 import { SR_ONLY } from "../theme";
 
-export default function RulesDialog({ open, onClose, intro = "", playerCount }) {
+export default function RulesDialog({ open, onClose, intro = "", playerCount, bot = false }) {
   return (
     <Dialog open={open} onClose={onClose} aria-labelledby="rules-title" maxWidth="sm" fullWidth>
       <DialogTitle id="rules-title"><span aria-hidden>📖 </span>{LABELS.howToPlay}</DialogTitle>
@@ -14,7 +14,7 @@ export default function RulesDialog({ open, onClose, intro = "", playerCount }) 
       <DialogContent dividers tabIndex={0} role="region" aria-label="Quick rules">
         {intro && <Typography sx={{ mb: 2 }}>{intro}</Typography>}
         <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0, display: "flex", flexDirection: "column", gap: 1.75 }}>
-          {rulesFor(playerCount).map((r) => (
+          {rulesFor(playerCount, bot).map((r) => (
             <Box component="li" key={r.title} sx={{ display: "flex", gap: 1.5 }}>
               <Box aria-hidden sx={{ fontSize: 24, lineHeight: 1.2, width: 32, textAlign: "center", flexShrink: 0 }}>{r.icon}</Box>
               <Box>

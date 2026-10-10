@@ -208,7 +208,7 @@ async function resultsScenario() {
   console.log("▶ results (mock Google Sheet)");
   const { context, page } = await newPage();
   const cfg = (id, value) => [id, value, ...Array(10).fill(""), "config", "", "", "", ""].join("\t");
-  await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+  await page.route("**/examples/16S_QIIME2_demo.tsv", async (route) => {
     const response = await route.fetch();
     const text = (await response.text()).replace(/\s+$/, "");
     const extra = [cfg("results_url", "https://script.google.com/macros/s/TEST/exec"), cfg("instructor_email", "instructor@example.edu"), cfg("course", "Smoke Test 101")];
@@ -255,7 +255,7 @@ async function filesScenario() {
   const { context, page } = await newPage();
   await page.goto(BASE);
   await page.getByRole("button", { name: "No thanks" }).click();
-  const lock = CryptoJS.AES.encrypt(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "Class-Pass").toString();
+  const lock = CryptoJS.AES.encrypt(readFileSync("public/examples/16S_QIIME2_demo.tsv", "utf8"), "Class-Pass").toString();
   await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions.lock", mimeType: "text/plain", buffer: Buffer.from(lock) });
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/Class password/).fill("wrong");
@@ -266,7 +266,7 @@ async function filesScenario() {
   await page.getByText(/Loaded 183 questions/).waitFor({ timeout: 10000 });
   await page.getByRole("button", { name: /Use a different file/ }).click();
   // Files from the current encryptor (PBKDF2 + AES-GCM).
-  const lock2 = await encryptLockFile(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "Class-Pass-2");
+  const lock2 = await encryptLockFile(readFileSync("public/examples/16S_QIIME2_demo.tsv", "utf8"), "Class-Pass-2");
   await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions2.lock", mimeType: "text/plain", buffer: Buffer.from(lock2) });
   await dialog.getByLabel(/Class password/).fill("Class-Pass");
   await dialog.getByRole("button", { name: "Unlock" }).click();
@@ -401,7 +401,7 @@ async function updateScenario() {
 async function debtScenario() {
   console.log("▶ debt after rent (deterministic)");
   const { context, page } = await newPage();
-  const rows = parseTsv(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"));
+  const rows = parseTsv(readFileSync("public/examples/16S_QIIME2_demo.tsv", "utf8"));
   const team = (id, name, color, position, money) => ({ id, name, color, position, money, jailed: false, chaosTokens: 0, rescueUsed: false, eliminated: false });
   const tiles = Array.from({ length: 36 }, (_, i) => [i === 4 ? 1 : i === 9 ? 0 : null, 0]);
   const snapshot = {
@@ -410,7 +410,7 @@ async function debtScenario() {
     game: { tiles, players: [team(0, "Red Player", "#e53935", 2, 20), team(1, "Blue Player", "#1e88e5", 0, 1500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
   };
   await page.addInitScript((s) => {
-    if (!sessionStorage.getItem("seeded")) { localStorage.setItem("sab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
+    if (!sessionStorage.getItem("seeded")) { localStorage.setItem("lab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
     Math.random = () => 0;
   }, JSON.stringify(snapshot));
   await page.goto(BASE);
@@ -435,7 +435,7 @@ async function debtScenario() {
 async function bankruptScenario() {
   console.log("▶ bankruptcy and rescue quiz");
   const { context, page } = await newPage();
-  await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+  await page.route("**/examples/16S_QIIME2_demo.tsv", async (route) => {
     const response = await route.fetch();
     const lines = (await response.text()).replace(/\s+$/, "").split(/\r?\n/);
     const header = lines[0].split("\t");
@@ -479,6 +479,128 @@ async function bankruptScenario() {
     if (!clicked) await page.waitForTimeout(200);
   }
   fail("bankrupt: no team was eliminated after 300 steps");
+  await context.close();
+}
+
+// Pressing Enter to submit a typed answer must not also press the next button:
+// the explanation stays on screen, and a right answer doesn't buy the tile by itself.
+// Every property question becomes numeric (answer 7) and the dice roll 1 + 1.
+async function enterScenario() {
+  console.log("▶ Enter keeps the explanation on screen");
+  for (const typed of ["1", "7"]) {
+    const { context, page } = await newPage();
+    await page.addInitScript(() => { Math.random = () => 0; });
+    await page.route("**/examples/16S_QIIME2_demo.tsv", async (route) => {
+      const response = await route.fetch();
+      const lines = (await response.text()).replace(/\s+$/, "").split(/\r?\n/);
+      const header = lines[0].split("\t");
+      const col = Object.fromEntries(header.map((h, i) => [h, i]));
+      const body = lines.slice(1).map((l) => {
+        const c = l.split("\t");
+        if (c[col.type] !== "property") return l;
+        c[col.format] = "numeric"; c[col.answer] = "7"; c[col.tolerance] = "";
+        return c.join("\t");
+      });
+      await route.fulfill({ response, body: `${[lines[0], ...body].join("\r\n")}\r\n` });
+    });
+    await openDemo(page);
+    await setupGame(page, 2);
+    await doSurvey(page, 2, "enter pre");
+    await gameStarted(page);
+    await page.getByRole("button", { name: /^Roll/ }).click();
+    const dialog = page.locator(".MuiModal-root").last();
+    const input = dialog.locator('input[aria-label="Answer"]');
+    await input.waitFor({ timeout: 10000 });
+    const cash = async () => (await page.getByText(/Red Player's turn/).locator("..").innerText()).match(/\$[\d,]+/)?.[0];
+    const before = await cash();
+    await input.fill(typed);
+    await input.press("Enter");
+    await page.waitForTimeout(800);
+    const label = typed === "7" ? "enter (right answer)" : "enter (wrong answer)";
+    if (!(await dialog.getByText(/^Why$/).count())) fail(`${label}: the explanation is gone after pressing Enter`);
+    if (typed === "7") {
+      if (!(await dialog.getByRole("button", { name: /^Buy\b/ }).count())) fail(`${label}: the buy choice was skipped`);
+      if ((await cash()) !== before) fail(`${label}: money changed (${before} → ${await cash()}) without a choice`);
+    } else if (!(await dialog.getByRole("button", { name: /^Continue$/ }).count())) fail(`${label}: the result screen was skipped`);
+    // A second Enter (focus is on the explanation, not a button) still does nothing.
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(500);
+    if (!(await dialog.getByText(/^Why$/).count())) fail(`${label}: a second Enter skipped the explanation`);
+    await context.close();
+  }
+}
+
+// Solo against the bot: the bot plays its own turns (the student can only watch or
+// skip ahead), and only the student's answers reach the results file.
+async function botScenario() {
+  console.log("▶ solo against the bot");
+  const { context, page } = await newPage();
+  await openDemo(page);
+  await page.getByRole("button", { name: /Continue to game setup/ }).click();
+  await page.getByRole("button", { name: /^16S/ }).click();
+  await page.getByRole("button", { name: /Confirm selection/i }).click();
+  await page.getByRole("button", { name: /^Solo$/ }).click();
+  await page.getByRole("button", { name: /Play against the bot/ }).click();
+  await page.getByRole("button", { name: /^Medium/ }).click();
+  await page.getByRole("button", { name: /Start game/ }).click();
+  await doSurvey(page, 1, "bot pre");
+  await gameStarted(page);
+  let watched = 0, skipped = 0, rolls = 0, sawBotAnswer = false;
+  for (let guard = 0; guard < 900; guard++) {
+    const modal = page.locator(".MuiModal-root").last();
+    if (!(await page.locator(".MuiModal-root").count())) {
+      const roll = page.getByRole("button", { name: /^Roll/ });
+      const ready = (await roll.count()) && (await roll.isEnabled());
+      if (ready && rolls >= 12) break; // the student's turn, between dialogs
+      if (ready) { await roll.click(); rolls++; await page.locator(".MuiModal-root").first().waitFor({ timeout: 10000 }).catch(() => {}); }
+      else await page.waitForTimeout(200);
+      continue;
+    }
+    const text = await modal.innerText();
+    if (/Final Standings/i.test(text)) break;
+    if (/The bot is playing/.test(text)) {
+      watched++;
+      if (/^why$/im.test(text)) sawBotAnswer = true; // innerText is upper-cased like the label
+      // Its buttons are the bot's: the student can't press them.
+      const enabled = await modal.locator("fieldset button:enabled, fieldset input:enabled").count();
+      if (enabled) fail(`bot: ${enabled} control(s) usable by the student during the bot's turn`);
+      // Once the bot's answer and explanation have been seen, skip ahead on every bot turn.
+      if (sawBotAnswer) await modal.getByRole("button", { name: /Skip ahead/ }).click().catch(() => {});
+      else await page.waitForTimeout(400);
+      continue;
+    }
+    if (/Skipping ahead/.test(text)) { skipped++; await page.waitForTimeout(150); continue; }
+    if (await answerQuestion(modal)) continue;
+    let clicked = false;
+    for (const name of DIALOG_BUTTONS) {
+      const button = modal.getByRole("button", { name }).first();
+      if ((await button.count()) && (await button.isEnabled())) { await button.click(); clicked = true; break; }
+    }
+    if (!clicked) await page.waitForTimeout(250);
+  }
+  if (!watched) fail("bot: the bot never played a turn");
+  if (!sawBotAnswer) fail("bot: never saw the bot's answer and explanation");
+  if (!skipped) fail("bot: Skip ahead was never offered");
+  if (!(await page.getByText(/Final Standings/i).count())) {
+    await page.getByRole("button", { name: /^End game$/ }).click();
+    await page.getByRole("button", { name: /^Yes, end the game$/ }).click();
+  }
+  await page.getByText(/Your record against it on this computer/).waitFor({ timeout: 10000 }).catch(() => fail("bot: the standings don't show the record against the bot"));
+  await page.getByRole("button", { name: /Continue to post-survey/i }).click();
+  await doSurvey(page, 1, "bot post");
+  await page.getByText(/Session complete/).waitFor();
+  const rows = await downloadCsv(page);
+  const answers = rows.filter((r) => /_Q$/.test(r.eventType));
+  if (answers.some((r) => r.playerIndex !== "0")) fail("bot: the bot's answers are in the results file");
+  if (!rows.some((r) => r.eventType === "TRANSACTION" && r.playerIndex === "1")) fail("bot: no bot moves in the results file");
+  const results = rows.filter((r) => r.eventType === "GAME_RESULT");
+  if (results.length !== 2 || results.find((r) => r.playerIndex === "1")?.bot !== "medium") fail(`bot: GAME_RESULT rows are wrong (${JSON.stringify(results.map((r) => [r.playerIndex, r.bot]))})`);
+  if (rows.filter((r) => r.eventType === "TEAM_INFO").length !== 1) fail("bot: the bot got a TEAM_INFO row");
+  for (const phase of ["pre", "post"]) {
+    const n = rows.filter((r) => r.phase === phase && r.section === "quiz").length;
+    if (n !== 10) fail(`bot: ${n} ${phase}-survey answers (expected 10, the student's only)`);
+  }
+  console.log(`  bot: watched ${watched} bot dialogs, skipped ahead ${skipped} times, ${answers.length} student answers`);
   await context.close();
 }
 
@@ -693,6 +815,8 @@ async function onlineScenario() {
 
 const SCENARIOS = {
   debt: debtScenario,
+  enter: enterScenario,
+  bot: botScenario,
   bankrupt: bankruptScenario,
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),

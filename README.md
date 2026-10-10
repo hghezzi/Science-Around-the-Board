@@ -1,4 +1,4 @@
-# Science Around the Board
+# Learn Around the Board
 
 **A free, open-source board game that turns any course's review session into active learning.** Teams of students roll dice, answer *your* questions to buy, defend and upgrade tiles, capture corner exams and steal rival tiles. An explanation follows every answer, and a pre- and post-game survey shows what each team learned. It runs in the browser, with no installation, accounts or server, and it works for any subject.
 
@@ -7,26 +7,26 @@
 </p>
 
 <p align="center">
-  <a href="https://hghezzi.github.io/Science-Around-the-Board/"><b>▶ Play now</b></a> ·
-  <a href="https://hghezzi.github.io/Science-Around-the-Board/guide/">Instructor Guide</a> (<a href="https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf">PDF</a>) ·
-  <a href="https://hghezzi.github.io/Science-Around-the-Board/guide/students.html">Student Guide</a> (<a href="https://hghezzi.github.io/Science-Around-the-Board/SAB_Student_Guide.pdf">PDF</a>)
+  <a href="https://hghezzi.github.io/Learn-Around-the-Board/"><b>▶ Play now</b></a> ·
+  <a href="https://hghezzi.github.io/Learn-Around-the-Board/guide/">Instructor Guide</a> (<a href="https://hghezzi.github.io/Learn-Around-the-Board/LAB_Instructor_Guide.pdf">PDF</a>) ·
+  <a href="https://hghezzi.github.io/Learn-Around-the-Board/guide/students.html">Student Guide</a> (<a href="https://hghezzi.github.io/Learn-Around-the-Board/LAB_Student_Guide.pdf">PDF</a>)
 </p>
 
-Science Around the Board (SAB) was created by Hans Ghezzi for a fourth-year microbiology course at the University of British Columbia (16S rRNA sequencing with QIIME 2). It has since been used for genomics workshops and even a trivia night. The game itself uses no subject vocabulary: everything subject-specific comes from one spreadsheet that you write.
+Learn Around the Board (LAB) was created by Hans Ghezzi for a fourth-year microbiology course at the University of British Columbia (16S rRNA sequencing with QIIME 2). It has since been used for genomics workshops and even a trivia night. The game itself uses no subject vocabulary: everything subject-specific comes from one spreadsheet that you write.
 
 ## Try it in two minutes
 
-Open the [game](https://hghezzi.github.io/Science-Around-the-Board/) and click **Play the demo** (16S rRNA sequencing) or **Try a different subject** (Intro Statistics). Choose **Solo**, a topic and **Start game →**.
+Open the [game](https://hghezzi.github.io/Learn-Around-the-Board/) and click **Play the demo** (16S rRNA sequencing) or **Try a different subject** (Intro Statistics). Choose **Solo**, a topic and **Start game →**.
 
 ## Run it with your class
 
-1. **Write your questions** in a spreadsheet: start from the [Intro Statistics example](https://hghezzi.github.io/Science-Around-the-Board/examples/intro_statistics.tsv), or let Claude draft them with the [question-writer skill](#generate-questions-with-claude).
+1. **Write your questions** in a spreadsheet: start from the [Intro Statistics example](https://hghezzi.github.io/Learn-Around-the-Board/examples/intro_statistics.tsv), or let Claude draft them with the [question-writer skill](#generate-questions-with-claude).
 2. **Load the file in the game.** The built-in checker lists anything that needs fixing.
 3. **Share it with students:** as one game link (for example to a published Google Sheet), or as a file, which you can password-protect.
 4. **Play.** Up to four players share each computer (a player can be one student or a small group). A typical session takes 45–90 minutes, and an optional timer ends the game on time.
 5. **Collect results.** Students send them straight to your own Google Sheet, email them to you or download a CSV file for your course page.
 
-The [Instructor Guide](https://hghezzi.github.io/Science-Around-the-Board/guide/) walks through each step, starting with a [Quick start](https://hghezzi.github.io/Science-Around-the-Board/guide/#quick-start). It also covers the pedagogy behind the game (playful pedagogy, Bloom's taxonomy, backward design and a BOPPPS lesson plan) and how to analyse the results. Give students the [Student Guide](https://hghezzi.github.io/Science-Around-the-Board/guide/students.html): it explains the rules in five minutes.
+The [Instructor Guide](https://hghezzi.github.io/Learn-Around-the-Board/guide/) walks through each step, starting with a [Quick start](https://hghezzi.github.io/Learn-Around-the-Board/guide/#quick-start). It also covers the pedagogy behind the game (playful pedagogy, Bloom's taxonomy, backward design and a BOPPPS lesson plan) and how to analyse the results. Give students the [Student Guide](https://hghezzi.github.io/Learn-Around-the-Board/guide/students.html): it explains the rules in five minutes.
 
 ## What's in the box
 
@@ -37,9 +37,9 @@ The [Instructor Guide](https://hghezzi.github.io/Science-Around-the-Board/guide/
   - your explanation shown after every answer, right or wrong.
 - **Measurement:** confidence sliders and a knowledge check before and after the game. The CSV export records every answer and transaction.
 - **Online play (beta):** players can join from their own computer, tablet or phone with a room code; the host's computer runs the game (peer-to-peer, no server or accounts).
-- **Results delivery:** an optional [Google Apps Script collector](public/tools/sab-results-collector.gs) puts every player's results in your own Google Sheet. Email and CSV download are the alternatives. You set this up with a few `config` rows in the question file.
+- **Results delivery:** an optional [Google Apps Script collector](public/tools/lab-results-collector.gs) puts every player's results in your own Google Sheet. Email and CSV download are the alternatives. You set this up with a few `config` rows in the question file.
 - **Game links:** share one link and your questions load by themselves, from a published Google Sheet, a GitHub file or any public link. Build the link on the start page ("For instructors: share your questions as a link").
-- **[Password-protected files](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html):** encrypt your question file so students can't read the answers before playing.
+- **[Password-protected files](https://hghezzi.github.io/Learn-Around-the-Board/encryptor.html):** encrypt your question file so students can't read the answers before playing.
 - **A file checker:** loading a file lists missing columns, wrong answer keys, missing themes and similar problems in plain language.
 - **Classroom-proof:**
   - autosave, so an accidental refresh offers *Resume your game?*;
@@ -59,11 +59,11 @@ One row per question, in a spreadsheet saved as tab-separated values (`.tsv`):
 | `theme`, `subtheme` | The first 4 themes become the board's 4 sides, each with 2 subtheme groups of tiles |
 | `imageFile`, `format`, `answer`, `tolerance` | Optional: an image, and the settings for other question formats |
 
-Details are in [Designing the input file](https://hghezzi.github.io/Science-Around-the-Board/guide/#designing-the-input-file) (Instructor Guide) and in the [complete format reference](.claude/skills/sab-question-writer/references/format.md).
+Details are in [Designing the input file](https://hghezzi.github.io/Learn-Around-the-Board/guide/#designing-the-input-file) (Instructor Guide) and in the [complete format reference](.claude/skills/lab-question-writer/references/format.md).
 
 ## Generate questions with Claude
 
-The [`sab-question-writer`](.claude/skills/sab-question-writer/) skill works with you, step by step:
+The [`lab-question-writer`](.claude/skills/lab-question-writer/) skill works with you, step by step:
 
 1. It interviews you about your course and learning objectives, and reads any notes or slides you share.
 2. It proposes a board layout for your approval.
@@ -72,16 +72,16 @@ The [`sab-question-writer`](.claude/skills/sab-question-writer/) skill works wit
 
 To use it:
 
-- **In Claude.ai:** download the [skill zip](https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip) and add it in Claude's skills settings. Then ask, for example: *"Make a Science Around the Board game reviewing cellular respiration for first-year biology."*
-- **In Claude Code:** install the plugin with `/plugin marketplace add hghezzi/Science-Around-the-Board`, then `/plugin install sab-question-writer@sab`. In this repository the skill also loads by itself.
+- **In Claude.ai:** download the [skill zip](https://hghezzi.github.io/Learn-Around-the-Board/downloads/lab-question-writer.zip) and add it in Claude's skills settings. Then ask, for example: *"Make a Learn Around the Board game reviewing cellular respiration for first-year biology."*
+- **In Claude Code:** install the plugin with `/plugin marketplace add hghezzi/Learn-Around-the-Board`, then `/plugin install lab-question-writer@lab`. In this repository the skill also loads by itself.
 
 Always review generated questions before class.
 
-**Privacy:** the skill runs in your own Claude conversation, so anything you upload is read by Claude and handled by Anthropic under your account's terms and settings (Science Around the Board never receives it). Remove student names, IDs, grades and other personal or confidential data before sharing materials, and use your institution's Claude account if it has one.
+**Privacy:** the skill runs in your own Claude conversation, so anything you upload is read by Claude and handled by Anthropic under your account's terms and settings (Learn Around the Board never receives it). Remove student names, IDs, grades and other personal or confidential data before sharing materials, and use your institution's Claude account if it has one.
 
 ## Privacy
 
-The game runs entirely in the browser. Question files, answers and surveys stay on the players' computer unless students click **Send results to instructor** (which sends them to the instructor's own Google Sheet) or hand in the results file themselves. Usage analytics (Google Analytics, which sets cookies) load only if a visitor opts in. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs entirely in the browser. Question files, answers and surveys stay on the players' computer unless students click **Send results to instructor** (which sends them to the instructor's own Google Sheet) or hand in the results file themselves. Usage analytics (Google Analytics, which sets cookies) load only if a visitor opts in. See the [privacy notice](https://hghezzi.github.io/Learn-Around-the-Board/privacy.html).
 
 ## Requirements
 
@@ -90,7 +90,7 @@ The game runs entirely in the browser. Question files, answers and surveys stay 
 
 ## For developers
 
-SAB is a React 19 + Vite single-page app with no backend, hosted on GitHub Pages. You need Node.js 20.19 or later (CI uses Node 22).
+LAB is a React 19 + Vite single-page app with no backend, hosted on GitHub Pages. You need Node.js 20.19 or later (CI uses Node 22).
 
 ```bash
 npm install
@@ -115,8 +115,8 @@ CI runs lint, tests, both question-file validators and the build on every pull r
 | `public/` | Files served with the app: the example question files, hosted images, the encryptor, the privacy notice, the results collector and the built guides. |
 | `guide/` | The Markdown sources and screenshots of the Instructor and Student Guides. |
 | `scripts/` | The file validator CLI, the guide and skill builders, the icon generator, and the smoke and accessibility tests. |
-| `.claude/skills/sab-question-writer/` | The question-writer skill for Claude, with the format reference and a Python validator. |
-| `.claude-plugin/`, `plugins/` | The Claude Code plugin marketplace; `plugins/sab-question-writer/skills/` is a copy of the skill made by `npm run sync-plugin`. |
+| `.claude/skills/lab-question-writer/` | The question-writer skill for Claude, with the format reference and a Python validator. |
+| `.claude-plugin/`, `plugins/` | The Claude Code plugin marketplace; `plugins/lab-question-writer/skills/` is a copy of the skill made by `npm run sync-plugin`. |
 
 **Contributing.** Bug reports, ideas and pull requests are welcome. Please keep the game's own wording subject-neutral (game terms live in `src/labels.js`), add tests for rule changes, and update the guides for anything players or instructors will notice. Changes to gameplay, scoring or the results file affect classes using the live site, so please describe them in the pull request. See [CONTRIBUTING.md](CONTRIBUTING.md), and report security problems privately as described in [SECURITY.md](SECURITY.md).
 
@@ -124,24 +124,24 @@ CI runs lint, tests, both question-file validators and the build on every pull r
 
 | Document | Read it on the web | Source |
 | :--- | :--- | :--- |
-| Instructor Guide | [Web](https://hghezzi.github.io/Science-Around-the-Board/guide/) · [PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf) | [`guide/instructor-guide.md`](guide/instructor-guide.md) |
-| Student Guide | [Web](https://hghezzi.github.io/Science-Around-the-Board/guide/students.html) · [PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Student_Guide.pdf) | [`guide/student-guide.md`](guide/student-guide.md) |
-| Question file format | | [`format.md`](.claude/skills/sab-question-writer/references/format.md) |
+| Instructor Guide | [Web](https://hghezzi.github.io/Learn-Around-the-Board/guide/) · [PDF](https://hghezzi.github.io/Learn-Around-the-Board/LAB_Instructor_Guide.pdf) | [`guide/instructor-guide.md`](guide/instructor-guide.md) |
+| Student Guide | [Web](https://hghezzi.github.io/Learn-Around-the-Board/guide/students.html) · [PDF](https://hghezzi.github.io/Learn-Around-the-Board/LAB_Student_Guide.pdf) | [`guide/student-guide.md`](guide/student-guide.md) |
+| Question file format | | [`format.md`](.claude/skills/lab-question-writer/references/format.md) |
 | Architecture and conventions | | [`CLAUDE.md`](CLAUDE.md) |
 
 The March 2026 edition of the Instructor Guide is [archived as a PDF](public/archive/SAB_Instructor_Guide_2026-03.pdf).
 
-Found a bug or have an idea? [Open an issue](https://github.com/hghezzi/Science-Around-the-Board/issues).
+Found a bug or have an idea? [Open an issue](https://github.com/hghezzi/Learn-Around-the-Board/issues).
 
 ## Citing
 
-If you use Science Around the Board in teaching or research, please cite it as (see also [`CITATION.cff`](CITATION.cff)):
+If you use Learn Around the Board in teaching or research, please cite it as (see also [`CITATION.cff`](CITATION.cff)):
 
-> Ghezzi, H. (2026). *Science Around the Board* [Computer software]. https://github.com/hghezzi/Science-Around-the-Board
+> Ghezzi, H. (2026). *Learn Around the Board* [Computer software]. https://github.com/hghezzi/Learn-Around-the-Board
 
 ## License
 
-© Hans Ghezzi. Science Around the Board is **free for teaching, learning, research and other noncommercial use**. See [LICENSE](LICENSE) for the details.
+© Hans Ghezzi. Learn Around the Board is **free for teaching, learning, research and other noncommercial use**. See [LICENSE](LICENSE) for the details.
 
 | Part | License |
 | :--- | :--- |
@@ -152,5 +152,5 @@ If you use Science Around the Board in teaching or research, please cite it as (
 - Schools, universities, charities and public research organizations may use, adapt and host the game, whatever their funding.
 - Credit the original author (Hans Ghezzi) and keep the `LICENSE` file with any copy.
 - **Commercial use** (selling it, hosting it for paying customers, or building it into a paid product or service) **needs a separate license**. Contact Hans Ghezzi through [GitHub](https://github.com/hghezzi).
-- The name "Science Around the Board" identifies the original project; please use another name for a modified version.
+- The name "Learn Around the Board" identifies the original project; please use another name for a modified version.
 - Copies obtained before October 2026 remain under CC BY-NC-SA 4.0 alone.

@@ -1,6 +1,6 @@
-# Contributing to Science Around the Board
+# Contributing to Learn Around the Board
 
-Thank you for helping! SAB is used in real classes, so changes need to be careful, tested and easy for other teaching teams to adopt. Please read [CLAUDE.md](CLAUDE.md) first: it maps the code and lists the project rules.
+Thank you for helping! LAB is used in real classes, so changes need to be careful, tested and easy for other teaching teams to adopt. Please read [CLAUDE.md](CLAUDE.md) first: it maps the code and lists the project rules.
 
 ## Ways to help
 
@@ -16,13 +16,13 @@ Thank you for helping! SAB is used in real classes, so changes need to be carefu
 - **Gameplay, scoring and the CSV format are stable.** Open an issue to discuss before changing them; teams compare results across terms.
 - **Use theme tokens for colours**, never hard-coded text or background colours, and check light and dark mode.
 - Keep the pure logic (parser, board builder, rules, validator, `lockFile.js`) free of React, and add tests in `tests/`.
-- When engine assumptions change, update `src/tsvValidator.js` **and** its Python mirror in `.claude/skills/sab-question-writer/scripts/validate_tsv.py`.
+- When engine assumptions change, update `src/tsvValidator.js` **and** its Python mirror in `.claude/skills/lab-question-writer/scripts/validate_tsv.py`.
 
 ## Development
 
 ```bash
 npm ci            # Node 20.19+ or 22.12+
-npm run dev       # http://localhost:5173/Science-Around-the-Board/
+npm run dev       # http://localhost:5173/Learn-Around-the-Board/
 npm run lint && npm test && npm run build
 npm run validate-tsv -- my_questions.tsv
 ```

@@ -25,11 +25,11 @@ jobs:
       - run: npm run lint
       - run: npm test
       - name: Validate example question files (game validator)
-        run: npm run validate-tsv -- public/SAB_questions_Jan22_Filtered.tsv public/examples/intro_statistics.tsv
+        run: npm run validate-tsv -- public/examples/16S_QIIME2_demo.tsv public/examples/intro_statistics.tsv
       - name: Validate example question files (skill's Python validator)
         run: |
-          python3 .claude/skills/sab-question-writer/scripts/validate_tsv.py public/SAB_questions_Jan22_Filtered.tsv --images public/questionImages
-          python3 .claude/skills/sab-question-writer/scripts/validate_tsv.py public/examples/intro_statistics.tsv --images public/questionImages
+          python3 .claude/skills/lab-question-writer/scripts/validate_tsv.py public/examples/16S_QIIME2_demo.tsv --images public/questionImages
+          python3 .claude/skills/lab-question-writer/scripts/validate_tsv.py public/examples/intro_statistics.tsv --images public/questionImages
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
       - run: npm run build

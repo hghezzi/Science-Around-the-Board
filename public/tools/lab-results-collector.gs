@@ -1,5 +1,5 @@
 /**
- * Science Around the Board – results collector (Google Apps Script).
+ * Learn Around the Board – results collector (Google Apps Script).
  *
  * Collects the results students send from the game's end screen ("Send results to instructor")
  * into the Google Sheet this script is attached to. Setup takes about 5 minutes:
@@ -16,14 +16,14 @@
  * Visiting the URL in a browser only shows a short "running" message.
  *
  * Safety and privacy: "Anyone" lets anyone with the link send a submission, but only you can read
- * the Sheet. The script accepts only Science Around the Board submissions of a sensible size, keeps
+ * the Sheet. The script accepts only Learn Around the Board submissions of a sensible size, keeps
  * column names simple, shortens very long text, stores typed text as plain text (never as formulas),
  * limits how many submissions it takes per minute and sends nothing anywhere else.
  * Version 2 (October 2026).
  *
  * After editing this script, use Deploy → Manage deployments → Edit → Version: New version,
  * so the URL stays the same.
- * Full instructions: https://hghezzi.github.io/Science-Around-the-Board/guide/#collecting-results
+ * Full instructions: https://hghezzi.github.io/Learn-Around-the-Board/guide/#collecting-results
  */
 const SUMMARY_SHEET = "Summary";
 const DETAIL_SHEET = "Details";
@@ -44,7 +44,8 @@ function doPost(e) {
     const body = e && e.postData && typeof e.postData.contents === "string" ? e.postData.contents : "";
     if (!body || body.length > LIMITS.bodyChars) throw new Error("The submission is empty or too large.");
     const data = JSON.parse(body);
-    if (!data || data.app !== "science-around-the-board") throw new Error("Not a Science Around the Board submission");
+    // "science-around-the-board": games from before the rename to Learn Around the Board.
+    if (!data || (data.app !== "learn-around-the-board" && data.app !== "science-around-the-board")) throw new Error("Not a Learn Around the Board submission");
     const summary = Array.isArray(data.summary) ? data.summary : [];
     const rows = Array.isArray(data.rows) ? data.rows : [];
     if (summary.length > LIMITS.summaryRows || rows.length > LIMITS.detailRows) throw new Error("The submission has too many rows.");
@@ -64,7 +65,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, message: "The Science Around the Board results collector is running." });
+  return json_({ ok: true, message: "The Learn Around the Board results collector is running." });
 }
 
 function appendObjects_(ss, name, objects) {
@@ -102,7 +103,7 @@ function isPlainObject_(v) {
 function withinRate_() {
   if (typeof CacheService === "undefined") return true;
   const cache = CacheService.getScriptCache();
-  const key = "sab-rate-" + Math.floor(Date.now() / 60000);
+  const key = "lab-rate-" + Math.floor(Date.now() / 60000);
   const count = Number(cache.get(key) || 0) + 1;
   cache.put(key, String(count), 120);
   return count <= LIMITS.perMinute;

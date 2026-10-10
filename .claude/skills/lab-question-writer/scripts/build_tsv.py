@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a JSON list of question objects into a Science Around the Board TSV.
+"""Convert a JSON list of question objects into a Learn Around the Board TSV.
 
 Usage:
     python build_tsv.py questions.json questions.tsv [--bigTopic "Biology"] [--module "Week 3"]

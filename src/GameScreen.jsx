@@ -24,7 +24,10 @@ import {
   bankruptcyAction, downgradeSubgroup, sellDeed, releaseTiles, acquireTile, chaosStealCost, chaosFailPenalty, chaosTargets, chaosTokensForSale,
   netWorth, soloGoal, soloOwnTileIncome,
 } from './gameRules';
-import { getPersonalBest, recordPersonalBest } from './personalBest';
+import { getPersonalBest, recordPersonalBest, getBotRecord, recordBotGame } from './personalBest';
+import {
+  BOT_LEVELS, BOT_PACE, botKnows, botResponse, resultDelay, shouldBuy, shouldTryMilestone, upgradeChoice, chaosChoice, liquidationChoice,
+} from './bot';
 import { prepareQuestion, checkAnswer, parseMishapAmount } from './questionFormats';
 import { resolveImage } from './images';
 import { pickQuestion, pickQuestions, recordAnswer } from './questionPicker';
@@ -79,17 +82,20 @@ const NO_QUIZ = {
   history: [], // UI only: right/wrong per answered question
 };
 
-function generatePlayers(count) {
-  return Array.from({ length: count }, (_, i) => ({
+// `bot` ({ level }): a solo game against the computer, which plays as the second player.
+function generatePlayers(count, bot = null) {
+  const seats = bot ? 2 : count;
+  return Array.from({ length: seats }, (_, i) => ({
     id: i,
-    name: teamDisplayName(i, count),
+    name: bot && i === 1 ? LABELS.botName(BOT_LEVELS[bot.level]?.label || bot.level) : teamDisplayName(i, count),
     color: TEAM_COLORS[i],
     position: 0,
-    money: startingMoney(count),
+    money: startingMoney(seats),
     jailed: false,
     chaosTokens: 0,
     rescueUsed: false,
     eliminated: false,
+    ...(bot && i === 1 ? { bot: { level: bot.level } } : {}),
   }));
 }
 
@@ -145,6 +151,7 @@ export default function GameScreen({
   module = '',
   resume = null, // autosaved game to continue (see App.jsx / autosave.js)
   onSnapshot,
+  bot = null, // solo against the computer: { level: 'easy' | 'medium' | 'hard' } (bot.js)
   // Online play (see src/online/). Host: { role: 'host', publish(view), bindRunner(fn), names }.
   // Guest: { role: 'guest', view, mySlots, send(name, args), clockOffset, status }.
   online = null,
@@ -167,7 +174,7 @@ export default function GameScreen({
   }) : null), [gv, boardData]);
   useLayoutEffect(() => { if (guestBoard) boardRef.current = guestBoard; }, [guestBoard, boardRef]);
   const board = isGuest ? guestBoard : hostBoard;
-  const [players, setPlayers, playersRef] = useShared(gv, 'players', () => resume?.players ?? generatePlayers(playerCount));
+  const [players, setPlayers, playersRef] = useShared(gv, 'players', () => resume?.players ?? generatePlayers(playerCount, bot));
   const [turn, setTurn, turnRef] = useShared(gv, 'turn', resume?.turn ?? (startingPlayerIndex || 0));
   const [totalTurns, setTotalTurns, totalTurnsRef] = useShared(gv, 'totalTurns', resume?.totalTurns ?? 0);
   // Which questions were asked and missed (questionPicker.js): unseen first, missed ones again later.
@@ -193,7 +200,8 @@ export default function GameScreen({
   const [rollId, setRollId] = useShared(gv, 'rollId', 0);
   const [logs, setLogs] = useShared(gv, 'logs', () => (resume
     ? ['Game resumed.', ...(resume.logs || [])].slice(0, 10)
-    : [playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.']));
+    : [bot ? `${LABELS.soloTeam} plays against the ${LABELS.botName(BOT_LEVELS[bot.level]?.label || bot.level)}.`
+      : playerCount > 1 ? `${generatePlayers(playerCount)[startingPlayerIndex || 0].name} starts (best pre-game survey score).` : 'System initialized.']));
 
   // Modal + flow state
   const [modalOpen, setModalOpen] = useShared(gv, 'modalOpen', false);
@@ -244,6 +252,13 @@ export default function GameScreen({
   const goal = isSolo ? soloGoal(sessionMinutes) : 0;
   const soloWorth = isSolo ? netWorth(players[0], board) : 0;
   const soloMilestones = isSolo ? board.filter((t) => t.type === 'milestone' && t.owner === 0).length : 0;
+  // Solo against the bot: the two-player rules, and the bot (player 1) plays its own turns.
+  const botPlayer = players.find((p) => p.bot) || null;
+  const botTurn = Boolean(currentPlayer?.bot) && !isGuest;
+  // Turns are numbered so "Skip ahead" speeds up only the bot turn it was pressed in.
+  const [turnSeq, setTurnSeq] = useState(0);
+  const [skipSeq, setSkipSeq] = useState(-1);
+  const botFast = botTurn && skipSeq === turnSeq;
 
   // Every button a player presses is a named action. Locally it runs at once; on a
   // guest device it is sent to the host, which runs the same function (online play).
@@ -278,8 +293,10 @@ export default function GameScreen({
     setLogRows((prev) => [...prev, event]);
   };
 
-  // One row per answered question, whatever the format.
+  // One row per answered question, whatever the format. The bot's answers are not the
+  // student's: they are never logged, and its questions stay "unseen" for the student.
   const logAnswer = (eventType, q, result, meta = {}) => {
+    if (activePlayer()?.bot) return;
     setAsked((h) => recordAnswer(h, q, result.correct, totalTurnsRef.current));
     addCSVEvent({
       eventType,
@@ -362,6 +379,7 @@ export default function GameScreen({
     turnInProgressRef.current = false;
     setModalOpen(false);
     setTurn(nextActivePlayer(playersRef.current, turnRef.current));
+    setTurnSeq((n) => n + 1);
   });
 
   // A team that cannot pay its debts leaves the game; its tiles return to the bank.
@@ -864,11 +882,84 @@ export default function GameScreen({
       assets: r.assets,
       eliminated: r.eliminated,
       endReason: reason,
+      ...(playersRef.current[r.id]?.bot ? { bot: playersRef.current[r.id].bot.level } : {}),
       timestamp: new Date().toISOString(),
     }));
     if (isSolo && !isGuest && standings[0]) recordPersonalBest(bestKey, { netWorth: standings[0].netWorth, accuracy: soloAccuracy().pct });
+    if (botPlayer && !isGuest) recordBotGame(bestKey, botPlayer.bot.level, botResult(standings));
     if (typeof onEndGame === 'function') onEndGame([...logRows, ...resultRows]);
   };
+
+  // Against the bot: did the student win this game?
+  const botResult = (standings) => {
+    const me = standings.find((r) => r.id === 0);
+    const them = standings.find((r) => r.id === botPlayer?.id);
+    return { won: Boolean(me && them && !me.eliminated && (them.eliminated || me.netWorth > them.netWorth)), netWorth: me?.netWorth ?? 0 };
+  };
+
+  // ------------------------------------------------------------------
+  //  THE BOT (solo against the computer). bot.js decides; it presses the same
+  //  actions a person does, one step at a time, paced so the student can follow
+  //  its question, answer and explanation. Skip ahead speeds up the rest of its turn.
+  // ------------------------------------------------------------------
+  const botPaused = rulesOpen || endOpen || exitOpen || manageOpen;
+  useEffect(() => {
+    if (!botTurn || botPaused) return undefined;
+    const me = currentPlayer;
+    const level = me.bot.level;
+    const pace = botFast ? BOT_PACE.fast : BOT_PACE.normal;
+    const answer = (q, submit) => ({ delay: pace.question, run: () => submit(botResponse(q, botKnows(level))) });
+    const after = (text, run, exam = false) => ({ delay: resultDelay(text, botFast, exam), run });
+    const press = (run, delay = pace.step) => ({ delay, run });
+    const step = (() => {
+      if (isMoving) return null;
+      if (!modalOpen) {
+        if (turnInProgressRef.current || timeUp) return null;
+        const up = upgradeChoice(board, me.id, me.money);
+        if (up) return press(() => openUpgradeOffer(up.tile));
+        if (chaosChoice(board, me)) return press(openChaosSelect);
+        return press(handleRoll);
+      }
+      const type = activeCard?.type;
+      if (type === 'UPGRADE_OFFER') return press(handleUpgrade, pace.question);
+      switch (modalStage) {
+        case 'QUESTION':
+          if (type === 'QUESTION') return answer(activeCard.q, handleAnswer);
+          if (type === 'RENT_DEFENSE') return answer(activeCard.q, handleRentChallengeAnswer);
+          return null;
+        case 'DECISION': return after(feedback?.explanation, () => (shouldBuy(me, activeCard.data) ? handleBuy() : passTurn()));
+        case 'FEEDBACK_INCORRECT': return after(feedback?.explanation, passTurn);
+        case 'MSG': return after(activeCard?.msg, passTurn);
+        case 'MISHAP': return after(`${activeCard?.msg || ''} ${activeCard?.data?.fact || ''}`, passTurn);
+        case 'MILESTONE_INTRO': return press(() => (shouldTryMilestone(me, activeCard.data) ? startQuiz(activeCard.data, 'MILESTONE_ACQUIRE') : declineMilestone()), pace.question);
+        case 'MILESTONE_CHALLENGE_INTRO': return press(() => startQuiz(activeCard.data, 'MILESTONE_CHALLENGE'), pace.question);
+        case 'QUIZ_START':
+        case 'GRANT_QUIZ': {
+          const q = quizState.active ? quizState.questions[quizState.qIndex] : null;
+          if (!q) return null;
+          return quizState.waiting ? after(q.explanation, handleNextQuestion, true) : answer(q, handleQuizAnswer);
+        }
+        case 'MILESTONE_SUCCESS':
+        case 'MILESTONE_FAIL':
+        case 'GRANT_RESULT': return after(feedback?.detail, passTurn);
+        case 'GRANT_INTRO': return press(startGrantExam, pace.question);
+        case 'LIQUIDATION': {
+          const t = liquidationChoice(board, me.id);
+          return t ? press(() => handleSellAsset(t), pace.question) : null;
+        }
+        case 'ELIMINATED': return after('', continueAfterElimination);
+        case 'CHAOS_SELECT': {
+          const t = chaosChoice(board, me);
+          return press(() => (t ? handleSelectChaosTarget(t) : closeDialog()));
+        }
+        case 'CHAOS_QUESTION': return answer(activeCard.q, handleChaosAnswer);
+        default: return null; // the standings and the winner screen are the student's
+      }
+    })();
+    if (!step) return undefined;
+    const id = setTimeout(step.run, step.delay);
+    return () => clearTimeout(id);
+  }, [botTurn, botPaused, botFast, isMoving, modalOpen, modalStage, activeCard, quizState, feedback, turn, board, timeUp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatClock = (ms) => {
     const total = Math.ceil(ms / 1000);
@@ -897,10 +988,10 @@ export default function GameScreen({
     imageMaxHeight: 160,
   });
 
-  const title = module || bigTopic || 'Science Around the Board';
+  const title = module || bigTopic || 'Learn Around the Board';
   const inDebt = currentPlayer.money < 0;
   // In debt (only possible with a game saved by an older version), Roll opens the debt dialog.
-  const rollLabel = timeUp ? "Time's up" : isMoving ? 'Moving…' : (inDebt ? 'Settle debt' : `Roll — ${currentPlayer.name}`);
+  const rollLabel = timeUp ? "Time's up" : botTurn ? 'The bot is playing…' : isMoving ? 'Moving…' : (inDebt ? 'Settle debt' : `Roll — ${currentPlayer.name}`);
   const tileLabel = (t) => (t?.type === 'property' ? t.sub : t?.name) || '';
   const ownerName = (id) => (id === 99 || id == null ? LABELS.rivalTeam : players[id]?.name || LABELS.rivalTeam);
 
@@ -932,8 +1023,10 @@ export default function GameScreen({
   const showDialogTop = !['STANDINGS', 'WIN', 'ELIMINATED'].includes(modalStage) && !['STANDINGS', 'WIN', 'ELIMINATED'].includes(activeCard?.type);
   // Online: a guest device acts only for its own player, on its turn; the host can always act
   // (for a player whose device has dropped, for example).
-  const canAct = !isGuest || canGuestAct({ turn, modalOpen, modalStage, activeCard }, online.mySlots);
   const hostOnlyScreen = ['STANDINGS', 'WIN'].includes(modalStage) || ['STANDINGS', 'WIN'].includes(activeCard?.type);
+  // During the bot's turn the student watches; the standings and the winner screen stay theirs.
+  const botWatching = botTurn && !hostOnlyScreen;
+  const canAct = (!isGuest || canGuestAct({ turn, modalOpen, modalStage, activeCard }, online.mySlots)) && !botWatching;
   const playsElsewhere = isHost && (online.remoteSlots || []).includes(turn);
   const waitingNote = isGuest && !canAct
     ? (hostOnlyScreen ? 'Waiting for the host to continue.' : `${currentPlayer.name} is playing. You'll see every move here.`)
@@ -951,7 +1044,7 @@ export default function GameScreen({
     <Box sx={{ bgcolor: 'background.default', color: 'text.primary', minHeight: '100vh', px: { xs: 1, md: 3 }, py: 2 }}>
       <Box component="header" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center', maxWidth: 1500, mx: 'auto', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}><span aria-hidden>🎲 </span>Science Around the Board</Typography>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}><span aria-hidden>🎲 </span>Learn Around the Board</Typography>
           <Chip label={`Turn ${totalTurns}`} size="small" color="primary" />
           {endsAt && (
             <Chip
@@ -1031,7 +1124,7 @@ export default function GameScreen({
                 </Typography>
               )}
             </Box>
-            <Typography sx={{ fontSize: 'max(11px, 1.1cqw)', color: 'text.secondary' }}>© Hans Ghezzi · Science Around the Board</Typography>
+            <Typography sx={{ fontSize: 'max(11px, 1.1cqw)', color: 'text.secondary' }}>© Hans Ghezzi · Learn Around the Board</Typography>
           </Board>
         </Box>
 
@@ -1052,6 +1145,16 @@ export default function GameScreen({
         <Box role="dialog" aria-modal="true" aria-labelledby={TITLE_ID} sx={{ ...modalStyle, ...(dialogTile?.color ? { borderTopColor: dialogTile.color } : {}) }}>
           {showDialogTop && <DialogTop tile={dialogTile} player={currentPlayer} />}
           {waitingNote && <Alert severity="info" icon={<span aria-hidden>👀</span>} sx={{ mb: 2 }}>{waitingNote}</Alert>}
+          {botWatching && (
+            <Alert
+              severity="info"
+              icon={<span aria-hidden>🤖</span>}
+              sx={{ mb: 2, alignItems: 'center' }}
+              action={!botFast && <Button color="inherit" size="small" onClick={() => setSkipSeq(turnSeq)}>{LABELS.skipAhead}<span aria-hidden>&nbsp;⏩</span></Button>}
+            >
+              {botFast ? 'Skipping ahead to your turn…' : LABELS.botPlaying}
+            </Alert>
+          )}
           {/* A disabled fieldset disables every button and input inside: a guest watches until it's their turn. */}
           <Box component="fieldset" disabled={!canAct} sx={{ border: 0, p: 0, m: 0, minWidth: 0, '&:disabled button, &:disabled input': { cursor: 'default' } }}>
 
@@ -1121,7 +1224,7 @@ export default function GameScreen({
               })}
               {quizState.waiting && (
                 <OutcomePanel feedback={{ tone: quizState.isCorrect ? 'good' : 'bad', title: quizState.isCorrect ? 'Correct!' : 'Not quite', explanation: quizState.questions[quizState.qIndex].explanation || '' }}>
-                  <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
+                  <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
                     {quizState.qIndex < quizState.questions.length - 1 ? 'Next question' : 'Finish quiz'}
                   </Button>
                 </OutcomePanel>
@@ -1131,7 +1234,7 @@ export default function GameScreen({
 
           {modalStage === 'GRANT_RESULT' && (
             <OutcomePanel feedback={feedback} titleId={TITLE_ID} big>
-              <Button fullWidth size="large" variant="contained" autoFocus onClick={passTurn}>Keep playing</Button>
+              <Button fullWidth size="large" variant="contained" onClick={passTurn}>Keep playing</Button>
             </OutcomePanel>
           )}
 
@@ -1205,6 +1308,20 @@ export default function GameScreen({
                             : `Your personal best on this computer: ${money(best.netWorth)}.`}</li>
                       </Box>
                     </Box>
+                  );
+                })()}
+                {botPlayer && !isGuest && (() => {
+                  const level = botPlayer.bot.level;
+                  const prev = getBotRecord(bestKey, level) || { wins: 0, games: 0 };
+                  const { won } = botResult(standings);
+                  const wins = prev.wins + (won ? 1 : 0);
+                  const games = prev.games + 1;
+                  return (
+                    <Alert severity={won ? 'success' : 'info'} icon={<span aria-hidden>🤖</span>} sx={{ mb: 2 }}>
+                      {won ? `You beat the ${botPlayer.name}!` : `The ${botPlayer.name} wins this time.`}
+                      {' '}Your record against it on this computer, counting this game: <strong>{wins} win{wins === 1 ? '' : 's'} in {games} game{games === 1 ? '' : 's'}</strong>.
+                      {won && level !== 'hard' ? ` Ready for ${level === 'easy' ? 'Medium' : 'Hard'}?` : ''}
+                    </Alert>
                   );
                 })()}
                 {players.length > 1 && leader && !leader.eliminated && (
@@ -1296,7 +1413,7 @@ export default function GameScreen({
                     detail: over ? 'That was your second mistake, so the exam ends here.' : (!quizState.isCorrect ? 'One mistake used. One more ends the exam.' : ''),
                     explanation: quizState.questions[quizState.qIndex].explanation || '',
                   }}>
-                    <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
+                    <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={handleNextQuestion}>
                       {over || last ? 'Finish exam' : 'Next question'}
                     </Button>
                   </OutcomePanel>
@@ -1353,8 +1470,8 @@ export default function GameScreen({
                     </Typography>
                     {!canAfford && <Alert severity="warning" sx={{ mt: 1.5 }}>Not enough cash to buy this tile.</Alert>}
                     <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
-                      <Button fullWidth size="large" variant="contained" autoFocus={canAfford} aria-describedby={OUTCOME_ID} onClick={handleBuy} disabled={!canAfford}>{LABELS.buy} for {money(tile.price)}</Button>
-                      <Button fullWidth size="large" variant="outlined" autoFocus={!canAfford} onClick={passTurn}>{LABELS.skip}</Button>
+                      <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={handleBuy} disabled={!canAfford}>{LABELS.buy} for {money(tile.price)}</Button>
+                      <Button fullWidth size="large" variant="outlined" onClick={passTurn}>{LABELS.skip}</Button>
                     </Box>
                   </Box>
                 </OutcomePanel>
@@ -1399,12 +1516,12 @@ export default function GameScreen({
                   <Typography id={TITLE_ID} variant="h5" component="h2" sx={{ mb: 1.5 }}>{resultHeading()}</Typography>
                   {renderAnswered()}
                   <OutcomePanel feedback={feedback}>
-                    <Button fullWidth size="large" variant="contained" autoFocus aria-describedby={OUTCOME_ID} onClick={passTurn}>Continue</Button>
+                    <Button fullWidth size="large" variant="contained" aria-describedby={OUTCOME_ID} onClick={passTurn}>Continue</Button>
                   </OutcomePanel>
                 </>
               ) : (
                 <OutcomePanel feedback={feedback} titleId={TITLE_ID} big>
-                  <Button fullWidth size="large" variant="contained" autoFocus onClick={passTurn}>Continue</Button>
+                  <Button fullWidth size="large" variant="contained" onClick={passTurn}>Continue</Button>
                 </OutcomePanel>
               )}
             </>
@@ -1556,6 +1673,7 @@ export default function GameScreen({
 
       <RulesDialog
         playerCount={players.length}
+        bot={Boolean(botPlayer)}
         open={rulesOpen}
         onClose={() => setRulesOpen(false)}
         intro={totalTurns === 0 ? 'Quick rules before your first roll. Open them again any time with How to play at the top.' : ''}
@@ -1656,13 +1774,31 @@ function Stakes({ good, bad }) {
   );
 }
 
-/** Result of an answer or event, with the explanation (the teaching moment) and the next action. */
+// Buttons under a result ignore input this long after it appears: a held key or a
+// double click can't skip the explanation.
+const OUTCOME_ARM_MS = 400;
+
+/**
+ * Result of an answer or event, with the explanation (the teaching moment) and the next action.
+ * Keyboard focus lands on the result itself, never on its buttons: a key press that
+ * submitted the answer can't also press Continue or Buy, and screen readers read the
+ * explanation first. Tab reaches the buttons.
+ */
 function OutcomePanel({ feedback, titleId, big = false, children }) {
+  const panelRef = useRef(null);
+  const [armed, setArmed] = useState(false);
+  const shown = Boolean(feedback);
+  useEffect(() => {
+    if (!shown) return undefined;
+    panelRef.current?.focus({ preventScroll: true });
+    const id = setTimeout(() => setArmed(true), OUTCOME_ARM_MS);
+    return () => clearTimeout(id);
+  }, [shown]);
   if (!feedback) return children || null;
   const tone = feedback.tone || 'neutral';
   const c = tone === 'good' ? 'success' : tone === 'bad' ? 'error' : 'info';
   return (
-    <Box sx={{ mt: big ? 0 : 2.5, p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: '2px solid', borderColor: `${c}.main`, bgcolor: 'action.hover' }}>
+    <Box ref={panelRef} tabIndex={-1} role="group" aria-labelledby={OUTCOME_ID} sx={{ mt: big ? 0 : 2.5, p: { xs: 2, sm: 2.5 }, borderRadius: 3, border: '2px solid', borderColor: `${c}.main`, bgcolor: 'action.hover', '&:focus': { outline: 'none' }, '&:focus-visible': { outline: '3px solid', outlineColor: `${c}.main`, outlineOffset: 2 } }}>
       <Box id={OUTCOME_ID} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
         <motion.div initial={{ scale: 0.4, rotate: -25 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 14 }}>
           <Box aria-hidden sx={{ width: big ? 48 : 40, height: big ? 48 : 40, borderRadius: '50%', bgcolor: `${c}.main`, color: `${c}.contrastText`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: big ? 26 : 22 }}>
@@ -1681,7 +1817,7 @@ function OutcomePanel({ feedback, titleId, big = false, children }) {
         </Box>
       )}
       {feedback.note && <Alert severity="warning" sx={{ mt: 2 }}>{feedback.note}</Alert>}
-      {children && <Box sx={{ mt: 2.5 }}>{children}</Box>}
+      {children && <Box inert={!armed} sx={{ mt: 2.5 }}>{children}</Box>}
     </Box>
   );
 }

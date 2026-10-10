@@ -1,6 +1,6 @@
 // src/gameData.js
 // -------------------------------------------------------------------
-//  FULLY TSV-DRIVEN BOARD BUILDER FOR “Science Around the Board”
+//  FULLY TSV-DRIVEN BOARD BUILDER FOR “Learn Around the Board”
 //  - Geometry: 36-tile square loop
 //  - 4 corners = 4 milestones (from TSV Side1..Side4)
 //  - Each side interior (between two corners):
@@ -8,9 +8,9 @@
 //  - All names & questions come from tsvBoardBuilder (QS object).
 // -------------------------------------------------------------------
 
-import { buildBoardQuestionSet } from "./tsvBoardBuilder";
-import { LABELS } from "./labels";
-import { ECONOMY } from "./gameRules";
+import { buildBoardQuestionSet } from "./tsvBoardBuilder.js";
+import { LABELS } from "./labels.js";
+import { ECONOMY } from "./gameRules.js";
 
 /**
  * Build a full board for a given topic + module using TSV rows.

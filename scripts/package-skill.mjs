@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Zip the SAB question-writer skill so instructors can upload it to Claude.
-// Output: public/downloads/sab-question-writer.zip (served with the site; not committed).
+// Zip the LAB question-writer skill so instructors can upload it to Claude.
+// Output: public/downloads/lab-question-writer.zip (served with the site; not committed).
 // Runs automatically before `npm run build`.
 import { readdirSync, readFileSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { deflateRawSync } from "node:zlib";
 
-const SKILL = ".claude/skills/sab-question-writer";
+const SKILL = ".claude/skills/lab-question-writer";
 const OUT_DIR = "public/downloads";
-const OUT = join(OUT_DIR, "sab-question-writer.zip");
+const OUT = join(OUT_DIR, "lab-question-writer.zip");
 const SKIP = new Set(["__pycache__", ".DS_Store", "evals"]);
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
@@ -35,8 +35,8 @@ const local = [];
 const central = [];
 let offset = 0;
 for (const file of files) {
-  // Archive paths start with the skill folder name, e.g. sab-question-writer/SKILL.md
-  const name = Buffer.from(["sab-question-writer", ...relative(SKILL, file).split(sep)].join("/"));
+  // Archive paths start with the skill folder name, e.g. lab-question-writer/SKILL.md
+  const name = Buffer.from(["lab-question-writer", ...relative(SKILL, file).split(sep)].join("/"));
   const data = readFileSync(file);
   const comp = deflateRawSync(data, { level: 9 });
   const crc = crc32(data);

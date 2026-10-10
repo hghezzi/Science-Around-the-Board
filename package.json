@@ -1,16 +1,16 @@
 {
-  "name": "science-around-the-board",
+  "name": "learn-around-the-board",
   "version": "1.0.0",
   "description": "A browser-only, property-trading board game for classroom review. Instructors write the questions in one spreadsheet file; student teams play in the browser.",
   "author": "Hans Ghezzi",
   "license": "SEE LICENSE IN LICENSE",
-  "homepage": "https://hghezzi.github.io/Science-Around-the-Board/",
+  "homepage": "https://hghezzi.github.io/Learn-Around-the-Board/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hghezzi/Science-Around-the-Board.git"
+    "url": "https://github.com/hghezzi/Learn-Around-the-Board.git"
   },
   "bugs": {
-    "url": "https://github.com/hghezzi/Science-Around-the-Board/issues"
+    "url": "https://github.com/hghezzi/Learn-Around-the-Board/issues"
   },
   "keywords": [
     "education",

@@ -15,7 +15,7 @@ const GameScreen = lazyWithReload(() => import("../GameScreen"));
 
 // This device's id for a room, kept so a refresh (or reopening the link) gets its player back.
 function deviceToken(code) {
-  const key = `sab-guest:${code}`;
+  const key = `lab-guest:${code}`;
   try {
     const saved = localStorage.getItem(key);
     if (saved && /^[a-z0-9]{8,32}$/.test(saved)) return saved;

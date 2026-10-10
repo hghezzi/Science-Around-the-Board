@@ -11,6 +11,7 @@ import { readConfig } from "./config";
 import { saveSnapshot, loadSnapshot, clearSnapshot } from "./autosave";
 import { toCsv, resultsFilename, summarizeTeams, teamInfoRows, makeSessionId, buildPayload, sendResults, buildMailto, downloadText } from "./results";
 import { bestPreSurveyPlayer } from "./gameRules";
+import { BOT_LEVELS, BOT_LEVEL_IDS, DEFAULT_BOT_LEVEL } from "./bot";
 import { resolveImage, isUploaded } from "./images";
 import QuestionInput from "./QuestionInput";
 import { resetConsent } from "./consent";
@@ -279,6 +280,9 @@ function HostApp({ onJoin }) {
   const [gameMode, setGameMode] = useState(null);
   const [playerCount, setPlayerCount] = useState(2);
   const [sessionMinutes, setSessionMinutes] = useState(0);
+  // Solo: reach a net-worth goal, or play against the bot ("easy" | "medium" | "hard"; bot.js).
+  const [soloMode, setSoloMode] = useState("goal");
+  const [botLevel, setBotLevel] = useState(DEFAULT_BOT_LEVEL);
   const [startPlayer, setStartPlayer] = useState(0);
   const [allTsvRows, setAllTsvRows] = useState([]);
   const [loadingError, setLoadingError] = useState(null);
@@ -320,6 +324,9 @@ function HostApp({ onJoin }) {
   const hostSlots = claims.map((c, i) => (c === "host" ? i : -1)).filter((i) => i >= 0);
   const remoteSlots = claims.map((c, i) => (c && c !== "host" ? i : -1)).filter((i) => i >= 0);
 
+  // The bot plays only on this computer (not in online games).
+  const bot = useMemo(() => (playerCount === 1 && soloMode === "bot" && playMode === "local" ? { level: botLevel } : null), [playerCount, soloMode, playMode, botLevel]);
+
   const validation = useMemo(
     () => (allTsvRows.length ? validateQuestionRows(allTsvRows) : null),
     [allTsvRows]
@@ -331,12 +338,13 @@ function HostApp({ onJoin }) {
     if (!RESUMABLE_PHASES.includes(phase)) return;
     saveSnapshot({
       phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
+      botLevel: bot?.level || null,
       playerQuestionSets, confQ, preRows, postRows, gameRows, game: gameSnapshot,
       hadImages: Object.keys(localImageMap).length > 0,
       // Online: the room reopens with the same code, and devices get their players back.
       online: online ? { code: online.code, claims, surveyDone } : null,
     });
-  }, [phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer,
+  }, [phase, sessionId, allTsvRows, imagesBase, gameMode, selectedModule, playerCount, sessionMinutes, startPlayer, bot,
       playerQuestionSets, confQ, preRows, postRows, gameRows, gameSnapshot, localImageMap, online, claims, surveyDone]);
 
   useEffect(() => {
@@ -523,6 +531,7 @@ function HostApp({ onJoin }) {
     setAllTsvRows(saved.allTsvRows); setImagesBase(saved.imagesBase || "");
     setGameMode(saved.gameMode); setSelectedModule(saved.selectedModule); setPlayerCount(saved.playerCount);
     setSessionMinutes(saved.sessionMinutes); setStartPlayer(saved.startPlayer); setSessionId(saved.sessionId || "");
+    if (saved.botLevel) { setSoloMode("bot"); setBotLevel(saved.botLevel); } else setSoloMode("goal");
     setPlayerQuestionSets(saved.playerQuestionSets); setConfQ(saved.confQ);
     setPreRows(saved.preRows); setPostRows(saved.postRows); setGameRows(saved.gameRows);
     setResumeGame(saved.game || null); setGameSnapshot(saved.game || null);
@@ -616,7 +625,7 @@ function HostApp({ onJoin }) {
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: { xs: 4, md: 8 } }}>
         <Container maxWidth="sm" sx={{ textAlign: "center" }}>
           <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1, mb: 1 }}>🎲</Box>
-          <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1, textWrap: "balance" }}>Science Around the Board</Typography>
+          <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1, textWrap: "balance" }}>Learn Around the Board</Typography>
           <Typography variant="h6" component="p" color="text.secondary" sx={{ fontWeight: 500, mb: 4, textWrap: "balance" }}>
             Turn any course into a board-game review session: roll, answer, invest and outwit the other players.
           </Typography>
@@ -634,7 +643,7 @@ function HostApp({ onJoin }) {
             >
               <strong>Resume your game?</strong>{" "}
               Saved at {new Date(resumeOffer.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
-              {[resumeOffer.gameMode, resumeOffer.selectedModule].filter(Boolean).join(" / ")} · {resumeOffer.playerCount === 1 ? "solo" : `${resumeOffer.playerCount} players`} ·{" "}
+              {[resumeOffer.gameMode, resumeOffer.selectedModule].filter(Boolean).join(" / ")} · {resumeOffer.playerCount === 1 ? (resumeOffer.botLevel ? `solo against the ${BOT_LEVELS[resumeOffer.botLevel]?.label || ""} bot` : "solo") : `${resumeOffer.playerCount} players`} ·{" "}
               {{ PRE_SURVEY: "pre-game survey", GAME: `turn ${resumeOffer.game?.totalTurns ?? 0}`, POST_SURVEY: "post-game survey", SUMMARY: "results screen" }[resumeOffer.phase]}.
               {resumeOffer.hadImages && " Uploaded images aren't saved; upload them again if your questions use them."}
             </Alert>
@@ -734,6 +743,35 @@ function HostApp({ onJoin }) {
             </Box>
           </Card>
 
+          {playerCount === 1 && playMode === "local" && (
+            <Card sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" component="h2">Solo: what's the challenge?</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Reach a net-worth goal before time runs out, or play the full rules against the bot. Either way, only your own answers count in your results.
+              </Typography>
+              <ToggleButtonGroup value={soloMode} exclusive onChange={(_, v) => v !== null && setSoloMode(v)} fullWidth color="primary" aria-label="Solo challenge">
+                <ToggleButton value="goal" sx={{ fontWeight: 800 }}><span aria-hidden>🎯&nbsp;</span>Reach a goal</ToggleButton>
+                <ToggleButton value="bot" sx={{ fontWeight: 800 }}><span aria-hidden>🤖&nbsp;</span>Play against the bot</ToggleButton>
+              </ToggleButtonGroup>
+              {soloMode === "bot" && (
+                <>
+                  <Typography sx={{ fontWeight: 800, mt: 2, mb: 1 }} id="bot-level-label">Bot difficulty</Typography>
+                  <ToggleButtonGroup value={botLevel} exclusive onChange={(_, v) => v !== null && setBotLevel(v)} fullWidth color="primary" aria-labelledby="bot-level-label">
+                    {BOT_LEVEL_IDS.map((id) => (
+                      <ToggleButton key={id} value={id} sx={{ flexDirection: "column", py: 1 }}>
+                        <Box component="span" sx={{ fontWeight: 800 }}>{BOT_LEVELS[id].label}</Box>
+                        <Box component="span" sx={{ fontSize: "0.75rem", textTransform: "none" }}>answers about {Math.round(BOT_LEVELS[id].accuracy * 100)}% right</Box>
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                    Answer about as well as the bot and you have an even chance. You watch its turns, including its answers and the explanations.
+                  </Typography>
+                </>
+              )}
+            </Card>
+          )}
+
           <Card sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" component="h2">2 · Session length</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -777,7 +815,7 @@ function HostApp({ onJoin }) {
         <Paper elevation={6} sx={{ p: 2, position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 2, zIndex: 100, borderRadius: 0 }}>
           <Button size="small" color="inherit" onClick={resetFile}>Change file</Button>
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" }, fontWeight: 700 }} aria-live="polite">
-            {gameMode ? `${playerCount === 1 ? "Solo" : `${playerCount} players`} · ${sessionMinutes ? `${sessionMinutes} min` : "no timer"}${playMode === "online" ? " · online" : ""} · ${[gameMode, selectedModule].filter(Boolean).join(" / ")}` : "Choose a topic to start"}
+            {gameMode ? `${playerCount === 1 ? (bot ? `Solo vs ${BOT_LEVELS[bot.level].label} bot` : "Solo") : `${playerCount} players`} · ${sessionMinutes ? `${sessionMinutes} min` : "no timer"}${playMode === "online" ? " · online" : ""} · ${[gameMode, selectedModule].filter(Boolean).join(" / ")}` : "Choose a topic to start"}
           </Typography>
           <Button variant="contained" color="success" size="large" disabled={!gameMode} onClick={playMode === "online" ? openRoom : startGame} sx={{ px: 6, py: 1.5, fontSize: "1.15rem" }}>{playMode === "online" ? "Open the online room" : "Start game"} <span aria-hidden>&nbsp;→</span></Button>
         </Paper>
@@ -822,7 +860,7 @@ function HostApp({ onJoin }) {
   }
 
   if (phase === "PRE_SURVEY") return <SurveyView key="pre" phase="pre" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPreRows(d.tidyRows); setStartPlayer(bestPreSurveyPlayer(d.tidyRows, playerCount)); setPhase("GAME"); }} />;
-  if (phase === "GAME") return <Suspense fallback={<Box role="status" sx={{ p: 6, textAlign: "center" }}><Typography>Setting up the board…</Typography></Box>}><GameScreen boardData={boardData} online={hostOnline} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); closeRoom(); setPhase("SETUP"); setGameMode(null); }} /></Suspense>;
+  if (phase === "GAME") return <Suspense fallback={<Box role="status" sx={{ p: 6, textAlign: "center" }}><Typography>Setting up the board…</Typography></Box>}><GameScreen boardData={boardData} online={hostOnline} bot={bot} bigTopic={gameMode} module={selectedModule} playerCount={playerCount} startingPlayerIndex={startPlayer} sessionMinutes={sessionMinutes} tsvRows={allTsvRows} imageMap={localImageMap} imageBase={imagesBase} resume={resumeGame} onSnapshot={setGameSnapshot} onEndGame={d => { setGameRows(d); setPhase("POST_SURVEY"); }} onExit={() => { forgetSavedGame(); closeRoom(); setPhase("SETUP"); setGameMode(null); }} /></Suspense>;
   if (phase === "POST_SURVEY") return <SurveyView key="post" phase="post" playerCount={playerCount} playerQuestionSets={playerQuestionSets} confidenceQuestions={confQ} resolveImage={resolveImageSource} onComplete={d => { setPostRows(d.tidyRows); setPhase("SUMMARY"); }} />;
   return <SummaryView playerCount={playerCount} config={config} topic={gameMode} module={selectedModule} preRows={preRows} postRows={postRows} gameRows={gameRows} sessionId={sessionId} remoteMembers={remoteMembers} onReturn={() => { closeRoom(); setPhase("SETUP"); setGameMode(null); resetFile(); }} />;
 }

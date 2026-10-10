@@ -1,6 +1,6 @@
 // src/labels.js
 // Every player-facing game term in one place. Keep these subject-neutral:
-// SAB is used for any field, so no lab/science wording here. Question-file
+// LAB is used for any field, so no lab/science wording here. Question-file
 // content (themes, questions, wildcard text) comes from the instructor.
 // A future "instructor-configurable labels" feature can override this object.
 import { SOLO } from "./gameRules.js";
@@ -29,6 +29,10 @@ export const LABELS = {
   rivalMilestone: "Rival's milestone",
   soloTeam: "Solo Player",
   rivalTeam: "Rival player",
+  bot: "Bot",
+  botName: (levelLabel) => `Bot (${levelLabel})`,
+  botPlaying: "The bot is playing its turn. Watch its question, answer and explanation.",
+  skipAhead: "Skip ahead",
   howToPlay: "How to play",
   chaosToken: "Chaos token",
   lapBonus: "Lap bonus",
@@ -60,12 +64,16 @@ export const SOLO_RULES = [
   { icon: "🎯", title: "Solo goal", text: `Reach the net-worth goal shown on the board before time runs out: ${money(SOLO.goals[30])} in 30 minutes, ${money(SOLO.goals[45])} in 45, ${money(SOLO.goals[60])} in 60 (or with no timer) and ${money(SOLO.goals[90])} in 90. Capturing all 4 milestones is a bonus. Your best result is kept on this computer.` },
 ];
 
-/** Quick rules for a game with `playerCount` players (no count: everything, for the start page). */
-export function rulesFor(playerCount) {
+// A solo game against the bot uses the two-player rules plus this.
+export const BOT_RULE = { icon: "🤖", title: "Playing against the bot", text: "The bot takes its own turns with the same rules and answers questions at its level (Easy, Medium or Hard). Watch its question, its answer and the explanation; Skip ahead speeds up the rest of its turn. Its answers never count in your results." };
+
+/** Quick rules for a game with `playerCount` players, or against the bot (no count: everything, for the start page). */
+export function rulesFor(playerCount, bot = false) {
   const shared = RULES.filter((r) => r.title !== "Paying rent" && r.title !== "Chaos tokens");
+  if (bot) return [...RULES.slice(0, -1), BOT_RULE, RULES.at(-1)];
   if (playerCount === 1) return [...shared.slice(0, 2), SOLO_RULES[0], ...shared.slice(2).filter((r) => r.title !== "Winning"), SOLO_RULES[1]];
   if (playerCount > 1) return RULES;
-  return [...RULES, ...SOLO_RULES];
+  return [...RULES, ...SOLO_RULES, BOT_RULE];
 }
 
 /** "$1,250" or "−$370" (true minus sign). */

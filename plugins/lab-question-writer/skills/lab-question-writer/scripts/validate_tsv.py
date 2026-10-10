@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Validate a Science Around the Board question file (TSV).
+"""Validate a Learn Around the Board question file (TSV).
 
 Usage:
     python validate_tsv.py questions.tsv [--images images/] [--json]
 
 A standard-library mirror of the game's own checker (src/tsvValidator.js and
-src/itemQuality.js in the SAB repository), plus authoring stats (answer-position
+src/itemQuality.js in the LAB repository), plus authoring stats (answer-position
 balance, image files). It also measures answer cues: how often a student who
 always picks the longest (or shortest) option, or the option that repeats the
 question's words, would be right, compared with chance; how many correct options

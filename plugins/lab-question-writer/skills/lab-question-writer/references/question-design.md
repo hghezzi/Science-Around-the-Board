@@ -1,6 +1,6 @@
-# Writing good SAB questions
+# Writing good LAB questions
 
-SAB is formative review: low stakes, immediate feedback, repeated retrieval. Questions should make students *retrieve and apply*, and the explanation should repair whatever misunderstanding a wrong answer revealed.
+LAB is formative review: low stakes, immediate feedback, repeated retrieval. Questions should make students *retrieve and apply*, and the explanation should repair whatever misunderstanding a wrong answer revealed.
 
 ## Match the question to the tile
 
@@ -38,7 +38,7 @@ Match the detail to the audience. For introductory courses, test the core concep
 
 ## Don't let the answer give itself away (cues)
 
-Writers, human or AI, naturally make the correct answer the longest, most careful and most qualified option, because it is the one they thought hardest about. Students learn this quickly: in the original demo file, always picking the longest option scored **69%** where chance is 25%. A question that can be answered by its shape tests nothing, and in SAB it also hands out free money. The validator measures these cues, but write them out from the start:
+Writers, human or AI, naturally make the correct answer the longest, most careful and most qualified option, because it is the one they thought hardest about. Students learn this quickly: in the original demo file, always picking the longest option scored **69%** where chance is 25%. A question that can be answered by its shape tests nothing, and in LAB it also hands out free money. The validator measures these cues, but write them out from the start:
 
 | cue | what test-wise students do | rule |
 |---|---|---|

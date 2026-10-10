@@ -1,10 +1,10 @@
-# How to play Science Around the Board
+# How to play Learn Around the Board
 
 **Student Guide** · *last updated October 2026*
 
-> Science Around the Board is a board game for reviewing your course. Players roll dice, answer your instructor's questions to buy tiles, charge each other rent and capture corner exams. Every answer is followed by an explanation, so a wrong answer is a chance to learn, not a failure. It takes about five minutes to learn the rules.
+> Learn Around the Board is a board game for reviewing your course. Players roll dice, answer your instructor's questions to buy tiles, charge each other rent and capture corner exams. Every answer is followed by an explanation, so a wrong answer is a chance to learn, not a failure. It takes about five minutes to learn the rules.
 >
-> The game runs in your web browser and you don't need an account. You can [read this guide online](https://hghezzi.github.io/Science-Around-the-Board/guide/students.html) or [print it as a PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Student_Guide.pdf).
+> The game runs in your web browser and you don't need an account. You can [read this guide online](https://hghezzi.github.io/Learn-Around-the-Board/guide/students.html) or [print it as a PDF](https://hghezzi.github.io/Learn-Around-the-Board/LAB_Student_Guide.pdf).
 
 <!-- toc -->
 
@@ -19,7 +19,7 @@ You need:
 
 ## Getting started
 
-1. **Open the game.** Click your instructor's game link and the questions load by themselves. Without a link, go to <https://hghezzi.github.io/Science-Around-the-Board/>, find **Use your instructor's questions**, click **Upload** and choose the file.
+1. **Open the game.** Click your instructor's game link and the questions load by themselves. Without a link, go to <https://hghezzi.github.io/Learn-Around-the-Board/>, find **Use your instructor's questions**, click **Upload** and choose the file.
    - If the file is protected, a box asks for the **Class password**. Type it, then click **Unlock**. Passwords are case-sensitive.
    - If your instructor gave you images, click **Optional: upload images** and select all the image files at once (Ctrl+A on Windows, ⌘A on a Mac).
 2. **Check that it loaded.** The page shows *Loaded … questions*. Click **Continue to game setup →**.
@@ -38,7 +38,7 @@ You need:
 
 In an online game, your host's computer runs the board and you play from your own device.
 
-1. Open the join link from your host, or go to <https://hghezzi.github.io/Science-Around-the-Board/>, choose **Join an online game**, click **Enter a code** and type the room code from your host's screen.
+1. Open the join link from your host, or go to <https://hghezzi.github.io/Learn-Around-the-Board/>, choose **Join an online game**, click **Enter a code** and type the room code from your host's screen.
 2. **Who are you playing as?** Click **Play as …** next to a free player. A group can share one device.
 3. Wait for the host to start. Then answer the **pre-game survey** on your device and click **Send my answers**.
 4. On your turn, roll and answer on your device. On other players' turns you see every move, but you can't press anything.
@@ -58,6 +58,8 @@ The game ends in one of two ways:
 - Landing on a tile you own asks one of its questions. If you answer right, the bank pays you its rent; if you answer wrong, you pay $20.
 - Your goal is to reach the net-worth goal shown on the board before time runs out (for example $5,000 in a 60-minute session). Capturing all four milestones is a bonus.
 - There are no chaos tokens.
+
+**Playing against the bot?** If you choose **Play against the bot** (Easy, Medium or Hard), you play the normal two-player rules against the computer, and you go first. On its turns, watch its question, its answer and the explanation; they are a free review. **Skip ahead** speeds up its turn. Only your own answers count in your results.
 
 Starting cash depends on how many players there are: **$2,500** solo, **$2,000** each with 2 players, **$1,500** with 3 and **$1,250** with 4 (fewer players get more turns each, so they need more cash). Players take turns, and the **Players** panel on the right shows each player's cash and net worth.
 
@@ -136,7 +138,7 @@ If your cash drops below $0, the game helps you recover:
 4. Hand in your results the way your instructor asked:
    - **Send results to instructor:** sends them straight to your instructor. Wait until the button shows **Sent ✓**.
    - **Email results to instructor:** downloads the results file and opens your email app. **Attach the downloaded file** before you send the email.
-   - **Download results (CSV):** saves the file (named `sab_results_….csv`) so you can upload it where your instructor asked, for example on your course page.
+   - **Download results (CSV):** saves the file (named `lab_results_….csv`) so you can upload it where your instructor asked, for example on your course page.
 
 The buttons you see depend on how your instructor set up the game. If **Send** fails, use **Email** or **Download** instead.
 
@@ -152,6 +154,6 @@ The buttons you see depend on how your instructor set up the game. If **Send** f
 
 ## Your privacy
 
-The game runs in your browser. Your answers stay on this computer unless you send or hand in your results. The start page may ask whether you allow visit statistics (Google Analytics): choosing **No thanks** changes nothing in the game. To learn more, read the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs in your browser. Your answers stay on this computer unless you send or hand in your results. The start page may ask whether you allow visit statistics (Google Analytics): choosing **No thanks** changes nothing in the game. To learn more, read the [privacy notice](https://hghezzi.github.io/Learn-Around-the-Board/privacy.html).
 
 *Instructors: see the [Instructor Guide](instructor-guide.md).*

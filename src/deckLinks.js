@@ -1,6 +1,6 @@
 // src/deckLinks.js
 // Shareable game links: ?deck=<question file link or shortcut>&images=<image folder link>
-export const DECK_SHORTCUTS = { demo: "./SAB_questions_Jan22_Filtered.tsv", stats: "./examples/intro_statistics.tsv" };
+export const DECK_SHORTCUTS = { demo: "./examples/16S_QIIME2_demo.tsv", stats: "./examples/intro_statistics.tsv" };
 
 /** Turn what the instructor pasted into a URL the game can fetch ("" if unusable). */
 export function normalizeDeckUrl(input) {
