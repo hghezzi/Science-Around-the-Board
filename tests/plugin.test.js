@@ -1,5 +1,5 @@
 // The Claude Code plugin ships its own copy of the question-writer skill
-// (plugins/sab-question-writer/skills/). It must match the skill in .claude/skills/.
+// (plugins/lab-question-writer/skills/). It must match the skill in .claude/skills/.
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -14,9 +14,9 @@ describe("Claude Code plugin", () => {
 
   it("is listed in the marketplace with a matching name", () => {
     const market = JSON.parse(readFileSync(".claude-plugin/marketplace.json", "utf8"));
-    const plugin = JSON.parse(readFileSync("plugins/sab-question-writer/.claude-plugin/plugin.json", "utf8"));
+    const plugin = JSON.parse(readFileSync("plugins/lab-question-writer/.claude-plugin/plugin.json", "utf8"));
     const entry = market.plugins.find((p) => p.name === plugin.name);
-    expect(entry?.source).toBe("./plugins/sab-question-writer");
-    expect(readFileSync(join(PLUGIN_SKILL, "SKILL.md"), "utf8")).toMatch(/^---\nname: sab-question-writer\n/);
+    expect(entry?.source).toBe("./plugins/lab-question-writer");
+    expect(readFileSync(join(PLUGIN_SKILL, "SKILL.md"), "utf8")).toMatch(/^---\nname: lab-question-writer\n/);
   });
 });

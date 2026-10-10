@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Instructor Guide
-    url: https://hghezzi.github.io/Science-Around-the-Board/guide/
+    url: https://hghezzi.github.io/Learn-Around-the-Board/guide/
     about: How to write a question file, share it, and collect results.
   - name: Report a security problem privately
-    url: https://github.com/hghezzi/Science-Around-the-Board/security/advisories/new
+    url: https://github.com/hghezzi/Learn-Around-the-Board/security/advisories/new
     about: Please don't open a public issue for security problems.

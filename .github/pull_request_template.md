@@ -1,6 +1,6 @@
 ## What and why
 
-<!-- What does this change, and what does it mean for a class using SAB? -->
+<!-- What does this change, and what does it mean for a class using LAB? -->
 
 ## Checklist
 

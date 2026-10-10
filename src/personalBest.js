@@ -2,7 +2,7 @@
 // Solo personal bests and records against the bot, kept in this browser only
 // (localStorage) and never sent anywhere. One entry per question file game, session
 // length and mode (goal, or each bot level). Never throws.
-const KEY = "sab-best-v1";
+const KEY = "lab-best-v1";
 
 const keyFor = ({ topic, module, minutes, mode }) => [topic || "", module || "", minutes || 0, ...(mode ? [mode] : [])].join("|");
 

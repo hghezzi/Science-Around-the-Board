@@ -1,4 +1,4 @@
-# SAB question file format
+# LAB question file format
 
 Contents: 1. How the file becomes a board · 2. Columns · 3. Row types · 4. Answer formats · 5. Recommended counts · 6. JSON schema for build_tsv.py · 7. Gotchas · 8. Config rows (instructor settings) · 9. Language, and what the game can't do
 
@@ -144,8 +144,8 @@ JSON for build_tsv.py:
 
 **Setting up the Google Sheet collector** (once per course, about 5 minutes):
 
-1. Create a Google Sheet, for example "SAB results – BIOL 301".
-2. Choose Extensions → Apps Script. Delete the sample code, paste the collector script from https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs and save.
+1. Create a Google Sheet, for example "LAB results – BIOL 301".
+2. Choose Extensions → Apps Script. Delete the sample code, paste the collector script from https://hghezzi.github.io/Learn-Around-the-Board/tools/lab-results-collector.gs and save.
 3. Choose Deploy → New deployment, select type **Web app**, set Execute as: **Me** and Who has access: **Anyone**, then Deploy and authorize.
 4. Copy the Web app URL (it ends in `/exec`) into a `results_url` config row.
 5. Test: play a quick solo game with the file and click **Send results to instructor**. A "Summary" tab (one row per player) and a "Details" tab (every answer and transaction) appear in the Sheet.

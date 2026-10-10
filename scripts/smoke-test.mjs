@@ -208,7 +208,7 @@ async function resultsScenario() {
   console.log("▶ results (mock Google Sheet)");
   const { context, page } = await newPage();
   const cfg = (id, value) => [id, value, ...Array(10).fill(""), "config", "", "", "", ""].join("\t");
-  await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+  await page.route("**/examples/16S_QIIME2_demo.tsv", async (route) => {
     const response = await route.fetch();
     const text = (await response.text()).replace(/\s+$/, "");
     const extra = [cfg("results_url", "https://script.google.com/macros/s/TEST/exec"), cfg("instructor_email", "instructor@example.edu"), cfg("course", "Smoke Test 101")];
@@ -255,7 +255,7 @@ async function filesScenario() {
   const { context, page } = await newPage();
   await page.goto(BASE);
   await page.getByRole("button", { name: "No thanks" }).click();
-  const lock = CryptoJS.AES.encrypt(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "Class-Pass").toString();
+  const lock = CryptoJS.AES.encrypt(readFileSync("public/examples/16S_QIIME2_demo.tsv", "utf8"), "Class-Pass").toString();
   await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions.lock", mimeType: "text/plain", buffer: Buffer.from(lock) });
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/Class password/).fill("wrong");
@@ -266,7 +266,7 @@ async function filesScenario() {
   await page.getByText(/Loaded 183 questions/).waitFor({ timeout: 10000 });
   await page.getByRole("button", { name: /Use a different file/ }).click();
   // Files from the current encryptor (PBKDF2 + AES-GCM).
-  const lock2 = await encryptLockFile(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "Class-Pass-2");
+  const lock2 = await encryptLockFile(readFileSync("public/examples/16S_QIIME2_demo.tsv", "utf8"), "Class-Pass-2");
   await page.setInputFiles('input[type="file"][accept*=".lock"]', { name: "questions2.lock", mimeType: "text/plain", buffer: Buffer.from(lock2) });
   await dialog.getByLabel(/Class password/).fill("Class-Pass");
   await dialog.getByRole("button", { name: "Unlock" }).click();
@@ -401,7 +401,7 @@ async function updateScenario() {
 async function debtScenario() {
   console.log("▶ debt after rent (deterministic)");
   const { context, page } = await newPage();
-  const rows = parseTsv(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"));
+  const rows = parseTsv(readFileSync("public/examples/16S_QIIME2_demo.tsv", "utf8"));
   const team = (id, name, color, position, money) => ({ id, name, color, position, money, jailed: false, chaosTokens: 0, rescueUsed: false, eliminated: false });
   const tiles = Array.from({ length: 36 }, (_, i) => [i === 4 ? 1 : i === 9 ? 0 : null, 0]);
   const snapshot = {
@@ -410,7 +410,7 @@ async function debtScenario() {
     game: { tiles, players: [team(0, "Red Player", "#e53935", 2, 20), team(1, "Blue Player", "#1e88e5", 0, 1500)], turn: 0, totalTurns: 5, logs: [], logRows: [], dice: [1, 1], endsAt: null },
   };
   await page.addInitScript((s) => {
-    if (!sessionStorage.getItem("seeded")) { localStorage.setItem("sab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
+    if (!sessionStorage.getItem("seeded")) { localStorage.setItem("lab-autosave-v1", s); sessionStorage.setItem("seeded", "1"); }
     Math.random = () => 0;
   }, JSON.stringify(snapshot));
   await page.goto(BASE);
@@ -435,7 +435,7 @@ async function debtScenario() {
 async function bankruptScenario() {
   console.log("▶ bankruptcy and rescue quiz");
   const { context, page } = await newPage();
-  await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+  await page.route("**/examples/16S_QIIME2_demo.tsv", async (route) => {
     const response = await route.fetch();
     const lines = (await response.text()).replace(/\s+$/, "").split(/\r?\n/);
     const header = lines[0].split("\t");
@@ -490,7 +490,7 @@ async function enterScenario() {
   for (const typed of ["1", "7"]) {
     const { context, page } = await newPage();
     await page.addInitScript(() => { Math.random = () => 0; });
-    await page.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+    await page.route("**/examples/16S_QIIME2_demo.tsv", async (route) => {
       const response = await route.fetch();
       const lines = (await response.text()).replace(/\s+$/, "").split(/\r?\n/);
       const header = lines[0].split("\t");

@@ -8,11 +8,11 @@ import CryptoJS from "crypto-js";
 import { readFileSync } from "node:fs";
 import { startPeerServer, routePeerJs, WEBRTC_ARGS } from "./lib/local-peer-server.mjs";
 
-const BASE = process.argv[2] || "http://localhost:4173/Science-Around-the-Board/";
+const BASE = process.argv[2] || "http://localhost:4173/Learn-Around-the-Board/";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: WEBRTC_ARGS });
 let failures = 0;
 // An encrypted copy of the demo, to open the password dialog.
-const LOCK = CryptoJS.AES.encrypt(readFileSync("public/SAB_questions_Jan22_Filtered.tsv", "utf8"), "a11y-test").toString();
+const LOCK = CryptoJS.AES.encrypt(readFileSync("public/examples/16S_QIIME2_demo.tsv", "utf8"), "a11y-test").toString();
 
 async function audit(page, label) {
   await page.waitForTimeout(400); // let MUI colour transitions finish
@@ -45,6 +45,9 @@ for (const scheme of ["light", "dark"]) {
   await page.click("text=16S");
   await page.click("text=Confirm Selection");
   await audit(page, `${scheme} setup`);
+  await page.getByRole("button", { name: /Play against the bot/ }).click();
+  await audit(page, `${scheme} setup (bot)`);
+  await page.getByRole("button", { name: /Reach a goal/ }).click();
   await page.click('button:has-text("Start game")');
   await page.click('button:has-text("Continue to Questions")');
   await audit(page, `${scheme} survey`);
@@ -93,6 +96,8 @@ for (const scheme of ["light", "dark"]) {
   }
   await page.click('button:has-text("End game")');
   await page.getByText("End the game now?").waitFor();
+  // Audit once the dialog has faded in: mid-fade colours fail contrast at random.
+  await page.waitForFunction(() => [...document.querySelectorAll(".MuiDialog-container")].every((el) => getComputedStyle(el).opacity === "1"));
   await audit(page, `${scheme} end-game confirm`);
   await page.click('button:has-text("Yes, end the game")');
   await page.click('button:has-text("CONTINUE TO POST-SURVEY")');

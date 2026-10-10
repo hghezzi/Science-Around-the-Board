@@ -12,7 +12,7 @@ import { DEMO_TSV, HEADER, makeTsv } from "./helpers.js";
 vi.spyOn(console, "log").mockImplementation(() => {});
 
 const STATS_TSV = readFileSync(fileURLToPath(new URL("../public/examples/intro_statistics.tsv", import.meta.url)), "utf8");
-const PY_VALIDATOR = fileURLToPath(new URL("../.claude/skills/sab-question-writer/scripts/validate_tsv.py", import.meta.url));
+const PY_VALIDATOR = fileURLToPath(new URL("../.claude/skills/lab-question-writer/scripts/validate_tsv.py", import.meta.url));
 
 let n = 0;
 /** One question row; `correct` is 1-based. */
@@ -305,7 +305,7 @@ describe("answer cues in the full validator", () => {
 const python = spawnSync("python3", ["--version"]);
 describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_tsv.py)", () => {
   const runPython = (text) => {
-    const dir = mkdtempSync(join(tmpdir(), "sab-cues-"));
+    const dir = mkdtempSync(join(tmpdir(), "lab-cues-"));
     const file = join(dir, "q.tsv");
     writeFileSync(file, text);
     const out = spawnSync("python3", [PY_VALIDATOR, file, "--json"], { encoding: "utf8" });
@@ -434,10 +434,10 @@ describe.skipIf(python.error || python.status !== 0)("Python mirror (validate_ts
 });
 
 // build_tsv.py: JSON to TSV for the question-writer skill.
-const BUILDER = fileURLToPath(new URL("../.claude/skills/sab-question-writer/scripts/build_tsv.py", import.meta.url));
+const BUILDER = fileURLToPath(new URL("../.claude/skills/lab-question-writer/scripts/build_tsv.py", import.meta.url));
 describe.skipIf(python.error || python.status !== 0)("build_tsv.py", () => {
   const build = (rows, args = []) => {
-    const dir = mkdtempSync(join(tmpdir(), "sab-build-"));
+    const dir = mkdtempSync(join(tmpdir(), "lab-build-"));
     writeFileSync(join(dir, "q.json"), JSON.stringify(rows));
     spawnSync("python3", [BUILDER, join(dir, "q.json"), join(dir, "q.tsv"), ...args], { encoding: "utf8" });
     return { dir, rows: parseTsv(readFileSync(join(dir, "q.tsv"), "utf8")) };
@@ -458,8 +458,8 @@ describe.skipIf(python.error || python.status !== 0)("build_tsv.py", () => {
   });
 
   it("converts an existing file to JSON and back without changing a cell", () => {
-    const dir = mkdtempSync(join(tmpdir(), "sab-rt-"));
-    const src = fileURLToPath(new URL("../public/SAB_questions_Jan22_Filtered.tsv", import.meta.url));
+    const dir = mkdtempSync(join(tmpdir(), "lab-rt-"));
+    const src = fileURLToPath(new URL("../public/examples/16S_QIIME2_demo.tsv", import.meta.url));
     spawnSync("python3", [BUILDER, "--to-json", src, join(dir, "q.json")], { encoding: "utf8" });
     spawnSync("python3", [BUILDER, join(dir, "q.json"), join(dir, "q.tsv"), "--bigTopic", "X", "--module", "Y"], { encoding: "utf8" });
     expect(parseTsv(readFileSync(join(dir, "q.tsv"), "utf8"))).toEqual(parseTsv(DEMO_TSV));

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Validate a Science Around the Board question file before sharing it.
+// Validate a Learn Around the Board question file before sharing it.
 // Usage: npm run validate-tsv -- path/to/questions.tsv
 //    or: node scripts/validate-tsv.mjs path/to/questions.tsv
 // Exits with code 1 if any errors are found.

@@ -1,11 +1,11 @@
 ---
-name: sab-question-writer
-description: Writes complete question files (TSV "cartridges") for Science Around the Board (SAB), the property-trading classroom review game at hghezzi.github.io/Science-Around-the-Board. Interviews the instructor about their course, learning objectives and materials, researches the topic, proposes a board blueprint (4 themes x 2 subthemes), then writes property, milestone, core, mishap, survey and confidence questions with misconception-based distractors and teaching explanations, optionally generates figures, and validates the file so it loads in the game. Use this skill whenever someone wants questions, a quiz, a review game, a question bank or a TSV for Science Around the Board / SAB / "the board game", or wants to turn lecture notes, slides or a syllabus into game content, even if they don't name the file format.
+name: lab-question-writer
+description: Writes complete question files (TSV "cartridges") for Learn Around the Board (LAB), the property-trading classroom review game at hghezzi.github.io/Learn-Around-the-Board. Interviews the instructor about their course, learning objectives and materials, researches the topic, proposes a board blueprint (4 themes x 2 subthemes), then writes property, milestone, core, mishap, survey and confidence questions with misconception-based distractors and teaching explanations, optionally generates figures, and validates the file so it loads in the game. Use this skill whenever someone wants questions, a quiz, a review game, a question bank or a TSV for Learn Around the Board / LAB / "the board game", or wants to turn lecture notes, slides or a syllabus into game content, even if they don't name the file format.
 ---
 
-# SAB Question Writer
+# LAB Question Writer
 
-You are helping an instructor build a question file for **Science Around the Board**, a browser game where 1–4 players (each can be a small group) share one computer, move around a 36-tile board and answer questions to buy, defend and upgrade tiles. The file you produce *is* the game: its themes become the board's sides, its questions are what students study, and its explanations are the main teaching moment. A good file feels like a well-designed review session; a sloppy one teaches misconceptions or breaks the board.
+You are helping an instructor build a question file for **Learn Around the Board**, a browser game where 1–4 players (each can be a small group) share one computer, move around a 36-tile board and answer questions to buy, defend and upgrade tiles. The file you produce *is* the game: its themes become the board's sides, its questions are what students study, and its explanations are the main teaching moment. A good file feels like a well-designed review session; a sloppy one teaches misconceptions or breaks the board.
 
 Work in this order. Each step has a reason; don't skip the checkpoints with the instructor, because only they know what their students actually covered.
 
@@ -125,7 +125,7 @@ python scripts/validate_tsv.py questions.tsv --images images/
 
 `build_tsv.py` writes the columns in order, strips tabs and newlines, and keeps quoted code exactly. `validate_tsv.py` mirrors the game's own checker: board structure per game, counts, answer keys, formats, wildcard amounts, duplicate IDs, missing images, cells a spreadsheet would change (formulas, a leading apostrophe), short answers the game would also accept for a different term, and Form or Sheet links used as `results_url`. It prints a `Formats:` line, an `Answer cues:` line (how often always picking the longest option, the shortest, or the one repeating the question's words would be right, against chance), a `Select-all questions:` line, the `Results are sent to:` line, and these lines per game when the file holds several; it also checks the milestone pool's length cue on its own. Fix every **ERROR**, and every **WARNING** unless there is a reason not to. **Each game's length scores must be close to chance (about 25% for 4 options), neither well above nor well below**, before you deliver. Compare the `Formats:` line with the blueprint and rerun until clean.
 
-Inside the SAB repository, `npm run validate-tsv -- questions.tsv` runs the game's own validator.
+Inside the LAB repository, `npm run validate-tsv -- questions.tsv` runs the game's own validator.
 
 ## 7. Deliver
 

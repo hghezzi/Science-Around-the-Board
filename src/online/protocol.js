@@ -16,7 +16,7 @@ export const MAX_MESSAGE_CHARS = 200_000;
 // No 0/O or 1/I/L: codes are read aloud and typed from a projector.
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const ROOM_CODE_LENGTH = 6;
-const PEER_PREFIX = "sab-room-";
+const PEER_PREFIX = "lab-room-";
 
 export function makeRoomCode(rng = Math.random) {
   let code = "";

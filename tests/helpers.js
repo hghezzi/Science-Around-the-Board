@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export const DEMO_TSV = readFileSync(
-  fileURLToPath(new URL("../public/SAB_questions_Jan22_Filtered.tsv", import.meta.url)),
+  fileURLToPath(new URL("../public/examples/16S_QIIME2_demo.tsv", import.meta.url)),
   "utf8"
 );
 

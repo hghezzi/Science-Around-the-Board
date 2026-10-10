@@ -15,7 +15,7 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("Science Around the Board stopped:", error, info?.componentStack);
+    console.error("Learn Around the Board stopped:", error, info?.componentStack);
   }
 
   render() {
@@ -30,7 +30,7 @@ export default class ErrorBoundary extends React.Component {
           <Button variant="contained" onClick={() => window.location.reload()}>Reload</Button>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
             If it keeps happening, please{" "}
-            <a href="https://github.com/hghezzi/Science-Around-the-Board/issues/new/choose" target="_blank" rel="noopener noreferrer">report it</a>.
+            <a href="https://github.com/hghezzi/Learn-Around-the-Board/issues/new/choose" target="_blank" rel="noopener noreferrer">report it</a>.
           </Typography>
         </Paper>
       </Box>

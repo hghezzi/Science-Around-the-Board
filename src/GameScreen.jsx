@@ -988,7 +988,7 @@ export default function GameScreen({
     imageMaxHeight: 160,
   });
 
-  const title = module || bigTopic || 'Science Around the Board';
+  const title = module || bigTopic || 'Learn Around the Board';
   const inDebt = currentPlayer.money < 0;
   // In debt (only possible with a game saved by an older version), Roll opens the debt dialog.
   const rollLabel = timeUp ? "Time's up" : botTurn ? 'The bot is playing…' : isMoving ? 'Moving…' : (inDebt ? 'Settle debt' : `Roll — ${currentPlayer.name}`);
@@ -1044,7 +1044,7 @@ export default function GameScreen({
     <Box sx={{ bgcolor: 'background.default', color: 'text.primary', minHeight: '100vh', px: { xs: 1, md: 3 }, py: 2 }}>
       <Box component="header" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center', maxWidth: 1500, mx: 'auto', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}><span aria-hidden>🎲 </span>Science Around the Board</Typography>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}><span aria-hidden>🎲 </span>Learn Around the Board</Typography>
           <Chip label={`Turn ${totalTurns}`} size="small" color="primary" />
           {endsAt && (
             <Chip
@@ -1124,7 +1124,7 @@ export default function GameScreen({
                 </Typography>
               )}
             </Box>
-            <Typography sx={{ fontSize: 'max(11px, 1.1cqw)', color: 'text.secondary' }}>© Hans Ghezzi · Science Around the Board</Typography>
+            <Typography sx={{ fontSize: 'max(11px, 1.1cqw)', color: 'text.secondary' }}>© Hans Ghezzi · Learn Around the Board</Typography>
           </Board>
         </Box>
 

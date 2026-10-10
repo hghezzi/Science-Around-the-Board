@@ -46,11 +46,11 @@ describe("isUnpublishedSheet", () => {
 });
 
 describe("buildShareLink / readDeckParams", () => {
-  const page = "https://hghezzi.github.io/Science-Around-the-Board/?old=1#top";
+  const page = "https://hghezzi.github.io/Learn-Around-the-Board/?old=1#top";
 
   it("round-trips a question file and an image folder", () => {
     const link = buildShareLink(page, `${SHEET}/pubhtml`, "https://github.com/me/course/tree/main/images");
-    expect(link.startsWith("https://hghezzi.github.io/Science-Around-the-Board/?deck=")).toBe(true);
+    expect(link.startsWith("https://hghezzi.github.io/Learn-Around-the-Board/?deck=")).toBe(true);
     expect(readDeckParams(new URL(link).search)).toEqual({
       deck: `${SHEET}/pub?output=tsv`,
       images: "https://raw.githubusercontent.com/me/course/main/images",
@@ -59,7 +59,7 @@ describe("buildShareLink / readDeckParams", () => {
 
   it("keeps shortcuts short and leaves out a missing image folder", () => {
     const link = buildShareLink(page, "Demo");
-    expect(link).toBe("https://hghezzi.github.io/Science-Around-the-Board/?deck=demo");
+    expect(link).toBe("https://hghezzi.github.io/Learn-Around-the-Board/?deck=demo");
     expect(readDeckParams(new URL(link).search)).toEqual({ deck: "demo", images: "" });
   });
 });

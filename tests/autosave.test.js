@@ -21,7 +21,7 @@ describe("autosave", () => {
   });
 
   it("ignores snapshots from another version", () => {
-    localStorage.setItem("sab-autosave-v1", JSON.stringify({ version: 2, savedAt: Date.now(), phase: "GAME" }));
+    localStorage.setItem("lab-autosave-v1", JSON.stringify({ version: 2, savedAt: Date.now(), phase: "GAME" }));
     expect(loadSnapshot()).toBeNull();
   });
 

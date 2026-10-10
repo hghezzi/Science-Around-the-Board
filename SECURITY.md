@@ -1,6 +1,6 @@
 # Security policy
 
-Science Around the Board is a static web app with no server and no accounts. It runs in the browser from GitHub Pages. Its security mostly comes down to three things: handling question files and share links safely, keeping student data on the students' computers, and the optional Google Apps Script results collector.
+Learn Around the Board is a static web app with no server and no accounts. It runs in the browser from GitHub Pages. Its security mostly comes down to three things: handling question files and share links safely, keeping student data on the students' computers, and the optional Google Apps Script results collector.
 
 ## Reporting a vulnerability
 
@@ -10,7 +10,7 @@ You should get a reply within a week. Fixes are deployed to the live site as soo
 
 ## Supported versions
 
-Only the live site (https://hghezzi.github.io/Science-Around-the-Board/) and the current `main` branch are supported. Instructors who copied the results collector (`public/tools/sab-results-collector.gs`) into their own Sheet should paste in the latest version when an advisory says so.
+Only the live site (https://hghezzi.github.io/Learn-Around-the-Board/) and the current `main` branch are supported. Instructors who copied the results collector (`public/tools/lab-results-collector.gs`) into their own Sheet should paste in the latest version when an advisory says so.
 
 ## What's in scope
 

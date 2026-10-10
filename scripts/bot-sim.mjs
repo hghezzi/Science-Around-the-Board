@@ -9,7 +9,7 @@ import { buildBoardFromTsv } from "../src/gameData.js";
 import * as R from "../src/gameRules.js";
 import * as B from "../src/bot.js";
 
-const rows = parseTsv(readFileSync(new URL("../public/SAB_questions_Jan22_Filtered.tsv", import.meta.url), "utf8"));
+const rows = parseTsv(readFileSync(new URL("../public/examples/16S_QIIME2_demo.tsv", import.meta.url), "utf8"));
 const base = buildBoardFromTsv("16S", rows, "QIIME2");
 const MISHAPS = [100, 100, 150, -100, -100, -100, -150, -50];
 const GAMES = Number(process.env.GAMES || 4000);

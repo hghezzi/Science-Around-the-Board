@@ -625,7 +625,7 @@ function HostApp({ onJoin }) {
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", py: { xs: 4, md: 8 } }}>
         <Container maxWidth="sm" sx={{ textAlign: "center" }}>
           <Box aria-hidden sx={{ fontSize: 56, lineHeight: 1, mb: 1 }}>🎲</Box>
-          <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1, textWrap: "balance" }}>Science Around the Board</Typography>
+          <Typography variant="h2" component="h1" sx={{ fontSize: { xs: "2.4rem", md: "3.4rem" }, mb: 1, textWrap: "balance" }}>Learn Around the Board</Typography>
           <Typography variant="h6" component="p" color="text.secondary" sx={{ fontWeight: 500, mb: 4, textWrap: "balance" }}>
             Turn any course into a board-game review session: roll, answer, invest and outwit the other players.
           </Typography>

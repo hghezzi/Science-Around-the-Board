@@ -1,6 +1,6 @@
 # Code of conduct
 
-Science Around the Board is made by and for educators and students. We want everyone who takes part, from first-time question writers to experienced developers, to feel welcome and respected.
+Learn Around the Board is made by and for educators and students. We want everyone who takes part, from first-time question writers to experienced developers, to feel welcome and respected.
 
 ## Our standards
 

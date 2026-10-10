@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use Science Around the Board in teaching or research, please cite it as below."
-title: "Science Around the Board"
+message: "If you use Learn Around the Board in teaching or research, please cite it as below."
+title: "Learn Around the Board"
 abstract: "A browser-only, property-trading board game for classroom review. Instructors write the questions in one spreadsheet file; student teams answer them to buy, defend and upgrade tiles, with pre- and post-game surveys and exportable results."
 type: software
 authors:
@@ -9,8 +9,8 @@ authors:
 license:
   - PolyForm-Noncommercial-1.0.0
   - CC-BY-NC-SA-4.0
-repository-code: "https://github.com/hghezzi/Science-Around-the-Board"
-url: "https://hghezzi.github.io/Science-Around-the-Board/"
+repository-code: "https://github.com/hghezzi/Learn-Around-the-Board"
+url: "https://hghezzi.github.io/Learn-Around-the-Board/"
 keywords:
   - game-based learning
   - playful pedagogy

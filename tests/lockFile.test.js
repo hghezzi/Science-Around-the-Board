@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import CryptoJS from "crypto-js";
-import { encryptLockFile, decryptLockFile, lockFormat, LOCK_PREFIX } from "../src/lockFile.js";
+import { encryptLockFile, decryptLockFile, lockFormat, LOCK_PREFIX, OLD_LOCK_PREFIX } from "../src/lockFile.js";
 
 const TSV = "id\tquestion\toption1\nq1\tWhat is 2+2?\t4\n";
 const FAST = { iterations: 100000 }; // the minimum the reader accepts; keeps the tests quick
@@ -20,6 +20,13 @@ describe("lockFile", () => {
     const damaged = lock.slice(0, -6) + (lock.endsWith("AAAA==") ? "BBBB==" : "AAAA==");
     expect(await decryptLockFile(damaged, "Class-Pass")).toBeNull();
     expect(await decryptLockFile(`${LOCK_PREFIX}garbage`, "Class-Pass")).toBeNull();
+  });
+
+  it("still opens files made before the rename (SAB-LOCK-v2)", async () => {
+    const lock = await encryptLockFile(TSV, "Class-Pass", FAST);
+    const old = OLD_LOCK_PREFIX + lock.slice(LOCK_PREFIX.length);
+    expect(lockFormat(old)).toBe("v2");
+    expect(await decryptLockFile(old, "Class-Pass")).toBe(TSV);
   });
 
   it("uses a fresh salt and IV every time", async () => {

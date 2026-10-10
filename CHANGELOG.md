@@ -1,8 +1,15 @@
 # Changelog
 
-Notable changes to Science Around the Board. The live site is deployed automatically from `main` once CI passes (`.github/workflows/deploy.yml`); dates are deploy dates. The instructor-facing summary is the *What's new* section of the [Instructor Guide](guide/instructor-guide.md).
+Notable changes to Learn Around the Board (called Science Around the Board until October 2026). The live site is deployed automatically from `main` once CI passes (`.github/workflows/deploy.yml`); dates are deploy dates. The instructor-facing summary is the *What's new* section of the [Instructor Guide](guide/instructor-guide.md).
 
 ## Unreleased: public release preparation (October 2026)
+
+### New name: Learn Around the Board (LAB)
+- The game, guides, skill (`lab-question-writer`), plugin marketplace (`lab`), files (`LAB_*_Guide.pdf`, `lab_results_*.csv`, `lab-results-collector.gs`, `examples/16S_QIIME2_demo.tsv`) and the site address (`/Learn-Around-the-Board/`) use the new name. Old `.lock` files (`SAB-LOCK-v2`) still open, and the results collector accepts submissions from older games.
+
+### Solo against the bot, and the Enter fix
+- Solo players can play the two-player rules against a bot (Easy, Medium, Hard; `src/bot.js`, levels sized with `scripts/bot-sim.mjs`). Its turns show its question, answer and explanation; Skip ahead speeds them up. Its answers are never logged; its `GAME_RESULT` row has a new `bot` column.
+- Fixed: Enter on a typed answer also pressed the next button (skipping the explanation, or buying the tile).
 
 ### Online play (beta)
 - Players can join from their own devices with a room code (`?join=`): the host's browser runs the game and devices connect peer-to-peer through PeerJS (WebRTC). Per-device surveys, read-only views for watchers, reconnects, host Resume, names sent from devices. Local play is unchanged; online code loads only when chosen. New tests: `tests/online.test.js`, the `online` smoke scenario, online screens in `a11y`, and a privacy check that local play opens no connection.

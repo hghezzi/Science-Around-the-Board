@@ -1,8 +1,8 @@
-# Instructor Guide to ‘Science Around the Board’
+# Instructor Guide to ‘Learn Around the Board’
 
 **By Hans Ghezzi** · *Living edition, last updated October 2026*
 
-> This guide lives in the project repository and is rebuilt every time the game changes, so it always matches the version at <https://hghezzi.github.io/Science-Around-the-Board/>. Read it on the [web](https://hghezzi.github.io/Science-Around-the-Board/guide/) or as a [PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf). For your students, there is a short [Student Guide](student-guide.md) ([web](https://hghezzi.github.io/Science-Around-the-Board/guide/students.html) · [printable PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Student_Guide.pdf)).
+> This guide lives in the project repository and is rebuilt every time the game changes, so it always matches the version at <https://hghezzi.github.io/Learn-Around-the-Board/>. Read it on the [web](https://hghezzi.github.io/Learn-Around-the-Board/guide/) or as a [PDF](https://hghezzi.github.io/Learn-Around-the-Board/LAB_Instructor_Guide.pdf). For your students, there is a short [Student Guide](student-guide.md) ([web](https://hghezzi.github.io/Learn-Around-the-Board/guide/students.html) · [printable PDF](https://hghezzi.github.io/Learn-Around-the-Board/LAB_Student_Guide.pdf)).
 >
 > **New here?** Start with the [Quick start](#quick-start). **Used it before?** See [What’s new](#whats-new).
 
@@ -12,9 +12,9 @@
 
 You can try the game in five minutes and run your first class with your own questions the same week. It is free. You need a browser and, for your own questions, a spreadsheet; you don't need to install anything, create an account, use GitHub or set up a server.
 
-1. **Play the demo (5 minutes).** Open <https://hghezzi.github.io/Science-Around-the-Board/> and click **Play the demo** (16S rRNA sequencing) or **Try a different subject** (Intro Statistics). Continue to the setup, choose **Solo**, a topic and **Start game →**, then answer the survey and roll a few times. Click **End game** to see the end of a session.
+1. **Play the demo (5 minutes).** Open <https://hghezzi.github.io/Learn-Around-the-Board/> and click **Play the demo** (16S rRNA sequencing) or **Try a different subject** (Intro Statistics). Continue to the setup, choose **Solo**, a topic and **Start game →**, then answer the survey and roll a few times. Click **End game** to see the end of a session.
 2. **Make your question file.** Pick one of two routes:
-   - **Do it yourself:** save the [Intro Statistics example](https://hghezzi.github.io/Science-Around-the-Board/examples/intro_statistics.tsv) to your computer (right-click the link, then **Save link as…**) and open it in Google Sheets (**File → Import → Upload**). Keep the header row and replace the rows with your own questions. [Designing the input file](#designing-the-input-file) explains every column.
+   - **Do it yourself:** save the [Intro Statistics example](https://hghezzi.github.io/Learn-Around-the-Board/examples/intro_statistics.tsv) to your computer (right-click the link, then **Save link as…**) and open it in Google Sheets (**File → Import → Upload**). Keep the header row and replace the rows with your own questions. [Designing the input file](#designing-the-input-file) explains every column.
    - **Let Claude draft it:** the [question-writer skill](#generating-questions-with-claude-optional) interviews you about your course and writes a complete, checked file for you to review.
 3. **Check it.** Download it as **Tab-separated values (.tsv)** (in Google Sheets: **File → Download**), load it in the game with **Upload** and read the [file check](#checking-your-file). Fix every red item.
 4. **Decide how students get the questions:** a game link to a published Google Sheet, or the file itself, optionally password-protected. See [Sharing the game with students](#sharing-the-game-with-students).
@@ -27,7 +27,7 @@ You can try the game in five minutes and run your first class with your own ques
 
 Educational practices are constantly evolving, moving away from passive absorption towards active engagement. Growing up in a memorization-heavy system, I experienced firsthand the limitations of rote learning and the powerful impact that active, student-centered strategies can have on both motivation and long-term retention. As instructors, our primary goal is to support such deeper learning, but we should not view this as a strictly rigid or purely serious process.
 
-This is where the potential of playful pedagogy becomes transformative. By integrating game mechanics such as competition, resource management, and immediate feedback into the curriculum, we can create a dynamic environment where students feel safe to fail and eager to try again. The game I developed, Science Around the Board, leverages these principles to turn reviewing into an engaging learning cycle. This manual will guide you through that transition, showing you how to align the dynamic energy of a board game with the rigorous learning objectives of your course.
+This is where the potential of playful pedagogy becomes transformative. By integrating game mechanics such as competition, resource management, and immediate feedback into the curriculum, we can create a dynamic environment where students feel safe to fail and eager to try again. The game I developed, Learn Around the Board (LAB; called Science Around the Board until October 2026), leverages these principles to turn reviewing into an engaging learning cycle. This manual will guide you through that transition, showing you how to align the dynamic energy of a board game with the rigorous learning objectives of your course.
 
 ## Definitions
 
@@ -35,9 +35,9 @@ This is where the potential of playful pedagogy becomes transformative. By integ
 
 Playful pedagogy is an instructional approach that integrates the structures and spirit of play (curiosity, experimentation and social interaction) into the learning process. In this model, teachers become facilitators rather than remaining the center of the classroom. This shift establishes a "safe space" where students can take risks, make mistakes, and learn iteratively without the immediate anxiety of grade penalties.
 
-### What is Science Around the Board?
+### What is Learn Around the Board?
 
-Science Around the Board is a customizable, web-based, open-source educational platform developed to gamify the learning of complex topics.
+Learn Around the Board is a customizable, web-based, open-source educational platform developed to gamify the learning of complex topics.
 
 - **Setup:** instructors provide a question file in tab-separated values (.tsv) format, plus optional images. One to four players share a computer and load the file, or simply open a game link the instructor shares.
 - **Pre-game survey:** before starting, each player completes a short pre-assessment.
@@ -53,13 +53,13 @@ The game leverages key pedagogical frameworks, such as the BOPPPS model of lesso
 
 While originally designed for a 4th-year undergraduate research course in Microbiology, the modular nature of the game engine works seamlessly with absolutely any topic, as the content is determined by the input file. Its versatility is limitless: I have used the exact same engine to run advanced genomics workshops and to host a RuPaul’s Drag Race trivia night with my wife! The built-in *Intro Statistics* example shows the same engine with a completely different subject.
 
-## Why use ‘Science Around the Board’?
+## Why use ‘Learn Around the Board’?
 
 Successfully leveraging play in the classroom requires aligning activities with the learning objectives. Misalignment, requiring effort allocation towards tasks that do not move students forward in the learning process, can be counterproductive by decreasing motivation and attention. It is critical to be intentional, ensuring games align with Learning Outcomes (LOs), and that the fun does not distract from the learning. A useful strategy when brainstorming playful frameworks is to begin thinking about which verb to address in Bloom’s Taxonomy.
 
-In my experience as an instructor, TA, and facilitator I recognised that students often struggle to conceptualise complex class material, frequently performing tasks without understanding the theory behind it. Students frequently “do” tasks without “knowing”, thus the playful activity I had envisioned had to address the Bloom’s verb “understand”, which involves gaining more knowledge through review and practice. Science Around the Board was built to bridge this gap: it enables students to step back from the rote execution of tasks and confront the conceptual framework that supports them. SAB is suited to test the ability of students to recall and recontextualise class material in novel applications.
+In my experience as an instructor, TA, and facilitator I recognised that students often struggle to conceptualise complex class material, frequently performing tasks without understanding the theory behind it. Students frequently “do” tasks without “knowing”, thus the playful activity I had envisioned had to address the Bloom’s verb “understand”, which involves gaining more knowledge through review and practice. Learn Around the Board was built to bridge this gap: it enables students to step back from the rote execution of tasks and confront the conceptual framework that supports them. LAB is suited to test the ability of students to recall and recontextualise class material in novel applications.
 
-Science Around the Board is best suited as a replacement for review sessions, with successful execution and student feedback for both individual or group use, and synchronously or asynchronously. Instructors can design questions spanning any range of topics and use matching pre- and post-assessments to track students' learning throughout the game. Additionally, Science Around the Board incorporates numerous opportunities for iterative assessment followed by scaffolded explanations, enabling learning opportunities at every stage while removing the fear of failure.
+Learn Around the Board is best suited as a replacement for review sessions, with successful execution and student feedback for both individual or group use, and synchronously or asynchronously. Instructors can design questions spanning any range of topics and use matching pre- and post-assessments to track students' learning throughout the game. Additionally, Learn Around the Board incorporates numerous opportunities for iterative assessment followed by scaffolded explanations, enabling learning opportunities at every stage while removing the fear of failure.
 
 ### The “data sandwich”: how a session measures learning
 
@@ -86,26 +86,26 @@ Comparing confidence with survey scores also shows calibration: a player who rat
 
 | What | Link |
 | :--- | :--- |
-| Game | <https://hghezzi.github.io/Science-Around-the-Board/> |
-| This guide (web / PDF) | [Web version](https://hghezzi.github.io/Science-Around-the-Board/guide/) · [PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Instructor_Guide.pdf) |
-| Student Guide (web / PDF) | [Web version](https://hghezzi.github.io/Science-Around-the-Board/guide/students.html) · [PDF](https://hghezzi.github.io/Science-Around-the-Board/SAB_Student_Guide.pdf) |
-| Example files to start from | [Intro Statistics (.tsv)](https://hghezzi.github.io/Science-Around-the-Board/examples/intro_statistics.tsv) · [16S demo (.tsv)](https://hghezzi.github.io/Science-Around-the-Board/SAB_questions_Jan22_Filtered.tsv) |
-| Complete file format reference | [format.md on GitHub](https://github.com/hghezzi/Science-Around-the-Board/blob/main/.claude/skills/sab-question-writer/references/format.md) |
-| Encryption tool | <https://hghezzi.github.io/Science-Around-the-Board/encryptor.html> |
-| Question-writer skill for Claude | [Download (.zip)](https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip) |
-| Results collector for Google Sheets | [Apps Script code](https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs) (see [Collecting results](#collecting-results)) |
-| Privacy notice | <https://hghezzi.github.io/Science-Around-the-Board/privacy.html> |
-| Source code, questions and bug reports | [GitHub repository](https://github.com/hghezzi/Science-Around-the-Board) · [Issues](https://github.com/hghezzi/Science-Around-the-Board/issues) |
+| Game | <https://hghezzi.github.io/Learn-Around-the-Board/> |
+| This guide (web / PDF) | [Web version](https://hghezzi.github.io/Learn-Around-the-Board/guide/) · [PDF](https://hghezzi.github.io/Learn-Around-the-Board/LAB_Instructor_Guide.pdf) |
+| Student Guide (web / PDF) | [Web version](https://hghezzi.github.io/Learn-Around-the-Board/guide/students.html) · [PDF](https://hghezzi.github.io/Learn-Around-the-Board/LAB_Student_Guide.pdf) |
+| Example files to start from | [Intro Statistics (.tsv)](https://hghezzi.github.io/Learn-Around-the-Board/examples/intro_statistics.tsv) · [16S demo (.tsv)](https://hghezzi.github.io/Learn-Around-the-Board/examples/16S_QIIME2_demo.tsv) |
+| Complete file format reference | [format.md on GitHub](https://github.com/hghezzi/Learn-Around-the-Board/blob/main/.claude/skills/lab-question-writer/references/format.md) |
+| Encryption tool | <https://hghezzi.github.io/Learn-Around-the-Board/encryptor.html> |
+| Question-writer skill for Claude | [Download (.zip)](https://hghezzi.github.io/Learn-Around-the-Board/downloads/lab-question-writer.zip) |
+| Results collector for Google Sheets | [Apps Script code](https://hghezzi.github.io/Learn-Around-the-Board/tools/lab-results-collector.gs) (see [Collecting results](#collecting-results)) |
+| Privacy notice | <https://hghezzi.github.io/Learn-Around-the-Board/privacy.html> |
+| Source code, questions and bug reports | [GitHub repository](https://github.com/hghezzi/Learn-Around-the-Board) · [Issues](https://github.com/hghezzi/Learn-Around-the-Board/issues) |
 
-## How to use ‘Science Around the Board’
+## How to use ‘Learn Around the Board’
 
 ### Choosing a topic
 
-This is probably the most straightforward portion of the guide. While Science Around the Board was designed for a microbiology course, instructors can use the game engine for absolutely any topic. Pick a subject that is suitable for your course and that aligns with your specific learning outcomes.
+This is probably the most straightforward portion of the guide. While Learn Around the Board was designed for a microbiology course, instructors can use the game engine for absolutely any topic. Pick a subject that is suitable for your course and that aligns with your specific learning outcomes.
 
 ### Designing the input file
 
-Science Around the Board requires students to load a file with all questions (required) and any images that the questions reference (optional). The input file must be in Tab-Separated Values (TSV) format, which I recommend creating with Google Sheets, then exporting as `.tsv` (**File → Download → Tab-separated values**). In Excel, use **File → Save As → Text (Tab delimited) (.txt)**; the game accepts `.txt` files too, but check that accented letters and symbols such as β survived. The quickest start is to import the [Intro Statistics example](https://hghezzi.github.io/Science-Around-the-Board/examples/intro_statistics.tsv) into a Sheet and replace its rows. Column names are case-sensitive:
+Learn Around the Board requires students to load a file with all questions (required) and any images that the questions reference (optional). The input file must be in Tab-Separated Values (TSV) format, which I recommend creating with Google Sheets, then exporting as `.tsv` (**File → Download → Tab-separated values**). In Excel, use **File → Save As → Text (Tab delimited) (.txt)**; the game accepts `.txt` files too, but check that accented letters and symbols such as β survived. The quickest start is to import the [Intro Statistics example](https://hghezzi.github.io/Learn-Around-the-Board/examples/intro_statistics.tsv) into a Sheet and replace its rows. Column names are case-sensitive:
 
 | Column | Required? | Description | Example |
 | :--- | :--- | :--- | :--- |
@@ -124,7 +124,7 @@ Science Around the Board requires students to load a file with all questions (re
 | `answer` | For numeric/short answer | The number, or accepted answers separated by `\|` | `1500`, `beta\|beta diversity` |
 | `tolerance` | No | Allowed error for numeric answers | `0.5` or `5%` |
 
-While the table above provides a quick reference, understanding how these columns interact is the key to mastering Science Around the Board. The game engine reads your TSV file and dynamically constructs the board, the menus and the pre- and post-game surveys based entirely on the text you provide. For example files, see the [16S demo file](https://hghezzi.github.io/Science-Around-the-Board/SAB_questions_Jan22_Filtered.tsv), which includes questions with images, or the [Intro Statistics example](https://hghezzi.github.io/Science-Around-the-Board/examples/intro_statistics.tsv), which uses every question format in a non-biology subject. The [complete format reference](https://github.com/hghezzi/Science-Around-the-Board/blob/main/.claude/skills/sab-question-writer/references/format.md) covers every rule in detail.
+While the table above provides a quick reference, understanding how these columns interact is the key to mastering Learn Around the Board. The game engine reads your TSV file and dynamically constructs the board, the menus and the pre- and post-game surveys based entirely on the text you provide. For example files, see the [16S demo file](https://hghezzi.github.io/Learn-Around-the-Board/examples/16S_QIIME2_demo.tsv), which includes questions with images, or the [Intro Statistics example](https://hghezzi.github.io/Learn-Around-the-Board/examples/intro_statistics.tsv), which uses every question format in a non-biology subject. The [complete format reference](https://github.com/hghezzi/Learn-Around-the-Board/blob/main/.claude/skills/lab-question-writer/references/format.md) covers every rule in detail.
 
 #### Board hierarchy and organization
 
@@ -235,7 +235,7 @@ Load your file yourself before class and fix the red items. If you work from the
 
 #### Generating questions with Claude (optional)
 
-Writing a full question file takes time. The **SAB question-writer** is a skill for Claude (Anthropic’s AI assistant) that does the heavy lifting with you:
+Writing a full question file takes time. The **LAB question-writer** is a skill for Claude (Anthropic’s AI assistant) that does the heavy lifting with you:
 
 1. It asks about your course, level, learning objectives and session length, and reads any notes or slides you share.
 2. It proposes a board layout (4 themes × 2 subthemes, mapped to your objectives) for your approval.
@@ -244,12 +244,12 @@ Writing a full question file takes time. The **SAB question-writer** is a skill 
 
 To use it:
 
-- **In Claude (claude.ai or the desktop app):** download the [skill zip](https://hghezzi.github.io/Science-Around-the-Board/downloads/sab-question-writer.zip) and add it in Claude’s skills settings (Customize → Skills). When I update the skill, download the zip again and replace the old one.
-- **In Claude Code:** install it as a plugin. Type `/plugin marketplace add hghezzi/Science-Around-the-Board`, then `/plugin install sab-question-writer@sab`. To get later versions, run `/plugin marketplace update sab` (or turn on auto-update for the marketplace in `/plugin`). If you work in the project repository itself, the skill also loads by itself.
+- **In Claude (claude.ai or the desktop app):** download the [skill zip](https://hghezzi.github.io/Learn-Around-the-Board/downloads/lab-question-writer.zip) and add it in Claude’s skills settings (Customize → Skills). When I update the skill, download the zip again and replace the old one.
+- **In Claude Code:** install it as a plugin. Type `/plugin marketplace add hghezzi/Learn-Around-the-Board`, then `/plugin install lab-question-writer@lab`. To get later versions, run `/plugin marketplace update lab` (or turn on auto-update for the marketplace in `/plugin`). If you work in the project repository itself, the skill also loads by itself.
 
-Then ask, for example: *"Make a Science Around the Board game reviewing enzyme kinetics for second-year biochemistry."* Always review generated questions before using them in class; you know what your students were actually taught.
+Then ask, for example: *"Make a Learn Around the Board game reviewing enzyme kinetics for second-year biochemistry."* Always review generated questions before using them in class; you know what your students were actually taught.
 
-> **Before you share any file with Claude, think about privacy.** The skill runs in your own Claude conversation, so everything you upload or paste (notes, slides, spreadsheets, past results) is read by Claude and handled by Anthropic under your Claude account's terms and privacy settings. Science Around the Board never receives it. So:
+> **Before you share any file with Claude, think about privacy.** The skill runs in your own Claude conversation, so everything you upload or paste (notes, slides, spreadsheets, past results) is read by Claude and handled by Anthropic under your Claude account's terms and privacy settings. Learn Around the Board never receives it. So:
 >
 > - **Remove student information first:** names, student numbers, emails, grades, accommodations and any other personal or sensitive data. The skill keeps such data out of the question file and warns you if it finds some, but by then Claude has already read it.
 > - **Share only what you're allowed to share:** no live exams, licensed test banks, unpublished research or other confidential material.
@@ -266,7 +266,7 @@ I tested these rules with simulated instructors across eleven very different req
 
 #### Optional: encrypting your questions file
 
-Since the question file you distribute to students also contains the answers, I created an [encryptor tool](https://hghezzi.github.io/Science-Around-the-Board/encryptor.html). Type a class password, choose your `.tsv` file and click **Download .lock File**; the encryption happens in your browser and the file is never uploaded. Share the `.lock` file together with the password; when students open it, the game asks for the class password. Check the plain `.tsv` before encrypting it, and keep it: a `.lock` file can't be opened without its password. Encryption keeps casual eyes off the answer key; it is not meant as strong security, since every student knows the password.
+Since the question file you distribute to students also contains the answers, I created an [encryptor tool](https://hghezzi.github.io/Learn-Around-the-Board/encryptor.html). Type a class password, choose your `.tsv` file and click **Download .lock File**; the encryption happens in your browser and the file is never uploaded. Share the `.lock` file together with the password; when students open it, the game asks for the class password. Check the plain `.tsv` before encrypting it, and keep it: a `.lock` file can't be opened without its password. Encryption keeps casual eyes off the answer key; it is not meant as strong security, since every student knows the password.
 
 ### Sharing the game with students
 
@@ -291,7 +291,7 @@ Anyone with a link to a plain `.tsv` can read the answers. To keep them hidden, 
 
 ## Game mechanics
 
-Once the file is loaded and the game begins, Science Around the Board operates on a blend of resource management, academic trivia and strategic risk-taking. Here is how the game plays out. The [Student Guide](student-guide.md) explains the same rules to students in a few minutes.
+Once the file is loaded and the game begins, Learn Around the Board operates on a blend of resource management, academic trivia and strategic risk-taking. Here is how the game plays out. The [Student Guide](student-guide.md) explains the same rules to students in a few minutes.
 
 ### The objective
 
@@ -461,8 +461,8 @@ When a results link or email address is set, names are required before **Send**,
 
 **Setting up the Google Sheet collector**
 
-1. Create a new Google Sheet, for example "SAB results – BIOL 301".
-2. Choose **Extensions → Apps Script**. Delete the sample code, paste the [collector script](https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs) and click **Save**.
+1. Create a new Google Sheet, for example "LAB results – BIOL 301".
+2. Choose **Extensions → Apps Script**. Delete the sample code, paste the [collector script](https://hghezzi.github.io/Learn-Around-the-Board/tools/lab-results-collector.gs) and click **Save**.
 3. Choose **Deploy → New deployment**, select the type **Web app**, set *Execute as* to **Me** and *Who has access* to **Anyone**, then click **Deploy** and authorize the script with your Google account.
 4. Copy the **Web app URL** (it ends in `/exec`) and add it to your question file as a config row: `id` = `results_url`, `type` = `config`, `question` = the URL.
 5. Optionally, add `instructor_email` and `course` rows as well.
@@ -474,7 +474,7 @@ If you edit the script later, use **Deploy → Manage deployments → Edit → V
 
 ### What the results contain
 
-Science Around the Board collects feedback on student performance in a Comma-Separated Values (CSV) file named after the topic, module, date and time, for example `sab_results_16s_qiime2_2026-10-06_1430.csv`; the **Details** tab of the results Sheet holds the same rows. It tracks every answer and transaction during the game, plus the pre- and post-game survey results. Instructors can open it in Excel or Google Sheets, or analyse it with R or Python, to see which questions were missed most often and how confidence and knowledge changed.
+Learn Around the Board collects feedback on student performance in a Comma-Separated Values (CSV) file named after the topic, module, date and time, for example `lab_results_16s_qiime2_2026-10-06_1430.csv`; the **Details** tab of the results Sheet holds the same rows. It tracks every answer and transaction during the game, plus the pre- and post-game survey results. Instructors can open it in Excel or Google Sheets, or analyse it with R or Python, to see which questions were missed most often and how confidence and knowledge changed.
 
 Each row has an `eventType` (game events) or a `phase` (surveys):
 
@@ -501,9 +501,9 @@ Each row has an `eventType` (game events) or a `phase` (surveys):
 
 The game saves the session in the browser as it goes, so an accidental refresh offers **Resume your game?** on the start page. Students should still send or download their results before closing the tab: the saved copy stays on that computer and expires after 12 hours.
 
-## Designing a session based on ‘Science Around the Board’
+## Designing a session based on ‘Learn Around the Board’
 
-Designing a successful Science Around the Board session requires intentionality, ensuring that the activity and the questions align with the learning objectives of the class or course. Here is a framework to design your session and enhance its pedagogical impact.
+Designing a successful Learn Around the Board session requires intentionality, ensuring that the activity and the questions align with the learning objectives of the class or course. Here is a framework to design your session and enhance its pedagogical impact.
 
 ### Backward design: aligning with Learning Outcomes (LOs)
 
@@ -513,7 +513,7 @@ Before writing a single question, start with your Learning Outcomes. What exactl
 - **Synthesis and application (milestones):** the four corner milestones represent mastery. Reserve your highest-order thinking questions for these exams. If an LO is "Analyze a pipeline output to troubleshoot denoising errors", that scenario is better suited to a milestone quiz. Ordering questions (put the steps of a workflow in order) work especially well here.
 - **Practical realities (wildcards):** use your `mishap` rows to teach practical realities or common pitfalls that do not fit neatly into a question format (e.g. "You forgot to balance the centrifuge! (-$100)").
 
-Science Around the Board was originally designed for review-style sessions, so it is naturally better suited to “recall”, “understand” or “apply” learning objectives than to “create” levels.
+Learn Around the Board was originally designed for review-style sessions, so it is naturally better suited to “recall”, “understand” or “apply” learning objectives than to “create” levels.
 
 ### Crafting the question file
 
@@ -566,21 +566,21 @@ While this is only an example, you can certainly explore other lesson-design str
 
 ## Privacy and student data
 
-The game runs entirely in the students’ browsers. There is no account and no game server. In an online game, devices find each other through the free PeerJS connection service, which sees the devices' internet addresses and the room code but not the game; the game itself then goes directly from device to device, encrypted. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Science-Around-the-Board/privacy.html).
+The game runs entirely in the students’ browsers. There is no account and no game server. In an online game, devices find each other through the free PeerJS connection service, which sees the devices' internet addresses and the room code but not the game; the game itself then goes directly from device to device, encrypted. Question files, answers and surveys stay on the students’ computers; results leave them only when students click **Send results to instructor** (they go straight to your own Google Sheet) or submit the results file themselves. The autosaved copy of a session also stays in the browser, and expires after 12 hours. Usage analytics (Google Analytics, with cookies: visits, device type, country) are loaded only if a visitor clicks **Allow analytics** on the start page. If your institution has rules about student data, ask students to choose **No thanks**; the game works the same either way. See the [privacy notice](https://hghezzi.github.io/Learn-Around-the-Board/privacy.html).
 
 ## License and reuse
 
-Science Around the Board is free for teaching, learning and research, and that won't change. Universities, colleges, schools and other public or charitable institutions can use it, adapt it and even host their own copy, whatever their funding. The code is under the [PolyForm Noncommercial License 1.0.0](https://github.com/hghezzi/Science-Around-the-Board/blob/main/LICENSES/PolyForm-Noncommercial-1.0.0.md), and this guide, the example question files and the images are under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/): please credit me and share adapted guides or question files under the same terms.
+Learn Around the Board is free for teaching, learning and research, and that won't change. Universities, colleges, schools and other public or charitable institutions can use it, adapt it and even host their own copy, whatever their funding. The code is under the [PolyForm Noncommercial License 1.0.0](https://github.com/hghezzi/Learn-Around-the-Board/blob/main/LICENSES/PolyForm-Noncommercial-1.0.0.md), and this guide, the example question files and the images are under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/): please credit me and share adapted guides or question files under the same terms.
 
 - **Your question files are yours.** A file you write, by hand or with the question-writer skill, belongs to you, and you choose how to share it.
 - **Commercial use needs my permission:** selling the game, hosting it for paying customers or building it into a paid product. Get in touch through [GitHub](https://github.com/hghezzi).
 - If you publish a modified version, give it a different name.
 
-The full terms are in the [LICENSE](https://github.com/hghezzi/Science-Around-the-Board/blob/main/LICENSE) file.
+The full terms are in the [LICENSE](https://github.com/hghezzi/Learn-Around-the-Board/blob/main/LICENSE) file.
 
 ## Conclusion
 
-Stepping away from the podium and handing control of the review session over to a board game can feel like a leap of faith. As instructors, we are often trained to deliver content efficiently, and the noisy, debate-filled environment of a gamified workshop is a stark contrast to a quiet lecture hall. However, as you will quickly discover during your first session with Science Around the Board, that noise is the sound of active, collaborative learning.
+Stepping away from the podium and handing control of the review session over to a board game can feel like a leap of faith. As instructors, we are often trained to deliver content efficiently, and the noisy, debate-filled environment of a gamified workshop is a stark contrast to a quiet lecture hall. However, as you will quickly discover during your first session with Learn Around the Board, that noise is the sound of active, collaborative learning.
 
 By leaning into playful pedagogy, we accomplish much more than simply reviewing material; we fundamentally change the students' relationship with the content. We replace the anxiety of high-stakes testing with the "hard fun" of strategic competition, loss aversion and immediate feedback. The magic circle of the game board creates a space where failure is not only safe, but structurally necessary for growth.
 
@@ -591,6 +591,12 @@ Building a great TSV cartridge takes intentional design, and mastering the role 
 Welcome to the board, and have a great session!
 
 ## What’s new
+
+**October 2026 (update 11): a new name, Learn Around the Board (LAB)**
+
+- **Science Around the Board is now Learn Around the Board (LAB),** to reflect what it has become: a review game for any subject, not only the sciences. The rules, your question files and your results are unchanged.
+- **New addresses:** the game is at <https://hghezzi.github.io/Learn-Around-the-Board/>, the guides are `LAB_Instructor_Guide.pdf` and `LAB_Student_Guide.pdf`, results files are named `lab_results_….csv`, and the question-writer skill is `lab-question-writer` (plugin: `/plugin marketplace add hghezzi/Learn-Around-the-Board`, then `/plugin install lab-question-writer@lab`).
+- **Old files keep working:** encrypted `.lock` files made before the rename still open, and a results sheet set up with the old collector script keeps receiving results, so you don't need to change it. For a new sheet, use the [new collector](https://hghezzi.github.io/Learn-Around-the-Board/tools/lab-results-collector.gs).
 
 **October 2026 (update 10): play against the bot, and Enter no longer skips the explanation**
 
@@ -623,7 +629,7 @@ These change how solo games play and score. Games with 2–4 players are unchang
 - **Updated counts table** for 45-, 60- and 90-minute sessions (see *How many questions?*).
 - **Demo file:** nine cells were retyped so they survive a round trip through Excel or Google Sheets. No question or answer changed.
 - **End game and Exit session ask first.** Both now open a yes/no confirmation (**Yes, end the game** / **No, keep playing**, and **Yes, leave** / **No, stay in the game**), so a stray click can't end or throw away a game.
-- **The question-writer skill is now a Claude Code plugin:** `/plugin marketplace add hghezzi/Science-Around-the-Board`, then `/plugin install sab-question-writer@sab`. The zip for claude.ai is updated too.
+- **The question-writer skill is now a Claude Code plugin:** `/plugin marketplace add hghezzi/Learn-Around-the-Board`, then `/plugin install lab-question-writer@lab`. The zip for claude.ai is updated too.
 - **A privacy warning before you share materials with Claude:** remove student data and anything confidential first, and check your Claude account's privacy settings (see *Generating questions with Claude*).
 - **The question-writer skill asks about confidence sliders:** whether you want them at all, and which skills they cover (it drafts 4–5 from your learning objectives for you to keep, edit or drop).
 
@@ -656,7 +662,7 @@ These change how solo games play and score. Games with 2–4 players are unchang
 - **Snappier turns.** The pawn moves a little faster and its dialog opens sooner (about half a second saved per roll, about 20 seconds over a 45-minute game). The rules are unchanged.
 - **Stronger `.lock` files.** The encryptor now uses modern browser encryption (PBKDF2 and AES-256-GCM) and asks for a password of at least 8 characters. Your existing `.lock` files still open; re-encrypt them to benefit.
 - **Everyone gets fixes promptly.** An open game checks for a new version regularly. On an empty start page it reloads by itself; during a session it shows a **Reload** notice and never interrupts the game.
-- **Results collector, version 2.** The Google Sheet script now rejects oversized or malformed submissions. If you set it up before, paste in the [new script](https://hghezzi.github.io/Science-Around-the-Board/tools/sab-results-collector.gs) and create a new version of the deployment (the URL stays the same).
+- **Results collector, version 2.** The Google Sheet script now rejects oversized or malformed submissions. If you set it up before, paste in the [new script](https://hghezzi.github.io/Learn-Around-the-Board/tools/lab-results-collector.gs) and create a new version of the deployment (the URL stays the same).
 - **Privacy:** changing your mind about analytics switches it off at once and deletes its cookies.
 - **The file checker now looks for answers that give themselves away.** When the correct option is usually the longest one, students can win without knowing anything. The checker reports how often "always pick the longest option" (or the shortest, or the one that repeats the question's words) would be right, compared with chance, and lists questions whose correct answer is much longer than the others. It also flags "all of the above", absolute words such as "always" or "never" that appear only in wrong options, survey questions that repeat a board question, and spreadsheet errors such as `#NAME?`. See *Checking your file*.
 - **Revised demo and statistics questions.** In the 16S demo, picking the longest option used to be right 69% of the time; it is now 21% (chance is 25%). Several questions were corrected (for example, QIIME 2 commands and flags), two questions whose options a spreadsheet had turned into `#NAME?` were restored, a few questions now use the numeric, ordering, select-all and short-answer formats, and there are six new wildcards.
@@ -676,7 +682,7 @@ These change how solo games play and score. Games with 2–4 players are unchang
 - **Password dialog** for encrypted `.lock` files, with a clear message when the password is wrong.
 - **Wildcard tiles** (formerly "Chance"), a **lap bonus** for passing START and a new board colour. The rules are unchanged.
 - **Demo fixes:** every team now gets its survey questions, whatever order you choose the topic and the number of teams in (teams 3 and 4 used to get none); the demo now includes questions with images; image notices list only images that truly can't be found.
-- **The in-game "Export CSV" button is gone.** It saved only the game log, so students could hand in an incomplete file. The end screen exports everything, now as `sab_results_<topic>_<module>_<date>.csv` with a `TEAM_INFO` row per team.
+- **The in-game "Export CSV" button is gone.** It saved only the game log, so students could hand in an incomplete file. The end screen exports everything, now as `lab_results_<topic>_<module>_<date>.csv` with a `TEAM_INFO` row per team.
 - **"Exit session" asks for confirmation.**
 - **The question-writer skill** now offers every question format (defaulting to all of them) and sets up how results reach you.
 
@@ -702,4 +708,4 @@ These change how solo games play and score. Games with 2–4 players are unchang
 - **A second example game:** Intro Statistics, to show the engine outside biology.
 - **Privacy:** anonymous usage analytics load only if a visitor opts in.
 
-The March 2026 edition of this guide is [archived as a PDF](https://hghezzi.github.io/Science-Around-the-Board/archive/SAB_Instructor_Guide_2026-03.pdf).
+The March 2026 edition of this guide is [archived as a PDF](https://hghezzi.github.io/Learn-Around-the-Board/archive/SAB_Instructor_Guide_2026-03.pdf).

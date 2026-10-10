@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-const SOURCE = readFileSync(fileURLToPath(new URL("../public/tools/sab-results-collector.gs", import.meta.url)), "utf8");
+const SOURCE = readFileSync(fileURLToPath(new URL("../public/tools/lab-results-collector.gs", import.meta.url)), "utf8");
 
 function fakeSheet() {
   const cells = [];
@@ -51,7 +51,7 @@ function loadCollector({ withCache = false } = {}) {
 }
 
 const submission = (extra = {}) => ({
-  app: "science-around-the-board", version: 1, sessionId: "s1", course: "BIOL 101", topic: "16S", module: "QIIME2",
+  app: "learn-around-the-board", version: 1, sessionId: "s1", course: "BIOL 101", topic: "16S", module: "QIIME2",
   summary: [{ playerIndex: 0, team: "Red Team", members: "Ana", preScore: 4, postScore: 7 }],
   rows: [{ eventType: "TEAM_INFO", playerIndex: 0, members: "Ana" }, { phase: "pre", section: "quiz", correct: true }],
   ...extra,
@@ -73,6 +73,11 @@ describe("results collector (Apps Script)", () => {
     expect(summary[1][summary[0].indexOf("members")]).toBe("Ana");
     expect(collector.sheets.Summary.frozen).toBe(1);
     expect(collector.sheets.Details.cells).toHaveLength(3);
+  });
+
+  it("accepts results from games made before the rename, and nothing else", () => {
+    expect(collector.post(submission({ app: "science-around-the-board" }))).toEqual({ ok: true });
+    expect(collector.post(submission({ app: "something-else" })).ok).toBe(false);
   });
 
   it("adds new columns without shifting earlier rows", () => {

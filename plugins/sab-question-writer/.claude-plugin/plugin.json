@@ -1,9 +1,0 @@
-{
-  "name": "sab-question-writer",
-  "description": "Writes complete, validated question files for Science Around the Board, the free classroom review game: interviews the instructor, follows their course materials and checks every question.",
-  "author": { "name": "Hans Ghezzi" },
-  "homepage": "https://hghezzi.github.io/Science-Around-the-Board/guide/#generating-questions-with-claude-optional",
-  "repository": "https://github.com/hghezzi/Science-Around-the-Board",
-  "license": "PolyForm-Noncommercial-1.0.0 AND CC-BY-NC-SA-4.0",
-  "keywords": ["education", "teaching", "quiz", "review game", "question writing"]
-}

@@ -14,7 +14,7 @@
 // game; checks on single rows are reported once for the file.
 //
 // The question-writer skill has a Python mirror of this file in
-// .claude/skills/sab-question-writer/scripts/validate_tsv.py.
+// .claude/skills/lab-question-writer/scripts/validate_tsv.py.
 // Keep the two in step: same rules, same thresholds, same messages.
 // ------------------------------------------------------------
 

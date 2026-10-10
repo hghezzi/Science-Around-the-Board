@@ -1,6 +1,6 @@
 // src/labels.js
 // Every player-facing game term in one place. Keep these subject-neutral:
-// SAB is used for any field, so no lab/science wording here. Question-file
+// LAB is used for any field, so no lab/science wording here. Question-file
 // content (themes, questions, wildcard text) comes from the instructor.
 // A future "instructor-configurable labels" feature can override this object.
 import { SOLO } from "./gameRules.js";

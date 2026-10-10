@@ -20,7 +20,7 @@ export function resultsFilename(topic, module, date = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
   const stamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
   const name = [slug(topic), slug(module)].filter(Boolean).join("_") || "game";
-  return `sab_results_${name}_${stamp}.csv`;
+  return `lab_results_${name}_${stamp}.csv`;
 }
 
 /** One summary per team: survey scores before/after, final rank and the names typed on the end screen. */
@@ -54,6 +54,8 @@ export const makeSessionId = (date = new Date()) => `${date.toISOString()}-${Mat
 
 export function buildPayload({ sessionId, config, topic, module, summary, rows }) {
   return {
+    // The app id keeps its pre-rename value: results sheets set up with an older
+    // collector script accept only this one (the current script accepts both).
     app: "science-around-the-board", version: 1, sessionId, sentAt: new Date().toISOString(),
     course: config.course || "", topic: topic || "", module: module || "", summary, rows,
   };
@@ -72,14 +74,14 @@ export async function sendResults(url, payload, fetchImpl = fetch) {
 }
 
 export function buildMailto({ to, course, topic, module, summary, filename }) {
-  const title = course || [topic, module].filter(Boolean).join(" / ") || "Science Around the Board";
+  const title = course || [topic, module].filter(Boolean).join(" / ") || "Learn Around the Board";
   const who = (t) => `${t.team}${t.members ? ` (${t.members})` : ""}`;
   const body = [
-    "Hello,", "", `Here are our Science Around the Board results for ${title}.`, "",
+    "Hello,", "", `Here are our Learn Around the Board results for ${title}.`, "",
     ...summary.map((t) => `- ${who(t)}: pre-survey ${t.preScore}/${t.surveyQuestions}, post-survey ${t.postScore}/${t.surveyQuestions}${t.rank !== "" ? `, final rank ${t.rank}` : ""}`),
     "", `The full results file (${filename}) was downloaded to this computer. Please attach it before sending.`,
   ].join("\n");
-  const subject = `SAB results – ${title} – ${summary.map(who).join(", ")}`;
+  const subject = `LAB results – ${title} – ${summary.map(who).join(", ")}`;
   return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 

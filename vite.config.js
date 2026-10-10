@@ -41,7 +41,7 @@ const CSP = {
 
 function contentSecurityPolicy() {
   return {
-    name: 'sab-csp',
+    name: 'lab-csp',
     apply: 'build',
     transformIndexHtml: {
       order: 'post',
@@ -54,9 +54,9 @@ function contentSecurityPolicy() {
   }
 }
 
-// The site is served from https://hghezzi.github.io/Science-Around-the-Board/
+// The site is served from https://hghezzi.github.io/Learn-Around-the-Board/
 export default defineConfig({
-  base: '/Science-Around-the-Board/',
+  base: '/Learn-Around-the-Board/',
   build: {
     rollupOptions: {
       input: {
@@ -82,13 +82,13 @@ export default defineConfig({
       injectRegister: false, // registered from src/pwa.js
       includeManifestIcons: false, // already precached by globPatterns
       manifest: {
-        id: '/Science-Around-the-Board/',
-        name: 'Science Around the Board',
-        short_name: 'SAB',
+        id: '/Learn-Around-the-Board/',
+        name: 'Learn Around the Board',
+        short_name: 'LAB',
         description: 'A board-game review session for any course.',
         lang: 'en',
-        start_url: '/Science-Around-the-Board/',
-        scope: '/Science-Around-the-Board/',
+        start_url: '/Learn-Around-the-Board/',
+        scope: '/Learn-Around-the-Board/',
         display: 'standalone',
         background_color: '#eef2f6',
         theme_color: '#2563eb',
@@ -114,7 +114,7 @@ export default defineConfig({
           {
             urlPattern: ({ url, sameOrigin }) => sameOrigin && /\/assets\/.+\.woff2?$/.test(url.pathname),
             handler: 'CacheFirst',
-            options: { cacheName: 'sab-fonts', expiration: { maxEntries: 60 } },
+            options: { cacheName: 'lab-fonts', expiration: { maxEntries: 60 } },
           },
         ],
       },

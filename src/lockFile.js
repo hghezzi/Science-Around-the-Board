@@ -3,7 +3,7 @@
 // (both provide the Web Crypto API as globalThis.crypto).
 //
 // Current format, written by encryptor.html (one line of text):
-//   SAB-LOCK-v2:<PBKDF2 iterations>:<salt, base64>:<iv, base64>:<AES-256-GCM ciphertext, base64>
+//   LAB-LOCK-v2:<PBKDF2 iterations>:<salt, base64>:<iv, base64>:<AES-256-GCM ciphertext, base64>
 // The key is derived from the class password with PBKDF2-SHA256, so each password
 // guess costs an attacker the same work as a real unlock. GCM also detects a wrong
 // password or a damaged file instead of producing garbage.
@@ -16,7 +16,9 @@
 // link. Every student who has the password can read the file, so it is not a
 // way to keep answers secret from a determined class.
 
-export const LOCK_PREFIX = "SAB-LOCK-v2:";
+export const LOCK_PREFIX = "LAB-LOCK-v2:";
+// Files made before the rename to Learn Around the Board: same format, old name.
+export const OLD_LOCK_PREFIX = "SAB-LOCK-v2:";
 export const LEGACY_PREFIX = "U2FsdGVkX1";
 export const DEFAULT_ITERATIONS = 600000; // OWASP 2023 recommendation for PBKDF2-SHA256
 const MIN_ITERATIONS = 100000;
@@ -25,7 +27,7 @@ const MAX_ITERATIONS = 10000000;
 /** "v2", "legacy" or null for text that isn't an encrypted question file. */
 export function lockFormat(text) {
   const s = String(text || "").trim();
-  if (s.startsWith(LOCK_PREFIX)) return "v2";
+  if (s.startsWith(LOCK_PREFIX) || s.startsWith(OLD_LOCK_PREFIX)) return "v2";
   if (s.startsWith(LEGACY_PREFIX)) return "legacy";
   return null;
 }
@@ -65,7 +67,7 @@ export async function encryptLockFile(plainText, password, { iterations = DEFAUL
 }
 
 async function decryptV2(text, password) {
-  const parts = text.trim().slice(LOCK_PREFIX.length).split(":");
+  const parts = text.trim().slice(LOCK_PREFIX.length).split(":"); // both prefixes are 12 characters
   if (parts.length !== 4) return null;
   const iterations = Number(parts[0]);
   if (!Number.isInteger(iterations) || iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) return null;

@@ -36,13 +36,13 @@ img.paste(board, (W - 560 - 35, 35), mask)
 
 d = ImageDraw.Draw(img)
 x = 56
-d.text((x, 110), "Science", font=font("fredoka", 600, 76), fill=INK)
+d.text((x, 110), "Learn", font=font("fredoka", 600, 76), fill=INK)
 d.text((x, 196), "Around the", font=font("fredoka", 600, 76), fill=INK)
 d.text((x, 282), "Board", font=font("fredoka", 600, 76), fill=ACCENT)
 body = font("nunito", 600, 30)
 for i, line in enumerate(["A board-game review session", "for any course. Free, in the", "browser, no accounts."]):
     d.text((x, 398 + i * 42), line, font=body, fill=MUTED)
-d.text((x, 548), "hghezzi.github.io/Science-Around-the-Board", font=font("nunito", 700, 22), fill=ACCENT)
+d.text((x, 548), "hghezzi.github.io/Learn-Around-the-Board", font=font("nunito", 700, 22), fill=ACCENT)
 
 out = ROOT / "public/og-image.png"
 img.save(out, optimize=True)

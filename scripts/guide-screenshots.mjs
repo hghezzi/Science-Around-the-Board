@@ -118,7 +118,7 @@ async function captureSummary() {
     Math.random = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
   });
   const cfg = (id, value) => [id, value, ...Array(10).fill(""), "config", "", "", "", ""].join("\t");
-  await p.route("**/SAB_questions_Jan22_Filtered.tsv", async (route) => {
+  await p.route("**/examples/16S_QIIME2_demo.tsv", async (route) => {
     const response = await route.fetch();
     const text = (await response.text()).replace(/\s+$/, "");
     const extra = [cfg("results_url", "https://script.google.com/macros/s/EXAMPLE/exec"), cfg("instructor_email", "instructor@university.edu")];

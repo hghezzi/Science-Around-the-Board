@@ -47,7 +47,7 @@ console.log("▶ before consent");
     await page.goto(`${BASE}${path}`);
     await page.waitForLoadState("networkidle");
   }
-  if (!page.url().endsWith("/Science-Around-the-Board/?deck=demo")) fail(`404 page didn't redirect to the game with ?deck= (ended at ${page.url()})`);
+  if (!page.url().endsWith("/Learn-Around-the-Board/?deck=demo")) fail(`404 page didn't redirect to the game with ?deck= (ended at ${page.url()})`);
   if (external.length) fail(`contacted other hosts before any choice: ${[...new Set(external)].join(", ")}`);
   else ok("no request left the site before a choice was made");
   await context.close();

@@ -85,7 +85,7 @@ export function createGuestTransport(code, { deviceId } = {}) {
     else {
       const Peer = await loadPeer();
       // A fresh id each time: the old one may still be held by the server after a drop.
-      peer = new Peer(`sab-guest-${deviceId || "x"}-${Math.random().toString(36).slice(2, 8)}`, { debug: 0 });
+      peer = new Peer(`lab-guest-${deviceId || "x"}-${Math.random().toString(36).slice(2, 8)}`, { debug: 0 });
     }
     const p = peer;
     peerReady = new Promise((resolve, reject) => {

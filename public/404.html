@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-VZgrRqEc2YH1u1y0MeBETyegmjBFG3Wl+e03S97c8NU='; style-src 'unsafe-inline'; img-src 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5xq3/748wMnIaudVU/t9BklsKUEwXrYTFyWbxfoEw+s='; style-src 'unsafe-inline'; img-src 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
   <meta name="color-scheme" content="light dark" />
-  <title>Page not found – Science Around the Board</title>
+  <title>Page not found – Learn Around the Board</title>
   <style>
     :root { --bg: #eef2f6; --card: #ffffff; --text: #1e293b; --accent: #1d4ed8; }
     @media (prefers-color-scheme: dark) { :root { --bg: #0f172a; --card: #1e293b; --text: #e8edf4; --accent: #93c5fd; } }
@@ -19,13 +19,13 @@
 <body>
   <main>
     <h1>Page not found</h1>
-    <p>Taking you to <a id="home" href="/Science-Around-the-Board/">Science Around the Board</a>…</p>
+    <p>Taking you to <a id="home" href="/Learn-Around-the-Board/">Learn Around the Board</a>…</p>
   </main>
   <script>
-    // Old or mistyped links (e.g. /Science-Around-the-Board/play?deck=...) go to the game,
+    // Old or mistyped links (e.g. /Learn-Around-the-Board/play?deck=...) go to the game,
     // keeping ?deck= and ?images= so shared game links still work.
     (function () {
-      var base = "/Science-Around-the-Board/";
+      var base = "/Learn-Around-the-Board/";
       var target = base + window.location.search + window.location.hash;
       document.getElementById("home").href = target;
       if (window.location.pathname.indexOf(base) === 0) window.location.replace(target);

@@ -4,7 +4,7 @@
 // fetches the new version (an autosaved game is then offered for resume).
 import { lazy } from "react";
 
-const FLAG = "sab-chunk-reload";
+const FLAG = "lab-chunk-reload";
 
 export function lazyWithReload(load) {
   return lazy(async () => {
