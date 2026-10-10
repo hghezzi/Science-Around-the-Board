@@ -56,6 +56,7 @@ License (see `LICENSE`): code under PolyForm Noncommercial 1.0.0, content (guide
   - Autosave: `onSnapshot` fires only between turns (`turnInProgressRef` is set by the roll and cleared by `passTurn`). `resume` restores players, turn, logs, `asked` and tile `[owner, level, paid]` onto a freshly built board; tiles share question arrays, so the board itself is never serialized.
   - Property question: right gives the option to buy; wrong is −$20.
   - **Solo (1 player):** landing on your own tile asks one of its questions (`OWN_TILE` card, action `answerOwnTile`); right = the bank pays its rent (`soloOwnTileIncome`, CSV `SOLO_RENT`), wrong = −$20. A net-worth goal by session length (`SOLO.goals`/`soloGoal` in `gameRules.js`, sized by simulation) shows in `TeamPanel`; a `SOLO_GOAL` row marks when it is reached. No chaos tokens. The standings show goal, accuracy, milestones and a personal best (`personalBest.js`, localStorage `sab-best-v1`). Quick rules come from `rulesFor(playerCount)` in `labels.js`.
+  - **Solo against the bot** (`bot` prop, `{ level }`; App `soloMode`/`botLevel`, local play only): the bot is player 1 with the normal two-player rules. One effect in GameScreen ("THE BOT") presses the same named actions a person does, one step at a time (`BOT_PACE`; **Skip ahead** = fast for that turn, via `turnSeq`/`skipSeq`). During its turn `botWatching` disables the student's controls except on the standings and winner screens. `logAnswer` skips the bot (no answer rows, no `asked` history); its `GAME_RESULT` row has `bot: level`. Record per level in `personalBest.js` (`getBotRecord`/`recordBotGame`). Rules from `rulesFor(n, bot)` (`BOT_RULE`).
   - Rent defense: right pays 50%.
   - Milestone exam: 6 questions, 5 to pass, failing on the 2nd mistake; a pass earns a chaos token.
   - Chaos steal at 50% of price, using the target tile's own questions. Complete sets (owner holds the whole subgroup) can't be targeted; the token is spent either way and the turn ends.
@@ -76,7 +77,7 @@ License (see `LICENSE`): code under PolyForm Noncommercial 1.0.0, content (guide
 - `src/components/`:
   - `Board.jsx`: responsive 10×10 grid sized with container-query units. The centre holds the title, turn banner, dice and actions.
   - `Dice.jsx`, `TeamPanel.jsx`, and `confetti.js` (`celebrate()`, which respects reduced motion).
-- `src/QuestionInput.jsx`: renders any format, in game mode (`onSubmit`, `reveal`) or survey mode (`survey`, `onChange`). `QuestionImage` hides images that fail to load.
+- `src/QuestionInput.jsx`: renders any format, in game mode (`onSubmit`, `reveal`) or survey mode (`survey`, `onChange`). Enter in an answer box calls `preventDefault` so the same key press can't reach the result screen; `OutcomePanel` (GameScreen) takes focus itself and keeps its buttons `inert` for 400 ms. `QuestionImage` hides images that fail to load.
 - `src/tsvParser.js` (pure): `parseTsv`, `parseTsvHeaders`, `parseList` (comma lists), `getAllTopics`, `getModulesForTopic`.
 - `src/tsvBoardBuilder.js` (pure):
   - Filters rows by `bigTopic`/`module`; a blank cell matches all.
@@ -91,6 +92,7 @@ License (see `LICENSE`): code under PolyForm Noncommercial 1.0.0, content (guide
   - Rent multipliers: 0.5× without the full set, otherwise 1/3/6/10/20× by level.
   - Victory helpers: `assetValue`, `netWorth`, `rankPlayers`, `nextActivePlayer`, `bestPreSurveyPlayer`.
   - Net worth = cash + money spent: each tile's `paid` (price, or the chaos price) plus each subgroup's upgrades once (`upgradeSpend`). Every liquidation sale returns half of what was paid.
+- `src/bot.js` (pure): bot levels (`BOT_LEVELS` accuracy 0.5/0.7/0.85, sized with `node scripts/bot-sim.mjs`, a Monte Carlo of the real rules), `botResponse(q, correct)` for every format, buying/milestone/upgrade/chaos/liquidation choices, and pacing (`resultDelay`). Tests in `tests/bot.test.js`.
 - `src/images.js` (pure): `resolveImage(name, uploaded, base)`. Order: uploaded file, then http/data URL, then the `?images=` folder (`base`), then `./questionImages/<name>` (hosted in `public/questionImages`: only figures we can publish, drawn by `scripts/make-demo-images.py` or the skill).
 - `src/surveys.js` (pure): `buildSurveySets` (10 per player) and `buildConfidenceQuestions`, filtered by topic/module.
 - `src/config.js` (pure): `readConfig(rows)` reads `type=config` rows (`results_url`, `instructor_email`, `course`, `ask_names`).

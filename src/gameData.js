@@ -8,9 +8,9 @@
 //  - All names & questions come from tsvBoardBuilder (QS object).
 // -------------------------------------------------------------------
 
-import { buildBoardQuestionSet } from "./tsvBoardBuilder";
-import { LABELS } from "./labels";
-import { ECONOMY } from "./gameRules";
+import { buildBoardQuestionSet } from "./tsvBoardBuilder.js";
+import { LABELS } from "./labels.js";
+import { ECONOMY } from "./gameRules.js";
 
 /**
  * Build a full board for a given topic + module using TSV rows.

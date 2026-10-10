@@ -407,7 +407,17 @@ A single player (one student, or a small group sharing one player) has no rivals
 - **A goal to beat the clock.** The board shows a net-worth goal: $3,300 in a 30-minute session, $4,000 in 45, $5,000 in 60 (or with no timer) and $9,000 in 90. I sized them with a simulation so that most students answering about 80% correctly reach the goal, about a third at 65%, and few at 50%. Capturing all four milestones is a bonus.
 - **No chaos tokens,** since there is nobody to challenge.
 
-The end screen shows whether the goal was reached, the share of questions answered correctly, the milestones captured and the best result so far on that computer (kept only in that browser). In a future version, solo players will also be able to choose a computer rival instead of the goal.
+The end screen shows whether the goal was reached, the share of questions answered correctly, the milestones captured and the best result so far on that computer (kept only in that browser).
+
+#### Playing against the bot
+
+On the setup screen, a solo player can choose **Play against the bot** instead of **Reach a goal**, and pick **Easy**, **Medium** or **Hard**. The bot then plays the normal two-player game: it buys, charges rent, upgrades, takes milestone exams and uses chaos tokens, with $2,000 each to start. The student always goes first.
+
+- **The bot answers at its level:** about 50% right on Easy, 70% on Medium and 85% on Hard. I tuned the levels with a simulation of the real rules: a student who answers about as well as the bot wins about half the time, and every extra 10% of right answers adds roughly 15 points to the student's chance. A student at 70% wins about 3 games in 4 against Easy, half against Medium and 1 in 3 against Hard.
+- **Its turns are worked examples.** The student sees each of the bot's questions, its answer and the explanation, but can't answer or press anything; a turn takes about 5–15 seconds, longer for a milestone exam. **Skip ahead** speeds up the rest of that turn.
+- **Only the student's answers count.** The bot's answers are never written to the results file, never count in accuracy or surveys, and its questions can still come up for the student later. The bot's moves appear as `TRANSACTION` rows, and its final result is a `GAME_RESULT` row with `bot` set to its level.
+- The end screen shows who won and the student's record against that level on that computer (wins and games, kept only in that browser).
+- The bot plays only on one computer; it isn't available in online games.
 
 ### Numbers at a glance
 
@@ -477,7 +487,7 @@ Each row has an `eventType` (game events) or a `phase` (surveys):
 | `TRANSACTION` | Every money change, with the reason (`action`), `amount`, `moneyBefore`, `moneyAfter` and `timestamp` |
 | `ELIMINATED` | A player leaving the game, and why |
 | `SOLO_GOAL` | Solo only: the `turn` the net-worth goal was reached, and the `netWorth` at that moment (bank rent appears as `TRANSACTION` rows with `action` = `SOLO_RENT`) |
-| `GAME_RESULT` | Final `rank`, `cash`, property value (`assets`) and `netWorth` for each player, and how the game ended (`endReason`) |
+| `GAME_RESULT` | Final `rank`, `cash`, property value (`assets`) and `netWorth` for each player, and how the game ended (`endReason`). Against the bot, the bot's row has `bot` set to `easy`, `medium` or `hard` |
 
 (`GRANT_Q` rows are Rescue Quiz questions. Some codes, such as `GRANT_Q`, `EMERGENCY_GRANT` and `LAB_MISHAP` for wildcards, keep their original names so that older results files stay comparable.)
 
@@ -581,6 +591,12 @@ Building a great TSV cartridge takes intentional design, and mastering the role 
 Welcome to the board, and have a great session!
 
 ## What’s new
+
+**October 2026 (update 10): play against the bot, and Enter no longer skips the explanation**
+
+- **Solo players can play against the bot** (Easy, Medium or Hard) instead of chasing a goal. Its turns show its question, answer and explanation; **Skip ahead** speeds them up. Only the student's answers count. See *Playing against the bot*.
+- **Fixed: pressing Enter skipped the explanation.** Pressing Enter to submit a typed answer (numbers and short answers) also pressed the next button, so the explanation vanished at once, and a right answer could even buy the tile without the player choosing. Enter now only submits, and the result's buttons ignore key presses for a moment. Keyboard users press Tab to reach **Continue**.
+- **Results file:** against the bot, a second `GAME_RESULT` row with a new `bot` column (other games are unchanged).
 
 **October 2026 (update 9): license**
 

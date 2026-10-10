@@ -59,6 +59,8 @@ The game ends in one of two ways:
 - Your goal is to reach the net-worth goal shown on the board before time runs out (for example $5,000 in a 60-minute session). Capturing all four milestones is a bonus.
 - There are no chaos tokens.
 
+**Playing against the bot?** If you choose **Play against the bot** (Easy, Medium or Hard), you play the normal two-player rules against the computer, and you go first. On its turns, watch its question, its answer and the explanation; they are a free review. **Skip ahead** speeds up its turn. Only your own answers count in your results.
+
 Starting cash depends on how many players there are: **$2,500** solo, **$2,000** each with 2 players, **$1,500** with 3 and **$1,250** with 4 (fewer players get more turns each, so they need more cash). Players take turns, and the **Players** panel on the right shows each player's cash and net worth.
 
 ## Your turn

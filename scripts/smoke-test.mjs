@@ -530,6 +530,80 @@ async function enterScenario() {
   }
 }
 
+// Solo against the bot: the bot plays its own turns (the student can only watch or
+// skip ahead), and only the student's answers reach the results file.
+async function botScenario() {
+  console.log("▶ solo against the bot");
+  const { context, page } = await newPage();
+  await openDemo(page);
+  await page.getByRole("button", { name: /Continue to game setup/ }).click();
+  await page.getByRole("button", { name: /^16S/ }).click();
+  await page.getByRole("button", { name: /Confirm selection/i }).click();
+  await page.getByRole("button", { name: /^Solo$/ }).click();
+  await page.getByRole("button", { name: /Play against the bot/ }).click();
+  await page.getByRole("button", { name: /^Medium/ }).click();
+  await page.getByRole("button", { name: /Start game/ }).click();
+  await doSurvey(page, 1, "bot pre");
+  await gameStarted(page);
+  let watched = 0, skipped = 0, rolls = 0, sawBotAnswer = false;
+  for (let guard = 0; guard < 900; guard++) {
+    const modal = page.locator(".MuiModal-root").last();
+    if (!(await page.locator(".MuiModal-root").count())) {
+      const roll = page.getByRole("button", { name: /^Roll/ });
+      const ready = (await roll.count()) && (await roll.isEnabled());
+      if (ready && rolls >= 12) break; // the student's turn, between dialogs
+      if (ready) { await roll.click(); rolls++; await page.locator(".MuiModal-root").first().waitFor({ timeout: 10000 }).catch(() => {}); }
+      else await page.waitForTimeout(200);
+      continue;
+    }
+    const text = await modal.innerText();
+    if (/Final Standings/i.test(text)) break;
+    if (/The bot is playing/.test(text)) {
+      watched++;
+      if (/^why$/im.test(text)) sawBotAnswer = true; // innerText is upper-cased like the label
+      // Its buttons are the bot's: the student can't press them.
+      const enabled = await modal.locator("fieldset button:enabled, fieldset input:enabled").count();
+      if (enabled) fail(`bot: ${enabled} control(s) usable by the student during the bot's turn`);
+      // Once the bot's answer and explanation have been seen, skip ahead on every bot turn.
+      if (sawBotAnswer) await modal.getByRole("button", { name: /Skip ahead/ }).click().catch(() => {});
+      else await page.waitForTimeout(400);
+      continue;
+    }
+    if (/Skipping ahead/.test(text)) { skipped++; await page.waitForTimeout(150); continue; }
+    if (await answerQuestion(modal)) continue;
+    let clicked = false;
+    for (const name of DIALOG_BUTTONS) {
+      const button = modal.getByRole("button", { name }).first();
+      if ((await button.count()) && (await button.isEnabled())) { await button.click(); clicked = true; break; }
+    }
+    if (!clicked) await page.waitForTimeout(250);
+  }
+  if (!watched) fail("bot: the bot never played a turn");
+  if (!sawBotAnswer) fail("bot: never saw the bot's answer and explanation");
+  if (!skipped) fail("bot: Skip ahead was never offered");
+  if (!(await page.getByText(/Final Standings/i).count())) {
+    await page.getByRole("button", { name: /^End game$/ }).click();
+    await page.getByRole("button", { name: /^Yes, end the game$/ }).click();
+  }
+  await page.getByText(/Your record against it on this computer/).waitFor({ timeout: 10000 }).catch(() => fail("bot: the standings don't show the record against the bot"));
+  await page.getByRole("button", { name: /Continue to post-survey/i }).click();
+  await doSurvey(page, 1, "bot post");
+  await page.getByText(/Session complete/).waitFor();
+  const rows = await downloadCsv(page);
+  const answers = rows.filter((r) => /_Q$/.test(r.eventType));
+  if (answers.some((r) => r.playerIndex !== "0")) fail("bot: the bot's answers are in the results file");
+  if (!rows.some((r) => r.eventType === "TRANSACTION" && r.playerIndex === "1")) fail("bot: no bot moves in the results file");
+  const results = rows.filter((r) => r.eventType === "GAME_RESULT");
+  if (results.length !== 2 || results.find((r) => r.playerIndex === "1")?.bot !== "medium") fail(`bot: GAME_RESULT rows are wrong (${JSON.stringify(results.map((r) => [r.playerIndex, r.bot]))})`);
+  if (rows.filter((r) => r.eventType === "TEAM_INFO").length !== 1) fail("bot: the bot got a TEAM_INFO row");
+  for (const phase of ["pre", "post"]) {
+    const n = rows.filter((r) => r.phase === phase && r.section === "quiz").length;
+    if (n !== 10) fail(`bot: ${n} ${phase}-survey answers (expected 10, the student's only)`);
+  }
+  console.log(`  bot: watched ${watched} bot dialogs, skipped ahead ${skipped} times, ${answers.length} student answers`);
+  await context.close();
+}
+
 // ---------------------------------------------------------------------------
 // ONLINE PLAY: a host and two guest devices, through a local signalling server
 // (the public one can't be reached from CI). Covers the lobby, surveys on each
@@ -742,6 +816,7 @@ async function onlineScenario() {
 const SCENARIOS = {
   debt: debtScenario,
   enter: enterScenario,
+  bot: botScenario,
   bankrupt: bankruptScenario,
   teams: async () => { for (const n of [1, 2, 3, 4]) await teamScenario(n); },
   dark: () => teamScenario(3, "dark"),

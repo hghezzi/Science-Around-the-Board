@@ -44,7 +44,7 @@ export default function TeamPanel({ players, board, turn, moneyFloats, goal = 0,
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ fontWeight: 800, lineHeight: 1.2, textDecoration: p.eliminated ? "line-through" : "none", color: p.eliminated ? "text.secondary" : "text.primary" }}>
-                    {p.name} {p.rescueUsed && !p.eliminated && <span title={LABELS.rescueUsed} role="img" aria-label={LABELS.rescueUsed}>🛟</span>}
+                    {p.bot && <span aria-hidden>🤖 </span>}{p.name} {p.rescueUsed && !p.eliminated && <span title={LABELS.rescueUsed} role="img" aria-label={LABELS.rescueUsed}>🛟</span>}
                   </Typography>
                   {active && <Typography variant="caption" sx={{ fontWeight: 800, color: "primary.main", lineHeight: 1 }}>Playing now</Typography>}
                 </Box>
